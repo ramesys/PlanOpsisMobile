@@ -39,11 +39,11 @@ public struct SurveyCorrectionEngine {
     }
     public func movingEndpoint(wallID:UUID,endpoint:WallEndpointKind,to point:Point2D,in project:PlanOpsisProject) throws -> PlanOpsisProject {
         var settings=PlanEditingSettings();settings.connectedEndpointTolerance=0.001
-        guard let result=PlanEditingConstraintEngine().moveEndpoint(wallID:wallID,endpoint:endpoint,proposed:point,in:project.rooms.flatMap(\.walls),settings:settings,applyConstraints:false) else { throw SurveyError.invalid("Wall endpoint could not be moved.") }
-        let walls=Dictionary(uniqueKeysWithValues:result.walls.map{($0.id,$0)})
-        var next=project
-        for r in next.rooms.indices { next.rooms[r].walls=next.rooms[r].walls.map{walls[$0.id] ?? $0} }
-        return next
+        do {
+            return try PlanEditingConstraintEngine().moveEndpoint(wallID:wallID,endpoint:endpoint,proposed:point,in:project,roomID:nil,settings:settings,applyConstraints:false).project
+        } catch let error as WallEndpointEditError {
+            throw SurveyError.invalid(error.localizedDescription)
+        }
     }
     public func validateChange(from original:PlanOpsisProject,to next:PlanOpsisProject) throws {
         try SurveyValidation.validate(next)

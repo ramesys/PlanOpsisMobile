@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-linux:
+    name: PlanOpsisCore · Linux
+    runs-on: ubuntu-latest
+    container: swift:6.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test core
+        run: swift test --parallel
+
+  core-macos:
+    name: PlanOpsisCore · macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test core (includes CryptoKit + PDF paths)
+        run: swift test --parallel
+
+  app-ios:
+    name: iOS app · Simulator build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # The app uses iOS 26 SDK APIs (Liquid Glass) behind #available checks, so it needs Xcode 26;
+      # the runner's default Xcode is older.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Show toolchain
+        run: xcodebuild -version
+      - name: Build app (no signing)
+        run: |
+          xcodebuild build \
+            -project PlanOpsisMobile.xcodeproj \
+            -scheme PlanOpsisMobile \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

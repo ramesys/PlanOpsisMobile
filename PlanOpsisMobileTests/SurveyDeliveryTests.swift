@@ -1,5 +1,7 @@
 import XCTest
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 #if canImport(PlanOpsisCore)
 @testable import PlanOpsisCore
 #else
@@ -15,7 +17,9 @@ final class SurveyDeliveryTests:XCTestCase {
         p.survey.evidence=[ref]
         let destination=root.appendingPathComponent("delivery")
         let manifest=try SurveyDeliveryWriter().write(project:p,attachmentStore:attachments,destination:destination)
+        #if canImport(CoreText)
         XCTAssertTrue(manifest.files.contains{$0.path=="Survey.pdf"})
+        #endif
         XCTAssertTrue(manifest.files.contains{$0.path=="Survey.ifc"})
         let moved=root.appendingPathComponent("moved")
         try FileManager.default.moveItem(at:destination,to:moved)
@@ -26,6 +30,14 @@ final class SurveyDeliveryTests:XCTestCase {
         XCTAssertThrowsError(try SurveyDeliveryWriter().write(project:p,attachmentStore:attachments,destination:destination))
         XCTAssertFalse(FileManager.default.fileExists(atPath:destination.path))
     }
+    func testPortableSHA256MatchesFIPSVectors() {
+        func hex(_ s:String)->String { PortableSHA256.hash(Data(s.utf8)).map { String(format:"%02x",$0) }.joined() }
+        XCTAssertEqual(hex(""),"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+        XCTAssertEqual(hex("abc"),"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        XCTAssertEqual(hex("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1")
+        XCTAssertEqual(hex(String(repeating:"a",count:1_000)),SurveyHash.data(Data(String(repeating:"a",count:1_000).utf8)))
+    }
+    #if canImport(CoreText)
     func testSheetsAreRealVectorPDFAtAllDrawingScales() throws {
         var p=GoldenExchangeTests.project();p.survey.roomNames[p.rooms[0].id]="Καθιστικό / Living room"
         for scale in [20,50,100] {
@@ -40,4 +52,5 @@ final class SurveyDeliveryTests:XCTestCase {
             }
         }
     }
+    #endif
 }

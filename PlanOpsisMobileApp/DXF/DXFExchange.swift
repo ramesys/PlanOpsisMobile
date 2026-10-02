@@ -126,12 +126,16 @@ public struct DXFExchangeEngine {
 
     // MARK: - Export
 
+    /// - Parameters: semanticGeometry/physicalGeometry: geometry already generated from exactly this
+    ///   `project` (v12.1 `ProjectDerivation`); generated here when nil.
     public func preview(
         for project: PlanOpsisProject,
-        representation: GeometryRepresentationMode = .reconciledPhysical
+        representation: GeometryRepresentationMode = .reconciledPhysical,
+        semanticGeometry precomputedSemantic: ArchitecturalGeometrySnapshot? = nil,
+        physicalGeometry precomputedPhysical: DisplayGeometrySnapshot? = nil
     ) -> DXFPreviewSnapshot {
-        let semanticGeometry = ParametricGeometryEngine().generate(from: project)
-        let physicalGeometry = PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semanticGeometry)
+        let semanticGeometry = precomputedSemantic ?? ParametricGeometryEngine().generate(from: project)
+        let physicalGeometry = precomputedPhysical ?? PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semanticGeometry)
         var primitives: [DXFPrimitive] = []
 
         // v9.5 drafting rule:
@@ -191,7 +195,7 @@ public struct DXFExchangeEngine {
             }
         }
 
-        if includeOpeningDimensions { primitives.append(contentsOf: openingDimensions(for: project)) }
+        if includeOpeningDimensions { primitives.append(contentsOf: openingDimensions(for: project, semanticGeometry: semanticGeometry)) }
         let wallSegments = representation == .reconciledPhysical && project.rooms.count > 1
             ? physicalGeometry.planWallSegments : semanticGeometry.semanticDisplaySnapshot().planWallSegments
         primitives = ArchitecturalWallDrawing.resolve(primitives, segments: wallSegments, project: project)
@@ -226,8 +230,8 @@ public struct DXFExchangeEngine {
     }
 
     /// Optional outer dimension chain for actual semantic opening widths.
-    public func openingDimensions(for project: PlanOpsisProject) -> [DXFPrimitive] {
-        let geometry = ParametricGeometryEngine().generate(from: project)
+    public func openingDimensions(for project: PlanOpsisProject, semanticGeometry: ArchitecturalGeometrySnapshot? = nil) -> [DXFPrimitive] {
+        let geometry = semanticGeometry ?? ParametricGeometryEngine().generate(from: project)
         return project.rooms.flatMap { room in
             let boundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: geometry.topology)
             return room.openings.flatMap { opening -> [DXFPrimitive] in
@@ -1019,115 +1023,11 @@ public struct DXFExchangeEngine {
     /// This avoids the v9.4 failure mode where segmented display geometry and annotations used
     /// independent coordinate constructions.
     private func roomDraft(room: PlanOpsisRoom, centerline: [Point2D]) -> RoomDraft? {
-        guard centerline.count >= 3, room.walls.count >= 3 else { return nil }
-
-        struct BaseEdge {
-            var wall: PlanOpsisWall
-            var a: Point2D
-            var b: Point2D
-            var direction: Point2D
-            var inward: Point2D
-        }
-
-        var usedWallIDs = Set<UUID>()
-        var base: [BaseEdge] = []
-        base.reserveCapacity(centerline.count)
-
-        for index in centerline.indices {
-            let a = centerline[index]
-            let b = centerline[(index + 1) % centerline.count]
-            let vector = b - a
-            let length = vector.length
-            guard length > 1e-6 else { return nil }
-            let direction = vector * (1 / length)
-            let midpoint = (a + b) * 0.5
-
-            // Prefer a one-to-one edge/wall mapping. RoomPlan can contain small endpoint noise,
-            // so matching combines parallelism, perpendicular distance, length and endpoint fit.
-            let candidates = room.walls.compactMap { wall -> (PlanOpsisWall, Double)? in
-                let parallel = abs(direction.dot(wall.direction))
-                guard parallel >= 0.965 else { return nil }
-                let normal = Point2D(x: -wall.direction.y, y: wall.direction.x)
-                let lineDistance = abs((midpoint - wall.start).dot(normal))
-                let lengthPenalty = abs(wall.length - length) * 0.08
-                let direct = (wall.start - a).length + (wall.end - b).length
-                let reversed = (wall.end - a).length + (wall.start - b).length
-                let endpointPenalty = min(direct, reversed) * 0.04
-                let reusePenalty = usedWallIDs.contains(wall.id) ? 10_000.0 : 0.0
-                return (wall, lineDistance + lengthPenalty + endpointPenalty + reusePenalty)
-            }.sorted { lhs, rhs in
-                if lhs.1 == rhs.1 { return lhs.0.id.uuidString < rhs.0.id.uuidString }
-                return lhs.1 < rhs.1
-            }
-
-            guard let bestCandidate = candidates.first, bestCandidate.1 < 10_000 else { return nil }
-            let wall = bestCandidate.0
-            usedWallIDs.insert(wall.id)
-
-            let left = Point2D(x: -direction.y, y: direction.x)
-            let probe = max(20.0, min(100.0, wall.thickness * 0.4))
-            let plusInside = pointInPolygon(midpoint + left * probe, polygon: centerline)
-            let minusInside = pointInPolygon(midpoint - left * probe, polygon: centerline)
-            let inward: Point2D
-            if plusInside != minusInside {
-                inward = plusInside ? left : left * -1
-            } else if let centroid = polygonCentroid(centerline) {
-                inward = (centroid - midpoint).dot(left) >= 0 ? left : left * -1
-            } else {
-                inward = left
-            }
-
-            base.append(BaseEdge(wall: wall, a: a, b: b, direction: direction, inward: inward))
-        }
-
-        func lineIntersection(
-            pointA: Point2D, directionA: Point2D,
-            pointB: Point2D, directionB: Point2D,
-            fallback: Point2D,
-            maxDistance: Double
-        ) -> Point2D {
-            let cross = directionA.x * directionB.y - directionA.y * directionB.x
-            guard abs(cross) > 1e-8 else { return fallback }
-            let delta = pointB - pointA
-            let t = (delta.x * directionB.y - delta.y * directionB.x) / cross
-            let point = pointA + directionA * t
-            guard point.x.isFinite, point.y.isFinite, (point - fallback).length <= maxDistance else { return fallback }
-            return point
-        }
-
-        var innerVertices: [Point2D] = []
-        var outerVertices: [Point2D] = []
-        innerVertices.reserveCapacity(base.count)
-        outerVertices.reserveCapacity(base.count)
-
-        for index in base.indices {
-            let previous = base[(index - 1 + base.count) % base.count]
-            let current = base[index]
-            let vertex = current.a
-            let prevHalf = previous.wall.thickness * 0.5
-            let curHalf = current.wall.thickness * 0.5
-            let maxMiter = max(600.0, max(prevHalf, curHalf) * 6)
-
-            let prevInnerPoint = previous.a + previous.inward * prevHalf
-            let curInnerPoint = current.a + current.inward * curHalf
-            let innerFallback = vertex + (previous.inward * prevHalf + current.inward * curHalf) * 0.5
-            innerVertices.append(lineIntersection(
-                pointA: prevInnerPoint, directionA: previous.direction,
-                pointB: curInnerPoint, directionB: current.direction,
-                fallback: innerFallback,
-                maxDistance: maxMiter
-            ))
-
-            let prevOuterPoint = previous.a - previous.inward * prevHalf
-            let curOuterPoint = current.a - current.inward * curHalf
-            let outerFallback = vertex - (previous.inward * prevHalf + current.inward * curHalf) * 0.5
-            outerVertices.append(lineIntersection(
-                pointA: prevOuterPoint, directionA: previous.direction,
-                pointB: curOuterPoint, directionB: current.direction,
-                fallback: outerFallback,
-                maxDistance: maxMiter
-            ))
-        }
+        // v12.1: the face construction is shared with IFC (Geometry/RoomFaceBoundary).
+        guard let boundary = RoomFaceBoundary(room: room, centerline: centerline) else { return nil }
+        let base = boundary.edges
+        let innerVertices = boundary.inner
+        let outerVertices = boundary.outer
 
         var edges: [DraftEdge] = []
         edges.reserveCapacity(base.count)
@@ -1165,23 +1065,11 @@ public struct DXFExchangeEngine {
             ))
         }
 
-        guard polygonArea(innerVertices) > 1, polygonArea(outerVertices) > polygonArea(innerVertices) else { return nil }
         return RoomDraft(room: room, centerline: centerline, innerBoundary: innerVertices, outerBoundary: outerVertices, edges: edges)
     }
 
     private func pointInPolygon(_ point: Point2D, polygon: [Point2D]) -> Bool {
-        guard polygon.count >= 3 else { return false }
-        var inside = false
-        var j = polygon.count - 1
-        for i in polygon.indices {
-            let pi = polygon[i]
-            let pj = polygon[j]
-            let crosses = ((pi.y > point.y) != (pj.y > point.y)) &&
-                (point.x < (pj.x - pi.x) * (point.y - pi.y) / ((pj.y - pi.y) == 0 ? 1e-12 : (pj.y - pi.y)) + pi.x)
-            if crosses { inside.toggle() }
-            j = i
-        }
-        return inside
+        PlanPolygon.contains(point, in: polygon)
     }
 
     private func mergedOpeningIntervals(_ openings: [DraftOpening], length: Double) -> [(Double, Double)] {
@@ -1411,72 +1299,6 @@ public struct DXFExchangeEngine {
         return output
     }
 
-    /// Derives an IfcSpace-compatible clear interior boundary from the closed wall-centerline
-    /// topology. Each edge is offset toward the room centroid by half of its matched wall
-    /// thickness, then adjacent offset lines are intersected. If the wall/edge correspondence
-    /// is ambiguous, no space boundary is invented.
-    private func interiorSpaceBoundary(room: PlanOpsisRoom, centerline: [Point2D]) -> [Point2D]? {
-        guard centerline.count >= 3, room.walls.count >= 3, let centroid = polygonCentroid(centerline) else { return nil }
-
-        struct OffsetEdge {
-            var point: Point2D
-            var direction: Point2D
-        }
-
-        func distanceFromLine(_ point: Point2D, linePoint: Point2D, direction: Point2D) -> Double {
-            let n = Point2D(x: -direction.y, y: direction.x)
-            return abs((point - linePoint).dot(n))
-        }
-
-        var edges: [OffsetEdge] = []
-        edges.reserveCapacity(centerline.count)
-
-        for index in centerline.indices {
-            let a = centerline[index]
-            let b = centerline[(index + 1) % centerline.count]
-            let v = b - a
-            let length = v.length
-            guard length > 1e-6 else { return nil }
-            let direction = v * (1 / length)
-            let midpoint = (a + b) * 0.5
-
-            let candidates = room.walls.compactMap { wall -> (PlanOpsisWall, Double)? in
-                let parallel = abs(direction.dot(wall.direction))
-                guard parallel >= 0.985 else { return nil }
-                let lineDistance = distanceFromLine(midpoint, linePoint: wall.start, direction: wall.direction)
-                let edgeLengthPenalty = abs(wall.length - length) * 0.05
-                return (wall, lineDistance + edgeLengthPenalty)
-            }.sorted { $0.1 < $1.1 }
-
-            guard let bestCandidate = candidates.first, bestCandidate.1 <= 300 else { return nil }
-            let wall = bestCandidate.0
-            var inward = Point2D(x: -direction.y, y: direction.x)
-            if (centroid - midpoint).dot(inward) < 0 { inward = inward * -1 }
-            edges.append(OffsetEdge(point: a + inward * (wall.thickness * 0.5), direction: direction))
-        }
-
-        func intersection(_ lhs: OffsetEdge, _ rhs: OffsetEdge) -> Point2D? {
-            let cross = lhs.direction.x * rhs.direction.y - lhs.direction.y * rhs.direction.x
-            guard abs(cross) > 1e-8 else { return nil }
-            let delta = rhs.point - lhs.point
-            let t = (delta.x * rhs.direction.y - delta.y * rhs.direction.x) / cross
-            let point = lhs.point + lhs.direction * t
-            guard point.x.isFinite, point.y.isFinite else { return nil }
-            return point
-        }
-
-        var result: [Point2D] = []
-        result.reserveCapacity(edges.count)
-        for index in edges.indices {
-            let previous = edges[(index - 1 + edges.count) % edges.count]
-            let current = edges[index]
-            guard let point = intersection(previous, current) else { return nil }
-            result.append(point)
-        }
-        guard polygonArea(result) > 1 else { return nil }
-        return result
-    }
-
     private func architecturalPrimitives(for opening: DisplayOpeningGeometry, roomFloors: [RoomFloorGeometry], project: PlanOpsisProject) -> [DXFPrimitive] {
         let type: String
         switch opening.kind {
@@ -1486,7 +1308,7 @@ public struct DXFExchangeEngine {
         }
         let hosts = project.rooms.flatMap(\.openings).filter { opening.sourceOpeningIDs.contains($0.id) }.map { $0.parameters.hostWallID }
         return symbolPrimitives(ArchitecturalSymbolLibrary.opening(opening, roomFloors: roomFloors), ifc: ifcClass(for: opening.kind),
-                                type: type, objectIDs: opening.sourceOpeningIDs, roomIDs: opening.sourceRoomIDs, hostIDs: Array(Set(hosts)))
+                                type: type, objectIDs: opening.sourceOpeningIDs, roomIDs: opening.sourceRoomIDs, hostIDs: Set(hosts).sorted { $0.uuidString < $1.uuidString })
     }
 
     private func dimensionPrimitives(for wall: PlanOpsisWall, roomCentroid: Point2D?) -> [DXFPrimitive] {
@@ -1558,35 +1380,9 @@ public struct DXFExchangeEngine {
         ]
     }
 
-    private func polygonArea(_ polygon: [Point2D]) -> Double {
-        guard polygon.count >= 3 else { return 0 }
-        var sum = 0.0
-        for index in polygon.indices {
-            let next = polygon[(index + 1) % polygon.count]
-            sum += polygon[index].x * next.y - next.x * polygon[index].y
-        }
-        return abs(sum) * 0.5
-    }
+    private func polygonArea(_ polygon: [Point2D]) -> Double { PlanPolygon.area(polygon) }
 
-    private func polygonCentroid(_ polygon: [Point2D]) -> Point2D? {
-        guard polygon.count >= 3 else { return nil }
-        var crossSum = 0.0
-        var cx = 0.0
-        var cy = 0.0
-        for index in polygon.indices {
-            let p = polygon[index]
-            let q = polygon[(index + 1) % polygon.count]
-            let cross = p.x * q.y - q.x * p.y
-            crossSum += cross
-            cx += (p.x + q.x) * cross
-            cy += (p.y + q.y) * cross
-        }
-        guard abs(crossSum) > 1e-9 else {
-            return polygon.reduce(.zero, +) * (1 / Double(polygon.count))
-        }
-        let factor = 1 / (3 * crossSum)
-        return Point2D(x: cx * factor, y: cy * factor)
-    }
+    private func polygonCentroid(_ polygon: [Point2D]) -> Point2D? { PlanPolygon.centroid(polygon) }
 
     private func normalizeDegrees(_ degrees: Double) -> Double {
         var value = degrees.truncatingRemainder(dividingBy: 360)

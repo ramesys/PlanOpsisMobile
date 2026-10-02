@@ -30,8 +30,8 @@ public struct PlanEditingSettings: Codable, Hashable, Sendable {
         orthoEnabled: Bool = false,
         gridEnabled: Bool = false,
         gridSpacing: Double = 250,
-        endpointSnapTolerance: Double = 140,
-        connectedEndpointTolerance: Double = 1
+        endpointSnapTolerance: Double = GeometryTolerances.endpointSnapMM,
+        connectedEndpointTolerance: Double = GeometryTolerances.coincidenceMM
     ) {
         self.orthoEnabled = orthoEnabled
         self.gridEnabled = gridEnabled
@@ -246,5 +246,99 @@ public struct PlanEditingConstraintEngine: Sendable {
                 return lhs.id < rhs.id
             }
             .first
+    }
+}
+
+public enum WallEndpointEditError: Error, Equatable, LocalizedError {
+    case wallNotFound(UUID)
+    case degenerateWall(UUID)
+    case openingWouldNotFit(openingID: UUID, hostWallID: UUID)
+
+    public var errorDescription: String? {
+        switch self {
+        case .wallNotFound: return "The edited wall no longer exists."
+        case .degenerateWall: return "The edit would collapse a wall to zero length."
+        case .openingWouldNotFit: return "A door, window, or opening would no longer fit on its wall. Move or resize it first."
+        }
+    }
+}
+
+public struct ProjectEndpointMoveResult: Sendable {
+    public var project: PlanOpsisProject
+    public var move: EndpointMoveResult
+}
+
+extension PlanEditingConstraintEngine {
+    /// v12.1 single semantic path for every wall-endpoint edit (grips, numeric fields, measured
+    /// corrections and reviewed CAD returns).
+    ///
+    /// `HostedOpeningParameters.offsetAlongWall` is measured from the wall start, so moving a start
+    /// endpoint would otherwise slide every hosted opening in world space. Each opening on a wall whose
+    /// start moved keeps its distance from the endpoint that stayed fixed; the edit is rejected
+    /// atomically if any opening would leave its host.
+    ///
+    /// - Parameter roomID: limits junction propagation to one room; nil propagates across all rooms.
+    public func moveEndpoint(
+        wallID: UUID,
+        endpoint: WallEndpointKind,
+        proposed: Point2D,
+        in project: PlanOpsisProject,
+        roomID: UUID?,
+        settings: PlanEditingSettings,
+        applyConstraints: Bool = true
+    ) throws -> ProjectEndpointMoveResult {
+        let scoped = project.rooms.filter { roomID == nil || $0.id == roomID }
+        let before = scoped.flatMap(\.walls)
+        guard before.contains(where: { $0.id == wallID }),
+              let move = moveEndpoint(wallID: wallID, endpoint: endpoint, proposed: proposed, in: before, settings: settings, applyConstraints: applyConstraints)
+        else { throw WallEndpointEditError.wallNotFound(wallID) }
+
+        let previous = Dictionary(uniqueKeysWithValues: before.map { ($0.id, $0) })
+        let edited = Dictionary(uniqueKeysWithValues: move.walls.map { ($0.id, $0) })
+        var next = project
+        for roomIndex in next.rooms.indices where roomID == nil || next.rooms[roomIndex].id == roomID {
+            next.rooms[roomIndex].walls = next.rooms[roomIndex].walls.map { edited[$0.id] ?? $0 }
+            for wall in next.rooms[roomIndex].walls where wall != previous[wall.id] && wall.length <= 1e-6 {
+                throw WallEndpointEditError.degenerateWall(wall.id)
+            }
+            next.rooms[roomIndex].openings = try Self.reanchorHostedOpenings(
+                next.rooms[roomIndex].openings,
+                previousWalls: previous,
+                editedWalls: edited
+            )
+        }
+        return ProjectEndpointMoveResult(project: next, move: move)
+    }
+
+    /// Re-anchors openings hosted by edited walls. An opening keeps its distance from the wall end that
+    /// did not move; when both ends moved it keeps its world station projected onto the new axis.
+    public static func reanchorHostedOpenings(
+        _ openings: [PlanOpsisOpening],
+        previousWalls: [UUID: PlanOpsisWall],
+        editedWalls: [UUID: PlanOpsisWall],
+        coincidenceTolerance: Double = 1e-6
+    ) throws -> [PlanOpsisOpening] {
+        try openings.map { opening in
+            var parameters = opening.parameters
+            guard let old = previousWalls[parameters.hostWallID],
+                  let new = editedWalls[parameters.hostWallID],
+                  old != new else { return opening }
+            let startMoved = (old.start - new.start).length > coincidenceTolerance
+            let endMoved = (old.end - new.end).length > coincidenceTolerance
+            if startMoved && !endMoved {
+                parameters.offsetAlongWall = new.length - (old.length - parameters.offsetAlongWall)
+            } else if startMoved && endMoved {
+                let world = old.start + old.direction * parameters.offsetAlongWall
+                parameters.offsetAlongWall = (world - new.start).dot(new.direction)
+            }
+            let half = parameters.width * 0.5
+            guard parameters.offsetAlongWall - half >= -coincidenceTolerance,
+                  parameters.offsetAlongWall + half <= new.length + coincidenceTolerance else {
+                throw WallEndpointEditError.openingWouldNotFit(openingID: opening.id, hostWallID: new.id)
+            }
+            var updated = opening
+            updated.parameters = parameters
+            return updated
+        }
     }
 }

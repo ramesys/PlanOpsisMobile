@@ -10,7 +10,7 @@ public struct WallJunctionResolver {
         public var endpointSnapToleranceMM: Double
         public var maximumCapExtensionMM: Double
 
-        public init(endpointSnapToleranceMM: Double = 160, maximumCapExtensionMM: Double = 100) {
+        public init(endpointSnapToleranceMM: Double = GeometryTolerances.junctionJoinMM, maximumCapExtensionMM: Double = 100) {
             self.endpointSnapToleranceMM = endpointSnapToleranceMM
             self.maximumCapExtensionMM = maximumCapExtensionMM
         }

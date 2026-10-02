@@ -31,6 +31,20 @@ public enum SurveyMeasurementTarget: Codable, Hashable, Sendable {
         case .distance(let a, let b),.projectedDistance(let a,let b,_): return [a.wallID, b.wallID]
         }
     }
+    /// Every semantic object whose deletion invalidates this target, including openings referenced
+    /// by opening-edge points (which `entityIDs` omits).
+    public var referencedEntityIDs: Set<UUID> {
+        var ids = Set(entityIDs)
+        if case .distance(let a, let b) = self { ids.formUnion([a, b].compactMap(\.openingID)) }
+        if case .projectedDistance(let a, let b, _) = self { ids.formUnion([a, b].compactMap(\.openingID)) }
+        return ids
+    }
+}
+extension SurveyPoint {
+    var openingID: UUID? {
+        if case .openingEdge(let id, _) = location { return id }
+        return nil
+    }
 }
 public struct SurveyObservation: Codable, Hashable, Sendable, Identifiable {
     public var id = UUID()
@@ -44,7 +58,11 @@ public struct SurveyObservation: Codable, Hashable, Sendable, Identifiable {
     public var verificationFingerprint: String?
     public var locked = false
 }
-public enum SurveyEvidenceKind: String, Codable, Sendable { case photo, plyComparison, sourcePLY }
+public enum SurveyEvidenceKind: String, Codable, Sendable {
+    case photo, plyComparison, sourcePLY
+    /// v12.1: the platform-neutral RoomPlan capture (`StructureCaptureSnapshot`) the project was built from.
+    case roomPlanCapture
+}
 public struct SurveyEvidenceReference: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var projectID: UUID
