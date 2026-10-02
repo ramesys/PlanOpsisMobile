@@ -294,6 +294,37 @@ public enum PlanDimensionTarget: Hashable, Sendable {
     }
 }
 
+/// A plan dimension the user can edit by value.
+public struct PlanDimensionEdit: Hashable, Sendable, Identifiable {
+    public var target: PlanDimensionTarget
+    /// The length the dimension currently shows.
+    public var measured: Double
+    /// Where its text is drawn, for hit testing.
+    public var labelPosition: Point2D
+    public var rotationDegrees: Double
+
+    public init(target: PlanDimensionTarget, measured: Double, labelPosition: Point2D, rotationDegrees: Double) {
+        self.target = target
+        self.measured = measured
+        self.labelPosition = labelPosition
+        self.rotationDegrees = rotationDegrees
+    }
+
+    public var id: String {
+        switch target {
+        case let .wallLength(id): return "wall:\(id.uuidString)"
+        case let .openingWidth(id): return "opening:\(id.uuidString)"
+        }
+    }
+
+    public var title: String {
+        switch target {
+        case .wallLength: return "Wall length"
+        case .openingWidth: return "Opening width"
+        }
+    }
+}
+
 public enum PlanLengthAnchor: String, Hashable, Sendable, CaseIterable, Identifiable {
     /// The wall start stays; the end moves.
     case start

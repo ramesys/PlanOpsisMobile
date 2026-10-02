@@ -53,6 +53,25 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published var windowCreationOperation: PlanOpsisWindow.Operation = .fixed
     @Published var componentCreationTool: PlanOpsisComponent.Kind?
     @Published private(set) var pendingWallStart: Point2D?
+    /// v12.3: first corner of the wall chain being drawn; reaching it again closes the outline.
+    private var wallChainStart: Point2D?
+    /// Direction of the last drawn wall, used by a typed length without an angle.
+    private var lastWallDirection: Point2D?
+    /// v12.3 polar tracking: wall directions within a few degrees of a 15° multiple snap to it.
+    @Published var polarTrackingEnabled = true
+    /// v12.3 object snaps (endpoint, midpoint, intersection, perpendicular…) while drawing and dragging.
+    @Published var objectSnapsEnabled = true
+    /// v12.3 the DXF opened in the viewer, drawn faded under the plan.
+    @Published var showUnderlay = false
+    @Published private(set) var underlayOffset = Point2D.zero
+    @Published private(set) var underlayRotationDegrees = 0.0
+    @Published var isMovingUnderlay = false
+    /// A plan dimension being edited by value.
+    @Published var dimensionEdit: PlanDimensionEdit?
+    private var underlayCache: (key: String, scene: CADScene)?
+    private var snapperCache: (project: PlanOpsisProject, excluded: Set<UUID>, snapper: PlanObjectSnapper)?
+    private var pushPullBase: (project: PlanOpsisProject, wall: PlanOpsisWall)?
+    @Published private(set) var pushPullOffset: Double?
     @Published private(set) var importedDXFPreview: DXFPreviewSnapshot?
     @Published private(set) var dxfImportDiagnostics: [DXFImportDiagnostic] = []
     /// v12.3: a DXF opened in the viewer only. It never replaces or edits the project.
@@ -330,7 +349,8 @@ final class PlanOpsisMobileStore: ObservableObject {
         componentCreationTool = nil
         creationTool = kind
         pendingWallStart = nil
-        statusMessage = kind == .wall ? "Add Wall: tap start, then tap end." : "Add \(kind.rawValue.capitalized): tap a host wall."
+        wallChainStart = nil
+        statusMessage = kind == .wall ? "Draw walls: tap corners (or type lengths); tap Done to finish." : "Add \(kind.rawValue.capitalized): tap a host wall."
     }
 
     func beginDoorCreation(_ operation: PlanOpsisDoor.Operation) {
@@ -357,13 +377,17 @@ final class PlanOpsisMobileStore: ObservableObject {
     }
 
     func cancelCreation() {
+        let wasDrawingWalls = creationTool == .wall && wallChainStart != nil
         creationTool = nil
         componentCreationTool = nil
         pendingWallStart = nil
-        statusMessage = "Add-object tool cancelled."
+        wallChainStart = nil
+        statusMessage = wasDrawingWalls ? "Finished drawing walls." : "Add-object tool cancelled."
     }
 
-    func handlePlanTap(point: Point2D, hitID: UUID?) {
+    /// - Parameter snapped: the point is an object snap the view already resolved; drafting constraints
+    ///   (grid, ortho, polar) must not move it again.
+    func handlePlanTap(point: Point2D, hitID: UUID?, snapped: Bool = false) {
         guard let project else { return }
         let roomID = focusedRoomID ?? selectedRoom?.id ?? project.rooms.first?.id
         guard let roomID else { return }
@@ -386,26 +410,15 @@ final class PlanOpsisMobileStore: ObservableObject {
         guard let tool = creationTool else { return }
         switch tool {
         case .wall:
-            if pendingWallStart == nil {
-                pendingWallStart = constrainedCreationPoint(point, anchor: nil, project: project, roomID: roomID)
-                statusMessage = "Wall start set. Tap the end point."
+            guard let start = pendingWallStart else {
+                let first = snapped ? point : constrainedCreationPoint(point, anchor: nil, project: project, roomID: roomID)
+                pendingWallStart = first
+                wallChainStart = first
+                statusMessage = "Wall start set. Tap the next corner or type a length."
                 return
             }
-            guard let start = pendingWallStart else { return }
-            let end = constrainedCreationPoint(point, anchor: start, project: project, roomID: roomID)
-            if let result = semanticEditingEngine.addWall(to: roomID, start: start, end: end, project: project) {
-                pendingWallStart = nil
-                creationTool = nil
-                commitSemanticProject(
-                    result.0,
-                    label: "Add wall",
-                    selectionAfter: [result.1],
-                    primaryAfter: result.1
-                )
-                statusMessage = "Added parametric wall. Endpoints will connect when they coincide."
-            } else {
-                statusMessage = "Wall was not added because its length is too small."
-            }
+            let end = snapped ? point : constrainedCreationPoint(point, anchor: start, project: project, roomID: roomID)
+            addChainWall(from: start, to: end, roomID: roomID)
         case .door, .window, .opening:
             guard let hostWallID = hitID,
                   let hostRoomID = project.rooms.first(where: { $0.walls.contains(where: { $0.id == hostWallID }) })?.id else {
@@ -433,6 +446,275 @@ final class PlanOpsisMobileStore: ObservableObject {
                 statusMessage = "The selected wall is too short or cannot host that object."
             }
         }
+    }
+
+    // MARK: - v12.3 direct editing
+
+    /// Adds one wall of the chain being drawn and continues from its end, or closes the outline when
+    /// the end returns to the first corner.
+    private func addChainWall(from start: Point2D, to end: Point2D, roomID: UUID) {
+        guard let project else { return }
+        guard let result = semanticEditingEngine.addWall(to: roomID, start: start, end: end, project: project) else {
+            statusMessage = "Wall was not added because its length is too small."
+            return
+        }
+        guard commitSemanticProject(result.0, label: "Add wall", selectionAfter: [result.1], primaryAfter: result.1) else { return }
+        lastWallDirection = (end - start).normalized
+        let length = (end - start).length
+        if let first = wallChainStart, (end - first).length <= GeometryTolerances.coincidenceMM, (start - first).length > GeometryTolerances.coincidenceMM {
+            pendingWallStart = nil
+            wallChainStart = nil
+            creationTool = nil
+            statusMessage = "Closed the wall outline."
+        } else {
+            pendingWallStart = end
+            statusMessage = "Added wall \(Int(length.rounded())) mm. Tap the next corner, type a length, or tap Done."
+        }
+    }
+
+    /// Typed point for wall drawing: `3450` (along the last wall), `3450<90`, `@dx,dy` or `#x,y`.
+    /// The first corner is an absolute `x,y`.
+    @discardableResult
+    func enterPrecisionPoint(_ text: String) -> Bool {
+        guard creationTool == .wall, let project,
+              let roomID = focusedRoomID ?? selectedRoom?.id ?? project.rooms.first?.id else { return false }
+        guard let start = pendingWallStart else {
+            let absolute = text.trimmingCharacters(in: .whitespaces).hasPrefix("#") ? text : "#" + text
+            guard let first = PlanPrecisionInput.point(from: absolute, anchor: .zero, direction: nil) else {
+                statusMessage = "Type the first corner as x,y in millimetres."
+                return false
+            }
+            pendingWallStart = first
+            wallChainStart = first
+            statusMessage = "Wall start set at \(Int(first.x.rounded())), \(Int(first.y.rounded()))."
+            return true
+        }
+        guard let end = PlanPrecisionInput.point(from: text, anchor: start, direction: lastWallDirection ?? Point2D(x: 1, y: 0)) else {
+            statusMessage = "Type a length (3450), length<angle (3450<90), @dx,dy or #x,y in millimetres."
+            return false
+        }
+        addChainWall(from: start, to: end, roomID: roomID)
+        return true
+    }
+
+    /// Object snaps for the plan, excluding the walls being edited. Rebuilt only when the project changes.
+    func editorSnapper(excluding excluded: Set<UUID>) -> PlanObjectSnapper? {
+        guard objectSnapsEnabled, let project else { return nil }
+        if let cache = snapperCache, cache.excluded == excluded, cache.project == project { return cache.snapper }
+        let snapper = PlanObjectSnapper(project: project, excludingWallIDs: excluded)
+        snapperCache = (project, excluded, snapper)
+        return snapper
+    }
+
+    // MARK: Selection
+
+    func boxSelect(_ rect: CADRect, mode: PlanBoxSelectionMode, adding: Bool) {
+        guard representationMode == .semanticObservations else {
+            statusMessage = "Box selection works in Observed mode."
+            return
+        }
+        historyCoalescingKey = nil
+        let found = PlanSelectionQuery.objects(in: rect, mode: mode, snapshot: displayGeometry, components: displayComponents)
+        let next = adding ? selectionSet(primary: selectedID).union(found) : found
+        setSelection(next, primary: found.sorted { $0.uuidString < $1.uuidString }.first ?? selectedID)
+        statusMessage = next.isEmpty
+            ? "Nothing inside the \(mode == .window ? "window" : "crossing box")."
+            : "Selected \(next.count) object\(next.count == 1 ? "" : "s") (\(mode == .window ? "window: fully inside" : "crossing: touching"))."
+    }
+
+    func selectConnectedWalls() {
+        guard let project, let wall = selectedWall else {
+            statusMessage = "Select a wall first."
+            return
+        }
+        let ids = PlanSelectionQuery.connectedWalls(from: wall.id, in: project)
+        setSelection(ids, primary: wall.id)
+        statusMessage = "Selected \(ids.count) connected wall\(ids.count == 1 ? "" : "s")."
+    }
+
+    func selectSimilar() {
+        guard let project, let selectedID else {
+            statusMessage = "Select an object first."
+            return
+        }
+        let ids = PlanSelectionQuery.similar(to: selectedID, in: project, roomID: focusedRoomID)
+        setSelection(ids, primary: selectedID)
+        statusMessage = "Selected \(ids.count) similar object\(ids.count == 1 ? "" : "s")."
+    }
+
+    func selectAll() {
+        guard let project else { return }
+        let rooms = project.rooms.filter { focusedRoomID == nil || $0.id == focusedRoomID }
+        let ids = Set(rooms.flatMap { $0.walls.map(\.id) + $0.openings.map(\.id) + $0.components.map(\.id) })
+        setSelection(ids, primary: selectedID)
+        statusMessage = "Selected \(ids.count) object\(ids.count == 1 ? "" : "s")."
+    }
+
+    // MARK: Push/pull and opening slide
+
+    func beginPushPull() {
+        guard representationMode == .semanticObservations, let project, let wall = selectedWall else { return }
+        historyCoalescingKey = nil
+        pushPullBase = (project, wall)
+    }
+
+    /// Moves the selected wall parallel to itself so it passes through `point` (projected on its
+    /// normal); connected walls stretch. Offsets round to 10 mm, or to the grid when it is on.
+    func updatePushPull(to point: Point2D, snapped: Bool) {
+        guard let base = pushPullBase else { return }
+        var offset = (point - base.wall.center).dot(base.wall.normal)
+        if !snapped {
+            let step = gridEnabled ? gridSpacingMM : 10
+            offset = (offset / step).rounded() * step
+        }
+        pushPullOffset = offset
+        do {
+            let result = try WallPushPullEngine().pushPull(wallID: base.wall.id, offset: offset, in: base.project)
+            commitSemanticProject(result.project, label: "Push/pull wall", coalescingKey: "push-pull-\(base.wall.id.uuidString)")
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    func endPushPull() {
+        if let offset = pushPullOffset, abs(offset) > 1e-9 {
+            statusMessage = "Moved wall \(Int(offset.rounded())) mm; connected walls followed."
+        }
+        pushPullBase = nil
+        pushPullOffset = nil
+        endInteractiveEdit()
+    }
+
+    /// Slides the selected opening along its wall toward `point`; clear distances round to 10 mm
+    /// (or the grid) and the centre snaps to the wall midpoint.
+    func slideSelectedOpening(to point: Point2D) {
+        guard representationMode == .semanticObservations, let project, let opening = selectedOpening else { return }
+        let step = gridEnabled ? gridSpacingMM : 10
+        guard let next = PlanOpeningEditing.slide(openingID: opening.id, toward: point, in: project, step: step) else { return }
+        commitSemanticProject(next, label: "Move opening", coalescingKey: "opening-slide-\(opening.id.uuidString)")
+    }
+
+    var selectedOpeningClearances: (fromStart: Double, toEnd: Double)? {
+        guard let project, let opening = selectedOpening else { return nil }
+        return PlanOpeningEditing.clearances(openingID: opening.id, in: project)
+    }
+
+    var selectedOpeningHostWall: PlanOpsisWall? {
+        guard let opening = selectedOpening else { return nil }
+        return project?.rooms.flatMap(\.walls).first { $0.id == opening.parameters.hostWallID }
+    }
+
+    // MARK: Driving dimensions
+
+    /// Plan dimensions that can be edited by value (wall lengths and opening widths).
+    var planDimensions: [PlanDimensionEdit] {
+        PlanDimensionTarget.dimensions(in: planAnnotations).compactMap { entry in
+            guard let point = entry.text.points.first else { return nil }
+            return PlanDimensionEdit(target: entry.target, measured: entry.measured, labelPosition: point, rotationDegrees: entry.text.rotationDegrees ?? 0)
+        }
+    }
+
+    func beginDimensionEdit(_ edit: PlanDimensionEdit) {
+        guard representationMode == .semanticObservations else {
+            statusMessage = "Edit dimensions in Observed mode."
+            return
+        }
+        dimensionEdit = edit
+    }
+
+    /// Applies a typed dimension: walls change length about the chosen anchor (connected walls follow);
+    /// openings change width about their centre.
+    @discardableResult
+    func applyDimension(_ edit: PlanDimensionEdit, value: Double, anchor: PlanLengthAnchor) -> Bool {
+        guard let project, value.isFinite, value > 0 else { return false }
+        switch edit.target {
+        case let .wallLength(wallID):
+            do {
+                let next = try editingConstraintEngine.changeWallLength(wallID: wallID, by: value - edit.measured, anchor: anchor, in: project)
+                guard commitSemanticProject(next, label: "Dimension", selectionAfter: [wallID], primaryAfter: wallID) else { return false }
+                statusMessage = "Wall dimension set to \(Int(value.rounded())) mm."
+                return true
+            } catch {
+                statusMessage = error.localizedDescription
+                return false
+            }
+        case let .openingWidth(openingID):
+            guard let room = project.rooms.first(where: { $0.openings.contains { $0.id == openingID } }),
+                  var opening = room.openings.first(where: { $0.id == openingID }),
+                  let wall = room.walls.first(where: { $0.id == opening.parameters.hostWallID }) else { return false }
+            var parameters = opening.parameters
+            guard parameters.offsetAlongWall - value / 2 >= -1e-6, parameters.offsetAlongWall + value / 2 <= wall.length + 1e-6 else {
+                statusMessage = "A \(Int(value.rounded())) mm opening does not fit on its wall at this position."
+                return false
+            }
+            parameters.width = value
+            opening.parameters = parameters
+            var next = project
+            for roomIndex in next.rooms.indices {
+                if let index = next.rooms[roomIndex].openings.firstIndex(where: { $0.id == openingID }) { next.rooms[roomIndex].openings[index] = opening }
+            }
+            guard commitSemanticProject(next, label: "Dimension", selectionAfter: [openingID], primaryAfter: openingID) else { return false }
+            statusMessage = "Opening width set to \(Int(value.rounded())) mm."
+            return true
+        }
+    }
+
+    // MARK: Underlay
+
+    /// The opened DXF placed under the plan in millimetres, or nil when the underlay is off.
+    var underlayScene: CADScene? {
+        guard showUnderlay, let drawing = openedDrawing else { return nil }
+        let key = "\(drawing.id)|\(underlayOffset.x)|\(underlayOffset.y)|\(underlayRotationDegrees)"
+        if let cache = underlayCache, cache.key == key { return cache.scene }
+        let scene = CADScene(document: drawing.document, transform: underlayTransform(for: drawing, offset: underlayOffset, rotationDegrees: underlayRotationDegrees))
+        underlayCache = (key, scene)
+        return scene
+    }
+
+    var underlayHiddenLayers: Set<String> {
+        openedDrawing.map(hiddenLayers(for:)) ?? []
+    }
+
+    private func underlayTransform(for drawing: CADViewerDocument, offset: Point2D, rotationDegrees: Double) -> CADAffine {
+        let mm = drawing.document.units.millimetresPerUnit ?? 1
+        return CADAffine.translation(offset)
+            .concatenating(.rotation(rotationDegrees * .pi / 180))
+            .concatenating(.scale(mm, mm))
+    }
+
+    func toggleUnderlay() {
+        guard let drawing = openedDrawing else {
+            showUnderlay = false
+            statusMessage = "Open a DXF in the DXF tab to use it as an underlay."
+            return
+        }
+        showUnderlay.toggle()
+        if !showUnderlay { isMovingUnderlay = false }
+        if showUnderlay, underlayOffset == .zero, underlayRotationDegrees == 0 {
+            centreUnderlayOnPlan()
+        }
+        statusMessage = showUnderlay ? "Showing \(drawing.title) under the plan." : "Underlay hidden."
+    }
+
+    /// Places the underlay so the centre of its drawing sits on the centre of the plan.
+    func centreUnderlayOnPlan() {
+        guard let drawing = openedDrawing else { return }
+        let placed = CADScene(document: drawing.document, transform: underlayTransform(for: drawing, offset: .zero, rotationDegrees: underlayRotationDegrees))
+        guard !placed.bounds.isEmpty, let plan = displayGeometry.floor else { return }
+        underlayOffset = plan.center - placed.bounds.center
+    }
+
+    func moveUnderlay(by delta: Point2D) {
+        underlayOffset = underlayOffset + delta
+    }
+
+    /// Rotates the underlay about the centre of what it currently shows.
+    func rotateUnderlay(byDegrees degrees: Double) {
+        guard let scene = underlayScene, !scene.bounds.isEmpty else { return }
+        let c = scene.bounds.center
+        let r = CADAffine.rotation(degrees * .pi / 180)
+        underlayOffset = c + r.apply(underlayOffset - c)
+        underlayRotationDegrees = (underlayRotationDegrees + degrees).truncatingRemainder(dividingBy: 360)
     }
 
     func duplicateSelectedObject() {
@@ -718,6 +1000,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     private func constrainedCreationPoint(_ point: Point2D, anchor: Point2D?, project: PlanOpsisProject, roomID: UUID) -> Point2D {
         var candidate = gridEnabled ? editingConstraintEngine.snapToGrid(point, spacing: gridSpacingMM) : point
         if orthoEnabled, let anchor { candidate = editingConstraintEngine.orthoPoint(candidate, anchor: anchor) }
+        else if polarTrackingEnabled, let anchor, let polar = editingConstraintEngine.polarPoint(candidate, anchor: anchor, incrementDegrees: 15) { candidate = polar }
         guard let room = project.rooms.first(where: { $0.id == roomID }) else { return candidate }
         let tolerance = GeometryTolerances.endpointSnapMM
         let endpoints = room.walls.flatMap { [($0.start, $0.id), ($0.end, $0.id)] }
@@ -1071,6 +1354,11 @@ final class PlanOpsisMobileStore: ObservableObject {
         moveSelectedWallEndpoint(.end, proposed: point, applyDraftingConstraints: true)
     }
 
+    /// v12.3 grip drags that may carry an object snap resolved by the view.
+    func moveSelectedWallEndpoint(_ endpoint: WallEndpointKind, to point: Point2D, snapped: Bool) {
+        moveSelectedWallEndpoint(endpoint, proposed: point, applyDraftingConstraints: !snapped)
+    }
+
     func setSelectedWallLength(_ length: Double) {
         guard let wall = selectedWall else { return }
         let target = wall.start + wall.direction * max(0, length)
@@ -1122,7 +1410,8 @@ final class PlanOpsisMobileStore: ObservableObject {
         let settings = PlanEditingSettings(
             orthoEnabled: orthoEnabled,
             gridEnabled: gridEnabled,
-            gridSpacing: gridSpacingMM
+            gridSpacing: gridSpacingMM,
+            polarIncrementDegrees: polarTrackingEnabled ? 15 : nil
         )
         let edit: ProjectEndpointMoveResult
         do {
