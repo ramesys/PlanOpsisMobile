@@ -19,6 +19,11 @@ public struct RoomPlanCoordinateConverter {
         )
     }
 
+    /// The surface's local +Z axis in plan. For RoomPlan wall surfaces this points into the room.
+    public func planNormal(from transform: TransformSnapshot) -> Point2D {
+        Point2D(x: transform.localZAxisX, y: -transform.localZAxisZ).normalized
+    }
+
     public func planDirection(from transform: TransformSnapshot) -> Point2D {
         Point2D(
             x: transform.localXAxisX,

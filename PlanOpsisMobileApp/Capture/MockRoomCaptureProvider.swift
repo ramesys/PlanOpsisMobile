@@ -65,7 +65,8 @@ public struct MockRoomCaptureProvider {
             confidence: .medium
         ))
 
-        return RoomCaptureSnapshot(sourceRoomPlanID: Self.roomSourceID, surfaces: surfaces)
+        // The mock walls describe centrelines; real RoomPlan walls are interior faces.
+        return RoomCaptureSnapshot(sourceRoomPlanID: Self.roomSourceID, surfaces: surfaces, wallReference: .centerline)
     }
 
     fileprivate func wall(id: UUID, centerX: Double, centerZ: Double, length: Double, angle: Double, height: Double) -> CapturedSurfaceSnapshot {
@@ -155,7 +156,8 @@ public struct MockStructureCaptureProvider {
 
         let room2 = RoomCaptureSnapshot(
             sourceRoomPlanID: Self.room2SourceID,
-            surfaces: room2Surfaces
+            surfaces: room2Surfaces,
+            wallReference: .centerline
         )
 
         return StructureCaptureSnapshot(

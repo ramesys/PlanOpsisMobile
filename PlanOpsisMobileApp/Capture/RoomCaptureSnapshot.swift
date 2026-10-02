@@ -1,16 +1,37 @@
 import Foundation
 
+/// What the plane of a captured wall surface represents.
+public enum WallSurfaceReference: String, Codable, Hashable, Sendable {
+    /// The scanned room-side face (real RoomPlan captures). The surface's local +Z axis points into the
+    /// room; the semantic wall axis lies half a thickness behind the face.
+    case interiorFace
+    /// The wall centreline (synthetic fixtures).
+    case centerline
+}
+
 /// Platform-neutral evidence for one RoomPlan room.
 /// Values stay in RoomPlan metres until the adapter boundary.
 public struct RoomCaptureSnapshot: Codable, Hashable, Sendable, Identifiable {
     public var sourceRoomPlanID: UUID
     public var surfaces: [CapturedSurfaceSnapshot]
+    /// v12.2. Captures retained before this field existed are real RoomPlan scans: interior faces.
+    public var wallReference: WallSurfaceReference
 
     public var id: UUID { sourceRoomPlanID }
 
-    public init(sourceRoomPlanID: UUID, surfaces: [CapturedSurfaceSnapshot]) {
+    public init(sourceRoomPlanID: UUID, surfaces: [CapturedSurfaceSnapshot], wallReference: WallSurfaceReference = .interiorFace) {
         self.sourceRoomPlanID = sourceRoomPlanID
         self.surfaces = surfaces
+        self.wallReference = wallReference
+    }
+
+    private enum CodingKeys: String, CodingKey { case sourceRoomPlanID, surfaces, wallReference }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sourceRoomPlanID = try container.decode(UUID.self, forKey: .sourceRoomPlanID)
+        surfaces = try container.decode([CapturedSurfaceSnapshot].self, forKey: .surfaces)
+        wallReference = try container.decodeIfPresent(WallSurfaceReference.self, forKey: .wallReference) ?? .interiorFace
     }
 }
 
@@ -129,4 +150,6 @@ public struct TransformSnapshot: Codable, Hashable, Sendable {
     public var translationZ: Double { values[14] }
     public var localXAxisX: Double { values[0] }
     public var localXAxisZ: Double { values[2] }
+    public var localZAxisX: Double { values[8] }
+    public var localZAxisZ: Double { values[10] }
 }

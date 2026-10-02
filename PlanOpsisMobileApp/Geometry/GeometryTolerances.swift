@@ -14,4 +14,10 @@ public enum GeometryTolerances {
     public static let junctionJoinMM = 160.0
     /// Interactive endpoint snap radius while drawing or dragging.
     public static let endpointSnapMM = 140.0
+
+    /// v12.2 join radius for one wall's endpoints: never more than half the wall's own length, so a short
+    /// real jog (pier, reveal, chimney breast) cannot collapse into a single junction.
+    public static func joinRadius(_ radius: Double, wallLength: Double) -> Double {
+        min(radius, max(0, wallLength * 0.5 - coincidenceMM))
+    }
 }

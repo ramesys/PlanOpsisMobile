@@ -2097,7 +2097,7 @@ final class PlanOpsisMobileTests: XCTestCase {
                 shapeHints: surface.shapeHints
             )
         }
-        return RoomCaptureSnapshot(sourceRoomPlanID: newRoomID, surfaces: surfaces)
+        return RoomCaptureSnapshot(sourceRoomPlanID: newRoomID, surfaces: surfaces, wallReference: snapshot.wallReference)
     }
 
     private func solidContains(_ solid: WallSolidSegment, x: Double, y: Double) -> Bool {

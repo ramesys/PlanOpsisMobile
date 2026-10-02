@@ -332,10 +332,10 @@ public struct StructureTopologyEngine {
         var clusters: [EndpointCluster] = []
         var edges: [BoundaryEdge] = []
 
-        func nearestClusterIndex(to point: Point2D, in clusters: [EndpointCluster]) -> Int? {
+        func nearestClusterIndex(to point: Point2D, in clusters: [EndpointCluster], tolerance: Double, excluding: Int?) -> Int? {
             var bestIndex: Int?
-            var bestDistance = configuration.endpointSnapToleranceMM
-            for (index, cluster) in clusters.enumerated() {
+            var bestDistance = tolerance
+            for (index, cluster) in clusters.enumerated() where index != excluding {
                 let distance = (cluster.point - point).length
                 if distance <= bestDistance {
                     bestDistance = distance
@@ -348,8 +348,9 @@ public struct StructureTopologyEngine {
         for wall in walls {
             let endpointPoints = [wall.start, wall.end]
             var nodeIndices: [Int] = []
+            let tolerance = GeometryTolerances.joinRadius(configuration.endpointSnapToleranceMM, wallLength: wall.length)
             for point in endpointPoints {
-                if let existing = nearestClusterIndex(to: point, in: clusters) {
+                if let existing = nearestClusterIndex(to: point, in: clusters, tolerance: tolerance, excluding: nodeIndices.first) {
                     clusters[existing].absorb(point)
                     nodeIndices.append(existing)
                 } else {
