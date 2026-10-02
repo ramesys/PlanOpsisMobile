@@ -1,5 +1,22 @@
 # Changelog
 
+## 12.3 — Professional DXF viewer (in progress)
+
+### DXF tab
+- **View any DXF, not only PlanOpsis drawings.** *Open DXF…* shows drawings from AutoCAD, Rhino or an
+  architect without importing them: blocks (nested, rotated, scaled, arrayed, mirrored), arcs and bulged
+  polylines, circles, ellipses, splines, TEXT and MTEXT, dimensions, solid and patterned hatches, solids
+  and leaders, with layer colours and line weights. Paper space and unsupported entities are listed
+  under *Drawing notes* instead of disappearing silently. The project's own drawing uses the same viewer.
+- **Pan, pinch and deep zoom** with a fixed camera (Fit returns to the whole drawing).
+- **Layers.** Show, hide, isolate and search layers; layers that are off or frozen in the file start
+  hidden. Each drawing remembers its layer state.
+- **Inspect.** Tap an object for its type, layer, block, length, angle, radius, area or text; PlanOpsis
+  objects show their class and ID.
+- **Measure with object snaps.** Distance (with ΔX, ΔY and angle), chained length, and area with
+  perimeter. Snaps: endpoint, midpoint, intersection, centre, quadrant, perpendicular, insertion, node
+  and (optional) nearest. Touch and hold for a precision cursor above the finger with a live snap marker.
+
 ## 12.2 — Accuracy from real scans
 
 Validated against a real RoomPlan capture (kept as a regression fixture).

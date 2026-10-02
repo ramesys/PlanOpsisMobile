@@ -55,6 +55,14 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published private(set) var pendingWallStart: Point2D?
     @Published private(set) var importedDXFPreview: DXFPreviewSnapshot?
     @Published private(set) var dxfImportDiagnostics: [DXFImportDiagnostic] = []
+    /// v12.3: a DXF opened in the viewer only. It never replaces or edits the project.
+    @Published private(set) var openedDrawing: CADViewerDocument?
+    /// Whether the DXF tab shows the opened drawing (true) or the project's own drawing.
+    @Published var viewerShowsOpenedDrawing = true
+    @Published private(set) var isOpeningDrawing = false
+    /// Hidden layers per viewer source, so switching drawings keeps each one's layer state.
+    @Published var viewerHiddenLayers: [CADViewerDocument.Source: Set<String>] = [:]
+    private var projectDrawingCache: (preview: DXFPreviewSnapshot, drawing: CADViewerDocument)?
     @Published private(set) var diagnostics: [RoomPlanAdapter.Diagnostic] = [] { didSet { rederive() } }
     @Published var statusMessage: String?
     @Published var surveyImportProposal:SurveyDXFChangeProposal?
@@ -210,6 +218,70 @@ final class PlanOpsisMobileStore: ObservableObject {
     var dxfPreview: DXFPreviewSnapshot {
         if project != nil { return derivation?.drawing ?? .empty }
         return importedDXFPreview ?? .empty
+    }
+
+    /// The project's drawing in the CAD viewer, rebuilt only when the drawing changes.
+    var projectDrawing: CADViewerDocument? {
+        let preview = dxfPreview
+        guard !preview.primitives.isEmpty else { return nil }
+        if let cache = projectDrawingCache, cache.preview == preview { return cache.drawing }
+        let drawing = CADViewerDocument(source: .project, document: CADDocument(preview: preview))
+        projectDrawingCache = (preview, drawing)
+        return drawing
+    }
+
+    /// The drawing the DXF tab shows.
+    var viewerDrawing: CADViewerDocument? {
+        if viewerShowsOpenedDrawing, let openedDrawing { return openedDrawing }
+        return projectDrawing ?? openedDrawing
+    }
+
+    func hiddenLayers(for drawing: CADViewerDocument) -> Set<String> {
+        viewerHiddenLayers[drawing.source] ?? drawing.scene.initiallyHiddenLayers
+    }
+
+    func setHiddenLayers(_ layers: Set<String>, for drawing: CADViewerDocument) {
+        viewerHiddenLayers[drawing.source] = layers
+    }
+
+    /// Opens a DXF for viewing. Parsing runs off the main thread; large drawings take a moment.
+    func openDrawing(at url: URL) {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            statusMessage = "Could not read \(url.lastPathComponent): \(error.localizedDescription)"
+            return
+        }
+        let name = url.lastPathComponent
+        isOpeningDrawing = true
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                Result { try CADViewerDocument.open(data: data, fileName: name) }
+            }.value
+            guard let self else { return }
+            self.isOpeningDrawing = false
+            switch result {
+            case let .success(drawing):
+                self.openedDrawing = drawing
+                self.viewerShowsOpenedDrawing = true
+                self.viewerHiddenLayers[drawing.source] = nil
+                let notes = drawing.scene.diagnostics.summary
+                self.statusMessage = notes.isEmpty
+                    ? "Opened \(name) for viewing (\(drawing.document.units.symbol))."
+                    : "Opened \(name). \(notes.joined(separator: " "))"
+            case let .failure(error):
+                self.statusMessage = "Could not open \(name): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func closeOpenedDrawing() {
+        if let openedDrawing { viewerHiddenLayers[openedDrawing.source] = nil }
+        openedDrawing = nil
+        viewerShowsOpenedDrawing = false
     }
 
     var planAnnotations: [DXFPrimitive] {
