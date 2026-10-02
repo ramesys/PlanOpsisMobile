@@ -227,4 +227,29 @@ final class PlanOpsisV122Tests: XCTestCase {
         XCTAssertEqual(try library.load(project.id), project)
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.url.path), "the legacy file is kept")
     }
+
+    func testRealCaptureInsideFacesReproduceTheScannedFaces() throws {
+        let capture = try RealCaptureFixtures.apartment1()
+        let room = try XCTUnwrap(Self.adapt(capture).project.rooms.first)
+        let converter = RoomPlanCoordinateConverter(), engine = SurveyMeasurementEngine()
+        // Walls next to partitions RoomPlan saw from one side only: where the unseen face lies is not
+        // observable from the scan (the v13 solver / a tape measurement resolves it), so their faces may
+        // differ from RoomPlan's zero-thickness surfaces by up to one wall thickness.
+        let singleFacedPartitionNeighbours: Set<String> = ["7C59", "7515", "51A4", "DDB0", "E06F", "59DD", "91A3", "63C3"]
+        var exact = 0
+        for surface in capture.rooms[0].surfaces where surface.category == .wall {
+            let wall = try XCTUnwrap(room.walls.first { $0.sourceRoomPlanID == surface.sourceRoomPlanID })
+            let scannedSide = converter.planNormal(from: surface.transform).dot(wall.normal) > 0 ? 1 : -1
+            XCTAssertEqual(engine.roomSide(ofWall: wall.id, in: room), scannedSide, "room side of \(surface.sourceRoomPlanID)")
+            let (a, b) = try engine.faceSegment(wallID: wall.id, side: scannedSide, in: room)
+            let scanned = converter.millimetres(fromMetres: surface.dimensions.x)
+            if singleFacedPartitionNeighbours.contains(String(surface.sourceRoomPlanID.uuidString.prefix(4))) {
+                XCTAssertEqual((b - a).length, scanned, accuracy: wall.thickness + 3)
+            } else {
+                XCTAssertEqual((b - a).length, scanned, accuracy: 2, "inside face of \(surface.sourceRoomPlanID)")
+                exact += 1
+            }
+        }
+        XCTAssertEqual(exact, 12)
+    }
 }

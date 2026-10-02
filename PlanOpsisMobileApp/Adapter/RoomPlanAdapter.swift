@@ -131,7 +131,8 @@ public struct RoomPlanAdapter {
             let start = center - normalizedDirection * (lengthMM * 0.5)
             let wallID = configuration.uuidProvider()
             wallIDBySourceID[surface.sourceRoomPlanID] = wallID
-            roomSideNormalByWallID[wallID] = coordinates.planNormal(from: surface.transform)
+            let roomSideNormal = coordinates.planNormal(from: surface.transform)
+            roomSideNormalByWallID[wallID] = roomSideNormal
             walls.append(PlanOpsisWall(
                 id: wallID,
                 sourceRoomPlanID: surface.sourceRoomPlanID,
@@ -140,7 +141,9 @@ public struct RoomPlanAdapter {
                 angleRadians: atan2(normalizedDirection.y, normalizedDirection.x),
                 height: coordinates.millimetres(fromMetres: surface.dimensions.y),
                 thickness: max(0, configuration.defaultWallThicknessMM),
-                confidence: surface.confidence
+                confidence: surface.confidence,
+                // RoomPlan's +Z points into the room; record that side relative to the wall normal.
+                roomSide: Point2D(x: -normalizedDirection.y, y: normalizedDirection.x).dot(roomSideNormal) >= 0 ? 1 : -1
             ))
         }
 

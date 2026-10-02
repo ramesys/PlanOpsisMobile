@@ -63,12 +63,22 @@ public struct SurveyMeasurementEngine {
             let atEnd=others.filter { min(($0.start-endpoint).length,($0.end-endpoint).length) <= tolerance }
             var neighbour:PlanOpsisWall?
             var neighbourSide:Double?
-            if atEnd.count == 1, let n=atEnd.first, abs(cross(w.direction,n.direction)) > minimumSine {
+            let crossing=atEnd.filter { abs(cross(w.direction,$0.direction)) > minimumSine }
+            let continuing=atEnd.count-crossing.count
+            func intoBodyOf(_ n:PlanOpsisWall)->Point2D { (n.start-endpoint).length <= (n.end-endpoint).length ? n.direction : n.direction * -1 }
+            if crossing.count == 1, continuing == 0, let n=crossing.first {
                 // L-corner: match faces whose offsets point to the same side of the corner.
-                let nIntoBody=(n.start-endpoint).length <= (n.end-endpoint).length ? n.direction : n.direction * -1
-                let ours=offset.dot(nIntoBody)
+                let ours=offset.dot(intoBodyOf(n))
                 let theirs=n.normal.dot(intoBody)
                 if abs(ours) > 1e-9, abs(theirs) > 1e-9 { neighbour=n; neighbourSide=(ours*theirs) > 0 ? 1 : -1 }
+            } else if crossing.count == 1, continuing == 1, let n=crossing.first {
+                // This wall continues straight past a stem wall. The face on the stem's side stops at the
+                // stem's near face; the other face runs on into the continuation.
+                if offset.dot(intoBodyOf(n)) > 1e-9 { neighbour=n; neighbourSide=n.normal.dot(intoBody) >= 0 ? 1 : -1 }
+            } else if crossing.count == 2, continuing == 0, abs(cross(crossing[0].direction,crossing[1].direction)) <= minimumSine {
+                // This wall is the stem of a T formed by two collinear walls: stop at their near face.
+                let n=crossing[0]
+                neighbour=n; neighbourSide=n.normal.dot(intoBody) >= 0 ? 1 : -1
             } else if atEnd.isEmpty {
                 // T-junction: this end touches the interior of a through wall; stop at its near face.
                 if let n=others.first(where:{ n in
@@ -86,10 +96,12 @@ public struct SurveyMeasurementEngine {
         return (ends[0],ends[1])
     }
 
-    /// v12.2: the side (+1/-1 along the wall normal) facing into the room, from the room outline when it is
-    /// closed, otherwise from the centre of the room's walls. Nil when it cannot be decided.
+    /// v12.2: the side (+1/-1 along the wall normal) facing into the room: as observed by the capture when
+    /// recorded, else from the room outline when it is closed, otherwise by ray-crossing parity against the room's walls, finally from the centre of the
+    /// room's walls. Nil when it cannot be decided.
     public func roomSide(ofWall wallID:UUID,in room:PlanOpsisRoom) -> Int? {
         guard let w=room.walls.first(where:{$0.id==wallID}) else { return nil }
+        if let observed=w.roomSide, observed == 1 || observed == -1 { return observed }
         let mid=w.center,probe=w.thickness/2+50
         let topology=StructureTopologyEngine().generate(from:PlanOpsisProject(rooms:[room]))
         let outline=ArchitecturalRoomEnvelope.polygon(for:room,topology:topology)
@@ -99,6 +111,19 @@ public struct SurveyMeasurementEngine {
         }
         let others=room.walls.filter{$0.id != w.id}
         guard !others.isEmpty else { return nil }
+        // Open outline: cast a ray from just off each face; the room side crosses an odd number of walls.
+        func crossings(from origin:Point2D,along d:Point2D)->Int {
+            others.filter { o in
+                let e=o.end-o.start,den=d.x*e.y-d.y*e.x
+                guard abs(den)>1e-9 else { return false }
+                let q=o.start-origin
+                let t=(q.x*e.y-q.y*e.x)/den,u=(q.x*d.y-q.y*d.x)/den
+                return t>0 && u>=0 && u<1
+            }.count
+        }
+        let plusOdd=crossings(from:mid+w.normal*probe,along:w.normal) % 2 == 1
+        let minusOdd=crossings(from:mid-w.normal*probe,along:w.normal * -1) % 2 == 1
+        if plusOdd != minusOdd { return plusOdd ? 1 : -1 }
         let centre=others.map(\.center).reduce(.zero,+)*(1/Double(others.count))
         let side=(centre-mid).dot(w.normal)
         return abs(side) > 1e-6 ? (side > 0 ? 1 : -1) : nil
