@@ -38,6 +38,7 @@ let package = Package(
                 "Geometry/JunctionNormalizer.swift",
                 "Geometry/ParametricGeometryEngine.swift",
                 "Geometry/PhysicalDisplayGeometryEngine.swift",
+                "Geometry/PlanViewTransform.swift",
                 "Geometry/WallJunctionResolver.swift",
                 "IFC/IFC4Exchange.swift",
                 "Interaction/PlanEditingConstraintEngine.swift",

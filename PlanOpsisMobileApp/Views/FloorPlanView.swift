@@ -2,17 +2,22 @@
 import SwiftUI
 
 struct FloorPlanView: View {
-    @State private var zoomLevel: Double = 1.0
-    @State private var pinchBaseZoom: Double?
+    /// v12.1 frozen plan camera. It is refitted only on first layout, Fit, or a `fitIdentity` change,
+    /// never because an edit changed the drawing extent (which rescaled the view mid-drag).
+    @State private var camera: PlanViewTransform?
+    /// Camera at the last fit; zoom limits and the zoom label are relative to it.
+    @State private var fitCamera: PlanViewTransform?
+    @State private var pinchBaseCamera: PlanViewTransform?
     @State private var isPinching = false
-    @State private var panOffset: CGSize = .zero
-    @State private var panBaseOffset: CGSize?
+    @State private var panBaseCamera: PlanViewTransform?
     @State private var isPanning = false
 
     private let minimumZoom: Double = 0.35
     private let maximumZoom: Double = 4.0
     private let zoomStep: Double = 1.25
 
+    /// Changing this value (another project, another focused room) refits the plan camera.
+    let fitIdentity: String
     let snapshot: DisplayGeometrySnapshot
     let components: [PlanOpsisComponent]
     let annotations: [DXFPrimitive]
@@ -44,15 +49,8 @@ struct FloorPlanView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let viewport = PlanViewport(
-                snapshot: snapshot,
-                components: components,
-                annotations: annotations,
-                plyEvidence: showPLYEvidence ? plyEvidence : nil,
-                size: proxy.size,
-                zoom: zoomLevel,
-                panOffset: panOffset
-            )
+            let size = proxy.size
+            let viewport = PlanViewport(transform: camera ?? fittedCamera(size: size), size: size)
             ZStack {
                 Canvas { context, _ in
                     if gridEnabled {
@@ -125,16 +123,13 @@ struct FloorPlanView: View {
                     DragGesture(minimumDistance: 6, coordinateSpace: .named("plan-space"))
                         .onChanged { value in
                             guard !isPinching else { return }
-                            if panBaseOffset == nil { panBaseOffset = panOffset }
+                            let base = panBaseCamera ?? viewport.transform
+                            if panBaseCamera == nil { panBaseCamera = base }
                             isPanning = true
-                            let base = panBaseOffset ?? panOffset
-                            panOffset = CGSize(
-                                width: base.width + value.translation.width,
-                                height: base.height + value.translation.height
-                            )
+                            camera = base.panned(byScreenDX: Double(value.translation.width), dy: Double(value.translation.height))
                         }
                         .onEnded { _ in
-                            panBaseOffset = nil
+                            panBaseCamera = nil
                             DispatchQueue.main.async { isPanning = false }
                         }
                 )
@@ -164,7 +159,7 @@ struct FloorPlanView: View {
                     .allowsHitTesting(false)
                 }
 
-                zoomControls
+                zoomControls(size: size, current: viewport.transform)
                 if plyEvidence != nil { evidenceControl }
 
                 if let start = pendingWallStart {
@@ -177,16 +172,16 @@ struct FloorPlanView: View {
             }
             .coordinateSpace(name: "plan-space")
             .simultaneousGesture(
-                MagnificationGesture()
-                    .onChanged { magnification in
-                        if pinchBaseZoom == nil {
-                            pinchBaseZoom = zoomLevel
-                        }
+                MagnifyGesture()
+                    .onChanged { value in
+                        let base = pinchBaseCamera ?? viewport.transform
+                        if pinchBaseCamera == nil { pinchBaseCamera = base }
                         isPinching = true
-                        zoomLevel = clampedZoom((pinchBaseZoom ?? zoomLevel) * Double(magnification))
+                        // Zoom about the pinch location so the touched drawing stays under the fingers.
+                        camera = zoomed(base, by: Double(value.magnification), about: value.startLocation, size: size)
                     }
                     .onEnded { _ in
-                        pinchBaseZoom = nil
+                        pinchBaseCamera = nil
                         // Defer clearing so the zero-distance selection gesture from the
                         // same two-finger interaction cannot select an object accidentally.
                         DispatchQueue.main.async {
@@ -195,8 +190,40 @@ struct FloorPlanView: View {
                     }
             )
             .clipped()
+            .onAppear { if camera == nil { refit(size: size) } }
+            .onChange(of: fitIdentity) { _, _ in refit(size: size) }
         }
         .background(PlanOpsisPalette.workspace)
+    }
+
+    /// Fit to the complete visible drawing extent for the current geometry.
+    private func fittedCamera(size: CGSize) -> PlanViewTransform {
+        PlanViewTransform.fitted(
+            to: PlanViewport.fitBounds(
+                snapshot: snapshot,
+                components: components,
+                annotations: annotations,
+                plyEvidence: showPLYEvidence ? plyEvidence : nil
+            ),
+            viewWidth: Double(size.width),
+            viewHeight: Double(size.height)
+        )
+    }
+
+    private func refit(size: CGSize) {
+        let fitted = fittedCamera(size: size)
+        fitCamera = fitted
+        camera = fitted
+        panBaseCamera = nil
+        pinchBaseCamera = nil
+    }
+
+    /// Zooms `base` about a view point, keeping the result within the zoom limits relative to the fit.
+    private func zoomed(_ base: PlanViewTransform, by factor: Double, about focus: CGPoint, size: CGSize) -> PlanViewTransform {
+        let reference = fitCamera?.scale ?? base.scale
+        let target = min(maximumZoom, max(minimumZoom, base.scale * factor / reference)) * reference
+        return base.zoomed(by: target / base.scale, about: Point2D(x: Double(focus.x), y: Double(focus.y)),
+                           viewWidth: Double(size.width), viewHeight: Double(size.height))
     }
 
     private var evidenceControl: some View {
@@ -219,13 +246,14 @@ struct FloorPlanView: View {
         .padding(12)
     }
 
-    private var zoomControls: some View {
-        VStack {
+    private func zoomControls(size: CGSize, current: PlanViewTransform) -> some View {
+        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        return VStack {
             HStack {
                 Spacer()
                 HStack(spacing: 2) {
                     Button {
-                        zoomLevel = clampedZoom(zoomLevel / zoomStep)
+                        camera = zoomed(current, by: 1 / zoomStep, about: center, size: size)
                     } label: {
                         Image(systemName: "minus.magnifyingglass")
                             .frame(width: 34, height: 32)
@@ -234,20 +262,18 @@ struct FloorPlanView: View {
                     .accessibilityLabel("Zoom out")
 
                     Button {
-                        zoomLevel = 1.0
-                        panOffset = .zero
-                        panBaseOffset = nil
+                        refit(size: size)
                     } label: {
-                        Text(zoomLabel)
+                        Text(zoomLabel(current))
                             .font(.caption2.monospacedDigit().weight(.semibold))
                             .frame(minWidth: 46, minHeight: 32)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Fit plan to screen")
-                    .accessibilityValue(zoomLabel)
+                    .accessibilityValue(zoomLabel(current))
 
                     Button {
-                        zoomLevel = clampedZoom(zoomLevel * zoomStep)
+                        camera = zoomed(current, by: zoomStep, about: center, size: size)
                     } label: {
                         Image(systemName: "plus.magnifyingglass")
                             .frame(width: 34, height: 32)
@@ -263,12 +289,9 @@ struct FloorPlanView: View {
         .padding(12)
     }
 
-    private var zoomLabel: String {
-        zoomLevel == 1.0 ? "Fit" : "\(Int((zoomLevel * 100).rounded()))%"
-    }
-
-    private func clampedZoom(_ value: Double) -> Double {
-        min(maximumZoom, max(minimumZoom, value))
+    private func zoomLabel(_ current: PlanViewTransform) -> String {
+        guard let fitCamera, current != fitCamera else { return "Fit" }
+        return "\(Int((current.scale / fitCamera.scale * 100).rounded()))%"
     }
 
     private var creationPrompt: String {
@@ -612,21 +635,27 @@ struct FloorPlanView: View {
 }
 
 private struct PlanViewport {
-    let modelCenter: Point2D
-    let scale: Double
+    let transform: PlanViewTransform
     let size: CGSize
-    let contentInset: Double
-    let panOffset: CGSize
 
-    init(
+    var scale: Double { transform.scale }
+
+    func screen(_ point: Point2D) -> CGPoint {
+        let p = transform.screen(point, viewWidth: Double(size.width), viewHeight: Double(size.height))
+        return CGPoint(x: CGFloat(p.x), y: CGFloat(p.y))
+    }
+
+    func plan(_ point: CGPoint) -> Point2D {
+        transform.model(Point2D(x: Double(point.x), y: Double(point.y)), viewWidth: Double(size.width), viewHeight: Double(size.height))
+    }
+
+    /// Complete visible architectural extent used for Fit.
+    static func fitBounds(
         snapshot: DisplayGeometrySnapshot,
-        components: [PlanOpsisComponent] = [],
-        annotations: [DXFPrimitive] = [],
-        plyEvidence: PLYReconstructionResult? = nil,
-        size: CGSize,
-        zoom: Double = 1.0,
-        panOffset: CGSize = .zero
-    ) {
+        components: [PlanOpsisComponent],
+        annotations: [DXFPrimitive],
+        plyEvidence: PLYReconstructionResult?
+    ) -> FloorGeometry? {
         // v9.9.2: fit to the complete visible architectural extent, not only
         // opening centerlines. This prevents windows/door graphics at perimeter
         // walls from being clipped even when the room itself fits correctly.
@@ -677,61 +706,7 @@ private struct PlanViewport {
                 Point2D(x: floor.min.x, y: floor.max.y)
             ]
         }
-
-        self.size = size
-        self.panOffset = panOffset
-
-        // v9.9.1: the previous 24 pt edge padding made a fitted plan occupy
-        // almost the entire phone display and read as permanently zoomed-in.
-        // Use a proportional drafting margin and center the fitted model.
-        let shortestSide = max(1, min(Double(size.width), Double(size.height)))
-        self.contentInset = min(88, max(44, shortestSide * 0.12))
-
-        if let first = points.first {
-            var minX = first.x
-            var maxX = first.x
-            var minY = first.y
-            var maxY = first.y
-            for point in points.dropFirst() {
-                minX = Swift.min(minX, point.x)
-                maxX = Swift.max(maxX, point.x)
-                minY = Swift.min(minY, point.y)
-                maxY = Swift.max(maxY, point.y)
-            }
-
-            let width = max(1, maxX - minX)
-            let height = max(1, maxY - minY)
-            let availableWidth = max(1, Double(size.width) - contentInset * 2)
-            let availableHeight = max(1, Double(size.height) - contentInset * 2)
-            let fitScale = min(availableWidth / width, availableHeight / height)
-
-            self.modelCenter = Point2D(
-                x: (minX + maxX) * 0.5,
-                y: (minY + maxY) * 0.5
-            )
-            self.scale = max(1e-9, fitScale * max(0.01, zoom))
-        } else {
-            self.modelCenter = Point2D(x: 0, y: 0)
-            self.scale = max(1e-9, zoom)
-        }
-    }
-
-    func screen(_ point: Point2D) -> CGPoint {
-        let centerX = Double(size.width) * 0.5
-        let centerY = Double(size.height) * 0.5
-        return CGPoint(
-            x: CGFloat(centerX + Double(panOffset.width) + (point.x - modelCenter.x) * scale),
-            y: CGFloat(centerY + Double(panOffset.height) - (point.y - modelCenter.y) * scale)
-        )
-    }
-
-    func plan(_ point: CGPoint) -> Point2D {
-        let centerX = Double(size.width) * 0.5
-        let centerY = Double(size.height) * 0.5
-        return Point2D(
-            x: modelCenter.x + (Double(point.x) - centerX - Double(panOffset.width)) / scale,
-            y: modelCenter.y + (centerY + Double(panOffset.height) - Double(point.y)) / scale
-        )
+        return FloorGeometry.enclosing(points)
     }
 }
 

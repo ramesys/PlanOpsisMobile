@@ -247,6 +247,7 @@ struct PlanOpsisRootView: View {
         case .plan:
             if store.project != nil {
                 FloorPlanView(
+                    fitIdentity: store.planFitIdentity,
                     snapshot: store.displayGeometry,
                     components: store.displayComponents,
                     annotations: store.planAnnotations,

@@ -765,6 +765,12 @@ final class PlanOpsisMobileStore: ObservableObject {
         return base.filtered(to: focusedRoomID)
     }
 
+    /// v12.1 the plan view refits its camera when this changes (another project or room focus),
+    /// not when edits change the drawing extent.
+    var planFitIdentity: String {
+        "\(project?.id.uuidString ?? "none")|\(focusedRoomID?.uuidString ?? "all")"
+    }
+
     var rooms: [PlanOpsisRoom] {
         project?.rooms ?? []
     }

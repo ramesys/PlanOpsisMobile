@@ -357,4 +357,47 @@ final class PlanOpsisV121Tests: XCTestCase {
                            DXFExchangeEngine().preview(for: project, representation: .reconciledPhysical))
         }
     }
+
+    // MARK: TASK-009 stable plan camera
+
+    func testFittedTransformMatchesLegacyFitAndRoundTrips() {
+        let bounds = FloorGeometry(min: Point2D(x: -200, y: -100), max: Point2D(x: 4_200, y: 3_100))
+        let (w, h) = (390.0, 700.0)
+        let t = PlanViewTransform.fitted(to: bounds, viewWidth: w, viewHeight: h)
+        let inset = PlanViewTransform.contentInset(viewWidth: w, viewHeight: h)
+        XCTAssertEqual(inset, 46.8, accuracy: 1e-9)
+        XCTAssertEqual(t.scale, min((w - 2 * inset) / 4_400, (h - 2 * inset) / 3_200), accuracy: 1e-12)
+        let corner = t.screen(bounds.min, viewWidth: w, viewHeight: h)
+        XCTAssertEqual(corner.x, inset, accuracy: 1e-9) // width-limited: left edge on the inset
+        let model = Point2D(x: 1_234, y: -56)
+        let back = t.model(t.screen(model, viewWidth: w, viewHeight: h), viewWidth: w, viewHeight: h)
+        XCTAssertEqual((back - model).length, 0, accuracy: 1e-9)
+    }
+
+    func testFrozenTransformKeepsModelPointsWhileGeometryChanges() {
+        // The transform no longer depends on geometry: once frozen, a model point stays under the finger
+        // even when an edit enlarges the drawing extent.
+        let t = PlanViewTransform.fitted(to: FloorGeometry(min: .zero, max: Point2D(x: 4_000, y: 3_000)), viewWidth: 390, viewHeight: 700)
+        let grip = Point2D(x: 4_000, y: 0)
+        let before = t.screen(grip, viewWidth: 390, viewHeight: 700)
+        let refit = PlanViewTransform.fitted(to: FloorGeometry(min: .zero, max: Point2D(x: 6_000, y: 3_000)), viewWidth: 390, viewHeight: 700)
+        XCTAssertNotEqual(refit.screen(grip, viewWidth: 390, viewHeight: 700), before, "refitting would move the grip")
+        XCTAssertEqual(t.screen(grip, viewWidth: 390, viewHeight: 700), before)
+    }
+
+    func testZoomKeepsFocalPointFixedAndPanIsExact() {
+        let t = PlanViewTransform(scale: 0.08, modelCenter: Point2D(x: 2_000, y: 1_500))
+        let focus = Point2D(x: 80, y: 520)
+        let anchor = t.model(focus, viewWidth: 390, viewHeight: 700)
+        for factor in [0.5, 1.25, 3.0] {
+            let z = t.zoomed(by: factor, about: focus, viewWidth: 390, viewHeight: 700)
+            XCTAssertEqual(z.scale, 0.08 * factor, accuracy: 1e-12)
+            XCTAssertEqual((z.screen(anchor, viewWidth: 390, viewHeight: 700) - focus).length, 0, accuracy: 1e-9)
+        }
+        let p = t.panned(byScreenDX: 30, dy: -12)
+        let moved = p.screen(anchor, viewWidth: 390, viewHeight: 700)
+        XCTAssertEqual(moved.x, focus.x + 30, accuracy: 1e-9)
+        XCTAssertEqual(moved.y, focus.y - 12, accuracy: 1e-9)
+        XCTAssertEqual(t.zoomed(by: 0, about: focus, viewWidth: 390, viewHeight: 700), t)
+    }
 }

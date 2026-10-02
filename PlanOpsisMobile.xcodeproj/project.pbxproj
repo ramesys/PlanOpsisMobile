@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1664EA3D2CB9B572B7D95B9B /* PlanViewTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF02676962760A1664EA3D /* PlanViewTransform.swift */; };
 		526EC7E9CCC6D229F10E42FC /* ProjectDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA0271B7114D619526EC7E9 /* ProjectDerivation.swift */; };
 		DDA0DADAD0A04614B127A782 /* CaptureEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BEA6B6FC3C818CEDDA0DADA /* CaptureEvidence.swift */; };
 		8F5FDE26AB136DDDE619A91E /* JunctionNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D6FA5B986F03D78F5FDE26 /* JunctionNormalizer.swift */; };
@@ -115,6 +116,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8AFF02676962760A1664EA3D /* PlanViewTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/PlanViewTransform.swift"; sourceTree = SOURCE_ROOT; };
 		4AA0271B7114D619526EC7E9 /* ProjectDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Architecture/ProjectDerivation.swift"; sourceTree = SOURCE_ROOT; };
 		7BEA6B6FC3C818CEDDA0DADA /* CaptureEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Capture/CaptureEvidence.swift"; sourceTree = SOURCE_ROOT; };
 		63D6FA5B986F03D78F5FDE26 /* JunctionNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/JunctionNormalizer.swift"; sourceTree = SOURCE_ROOT; };
@@ -439,6 +441,7 @@
 				C4418F41F58BA7AF24ED9630 /* ArchitecturalRoomEnvelope.swift */,
 				D2F2CC3966E76125DE8AC6EB /* GeometryTolerances.swift */,
 				63D6FA5B986F03D78F5FDE26 /* JunctionNormalizer.swift */,
+				8AFF02676962760A1664EA3D /* PlanViewTransform.swift */,
 				F8F1E2D3C4B5A69788776655 /* WallJunctionResolver.swift */,
 				C729A83867A30F8362D4E747 /* ParametricGeometryEngine.swift */,
 				D6F1E2D3C4B5A69788776655 /* PhysicalDisplayGeometryEngine.swift */,
@@ -675,6 +678,7 @@
 				B6E8B0668B1BBD98449A503A /* ArchitecturalRoomEnvelope.swift in Sources */,
 				DE8AC6EB53DA1FE255B39D48 /* GeometryTolerances.swift in Sources */,
 				8F5FDE26AB136DDDE619A91E /* JunctionNormalizer.swift in Sources */,
+				1664EA3D2CB9B572B7D95B9B /* PlanViewTransform.swift in Sources */,
 				F8A1B2C3D4E5F60718293A4B /* WallJunctionResolver.swift in Sources */,
 				C83000000000000000000001 /* PlanEditingConstraintEngine.swift in Sources */,
 				EC55213750A0C1BB77944D61 /* ParametricGeometryEngine.swift in Sources */,
