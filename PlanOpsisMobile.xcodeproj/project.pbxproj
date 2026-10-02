@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		771B4D1882C7CF0CA680A2ED /* ProjectLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */; };
+		B913E12E5C85AE607AA8B8C7 /* ProjectLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD5484BD409EC90B913E12E /* ProjectLibrary.swift */; };
 		B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */; };
 		DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */; };
 		7DBBDFF55D723317316B73CB /* RoomFaceBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD33385B4B516D37DBBDFF5 /* RoomFaceBoundary.swift */; };
@@ -119,6 +121,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/ProjectLibraryView.swift"; sourceTree = SOURCE_ROOT; };
+		8FD5484BD409EC90B913E12E /* ProjectLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/ProjectLibrary.swift"; sourceTree = SOURCE_ROOT; };
 		A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV122Tests.swift"; sourceTree = SOURCE_ROOT; };
 		8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/RealCaptureFixtures.swift"; sourceTree = SOURCE_ROOT; };
 		9AD33385B4B516D37DBBDFF5 /* RoomFaceBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/RoomFaceBoundary.swift"; sourceTree = SOURCE_ROOT; };
@@ -297,6 +301,7 @@
 			isa = PBXGroup;
 			children = (
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
+				D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */,
 				4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */,
 				8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */,
 				3AC416E7713062A8A90B8EBB /* Room3DView.swift */,
@@ -308,6 +313,7 @@
 		58E9ADE652AF179ADC513A41 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
+				8FD5484BD409EC90B913E12E /* ProjectLibrary.swift */,
 				DEEFC110B97F7111F4E58489 /* ProjectStore.swift */,
 			);
 			path = Persistence;
@@ -710,11 +716,13 @@
 				A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */,
 				A84000000000000000000007 /* DXFFileDocument.swift in Sources */,
 				A84000000000000000000009 /* DXFPreviewView.swift in Sources */,
+				B913E12E5C85AE607AA8B8C7 /* ProjectLibrary.swift in Sources */,
 				82EC6A63ED9FF50DE3452216 /* ProjectStore.swift in Sources */,
 				DA2DFA6B4F89E7DE58EBB655 /* PlanOpsisOpening.swift in Sources */,
 				13B9B4ED3BB775C7962B7C7B /* PlanOpsisProject.swift in Sources */,
 				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
+				771B4D1882C7CF0CA680A2ED /* ProjectLibraryView.swift in Sources */,
 				D9DFC86DD339C12241314F52 /* FloorPlanView.swift in Sources */,
 				58D4FBFA3D09E9E6150FC9FD /* InspectorView.swift in Sources */,
 				AA27D8E3A3B76B388B8B342C /* Room3DView.swift in Sources */,

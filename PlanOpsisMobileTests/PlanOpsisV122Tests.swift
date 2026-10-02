@@ -172,4 +172,59 @@ final class PlanOpsisV122Tests: XCTestCase {
         let data = try JSONEncoder().encode(corrected)
         XCTAssertEqual(try ProjectMigrator().decode(data), corrected)
     }
+
+    // MARK: 3. Project library
+
+    func testLibraryKeepsEveryProjectAndListsNewestFirst() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("planopsis-v122-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = ProjectLibrary(directory: root.appendingPathComponent("Projects"))
+        XCTAssertEqual(library.entries(), [])
+
+        var first = PlanOpsisV121Tests.rectangleRoom(width: 4_000, depth: 3_000, thickness: 200)
+        first.name = "Flat 2, kitchen"
+        var second = GoldenExchangeTests.project()
+        second.survey.roomNames[second.rooms[0].id] = "Living room"
+        try library.save(first)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000)], ofItemAtPath: library.url(for: first.id).path)
+        try library.save(second)
+
+        let entries = library.entries()
+        XCTAssertEqual(entries.map(\.id), [second.id, first.id])
+        XCTAssertEqual(entries.map(\.name), ["Living room", "Flat 2, kitchen"])
+        XCTAssertEqual(try library.load(first.id), first)
+        XCTAssertEqual(try library.load(second.id), second)
+
+        // Saving again updates in place; other projects are untouched.
+        first.name = "Flat 2"
+        try library.save(first)
+        XCTAssertEqual(library.entries().count, 2)
+        XCTAssertEqual(try library.load(first.id).name, "Flat 2")
+
+        // Unreadable files are skipped, not deleted.
+        let junk = library.directory.appendingPathComponent("\(UUID().uuidString).planopsis.json")
+        try Data("not json".utf8).write(to: junk)
+        XCTAssertEqual(library.entries().count, 2)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: junk.path))
+
+        try library.delete(second.id)
+        XCTAssertEqual(library.entries().map(\.id), [first.id])
+        XCTAssertEqual(PlanOpsisProject(rooms: []).displayName, "Untitled project")
+    }
+
+    func testLegacySingleSlotProjectIsImportedOnceAndKept() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("planopsis-v122-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let legacy = ProjectStore(url: root.appendingPathComponent("project-v2.json"))
+        let library = ProjectLibrary(directory: root.appendingPathComponent("Projects"))
+        XCTAssertNil(try library.importLegacy(from: legacy), "no legacy file, nothing to import")
+
+        let project = GoldenExchangeTests.project()
+        try legacy.save(project)
+        XCTAssertEqual(try library.importLegacy(from: legacy), project.id)
+        XCTAssertNil(try library.importLegacy(from: legacy), "imported once")
+        XCTAssertEqual(try library.load(project.id), project)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.url.path), "the legacy file is kept")
+    }
 }

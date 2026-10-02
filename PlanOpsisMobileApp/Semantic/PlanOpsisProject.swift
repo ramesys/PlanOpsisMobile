@@ -51,24 +51,37 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
     public var sourceStructureRoomPlanID: UUID?
     public var rooms: [PlanOpsisRoom]
     public var survey: SurveyRecord
+    /// v12.2 user-facing project name; nil for projects that were never named.
+    public var name: String?
 
     public init(
         schemaVersion: Int = Self.currentSchemaVersion,
         id: UUID = UUID(),
         sourceStructureRoomPlanID: UUID? = nil,
         rooms: [PlanOpsisRoom],
-        survey: SurveyRecord = .empty
+        survey: SurveyRecord = .empty,
+        name: String? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
         self.sourceStructureRoomPlanID = sourceStructureRoomPlanID
         self.rooms = rooms
         self.survey = survey
+        self.name = name
+    }
+
+    /// Name shown in the project list: the project name, else the first named room, else "Untitled project".
+    public var displayName: String {
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
+        for room in rooms {
+            if let roomName = survey.roomNames[room.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !roomName.isEmpty { return roomName }
+        }
+        return "Untitled project"
     }
 }
 
 extension PlanOpsisProject {
-    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey, name }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
@@ -77,6 +90,7 @@ extension PlanOpsisProject {
         rooms = try c.decode([PlanOpsisRoom].self, forKey: .rooms)
         if schemaVersion == 1 { survey = .empty }
         else { survey = try c.decode(SurveyRecord.self, forKey: .survey) }
+        name = try c.decodeIfPresent(String.self, forKey: .name)
     }
 }
 

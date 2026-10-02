@@ -11,6 +11,15 @@ final class PlanOpsisMobileStore: ObservableObject {
         try FileManager.default.createDirectory(at:storageRoot,withIntermediateDirectories:true)
         return ProjectStore(url:storageRoot.appendingPathComponent("project-v2.json"))
     }
+    /// v12.2 one file per project; replaces the single project-v2.json slot.
+    private func projectLibrary() throws -> ProjectLibrary {
+        guard let storageRoot else { return try ProjectLibrary.defaultLibrary() }
+        return ProjectLibrary(directory: storageRoot.appendingPathComponent("Projects", isDirectory: true))
+    }
+    @Published private(set) var libraryEntries: [ProjectLibrary.Entry] = []
+    private var autosaveTask: Task<Void, Never>?
+    private var lastSavedProject: PlanOpsisProject?
+    private var didImportLegacyProject = false
     @Published private(set) var project: PlanOpsisProject?
     @Published private(set) var geometry = ArchitecturalGeometrySnapshot(
         planWallSegments: [],
@@ -611,6 +620,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         importedDXFPreview = result.preview
         dxfImportDiagnostics = result.diagnostics
         if let imported = result.project {
+            flushAutosave()
             project = imported
             plyEvidenceProjectID = nil
             committedPLYEvidence = nil
@@ -664,6 +674,8 @@ final class PlanOpsisMobileStore: ObservableObject {
         } catch {
             evidenceNote = " Raw capture was not retained: \(error.localizedDescription)"
         }
+        let keptNote = project == nil ? "" : " Previous project kept in Projects."
+        flushAutosave()
         diagnostics = result.diagnostics
         clearPhysicalEditState(clearUndo: true)
         project = imported
@@ -682,7 +694,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         statusMessage = (diagnostics.isEmpty
             ? "Imported \(result.project.rooms.count) semantic room(s); derived \(adjacencyCount) room adjacency relation(s)."
             : "Imported \(result.project.rooms.count) room(s) with \(diagnostics.count) capture diagnostic(s). Review Inspector.")
-            + evidenceNote
+            + evidenceNote + keptNote
     }
 
     func importPLYReconstruction(_ reconstruction: PLYReconstructionResult) {
@@ -709,6 +721,7 @@ final class PlanOpsisMobileStore: ObservableObject {
             guard project==initialProject,plyImportModel.sourceSHA256==sourceHash,(plyImportModel.result ?? reconstruction)==evidenceSnapshot else { throw SurveyError.invalid("Project or PLY reconstruction changed while evidence was being saved. Review and commit again.") }
             surveyedProject.survey.evidence.append(reference)
         } catch { statusMessage = "Could not preserve comparison evidence: \(error.localizedDescription)"; return }
+        flushAutosave()
         diagnostics=[];importedDXFPreview=nil;dxfImportDiagnostics=[];clearPhysicalEditState(clearUndo:true)
         project = surveyedProject
         plyEvidenceProjectID = result.project.id
@@ -1368,6 +1381,7 @@ final class PlanOpsisMobileStore: ObservableObject {
                 return loaded
             }.value
             guard project==initial else { throw SurveyError.invalid("Project changed while the folder was loading; open it again to replace the current project.") }
+            flushAutosave()
             project=imported;plyImportModel.clear();committedPLYEvidence=nil;plyEvidenceProjectID=nil;showPLYEvidenceOverlay=false
             resetEditHistory();clearPhysicalEditState(clearUndo:true);focusedRoomID=nil;setSelection([],primary:nil);regenerate();restoreSurveyEvidence()
             statusMessage="Survey folder opened with verified project and evidence."
@@ -1474,21 +1488,46 @@ final class PlanOpsisMobileStore: ObservableObject {
         } catch { statusMessage = "Project opened; comparison evidence unavailable: \(error.localizedDescription)" }
     }
 
+    /// Saves the current project to the library now (it is also saved automatically after every change).
     func save() {
         guard let project else { return }
-        do {
-            let store = try projectStore()
-            try store.save(project)
-            statusMessage = "Saved \(project.rooms.count)-room semantic project JSON."
-        } catch {
-            statusMessage = "Save failed: \(error.localizedDescription)"
+        if flushAutosave() {
+            refreshLibrary()
+            statusMessage = "Saved \u{201C}\(project.displayName)\u{201D} to Projects."
         }
     }
 
+    /// Opens the most recently changed library project.
     func reopen() {
+        refreshLibrary()
+        guard let latest = libraryEntries.first(where: { $0.id != project?.id }) ?? libraryEntries.first else {
+            statusMessage = "No saved projects yet."
+            return
+        }
+        openProject(latest.id)
+    }
+
+    /// Lists the library, importing a pre-v12.2 single-slot project once.
+    func refreshLibrary() {
         do {
-            let store = try projectStore()
-            project = try store.load()
+            let library = try projectLibrary()
+            if !didImportLegacyProject {
+                didImportLegacyProject = true
+                _ = try? library.importLegacy(from: projectStore())
+            }
+            libraryEntries = library.entries()
+        } catch {
+            statusMessage = "Projects unavailable: \(error.localizedDescription)"
+        }
+    }
+
+    func openProject(_ id: UUID) {
+        guard id != project?.id else { return }
+        do {
+            let loaded = try projectLibrary().load(id)
+            flushAutosave()
+            project = loaded
+            lastSavedProject = loaded
             plyEvidenceProjectID = nil
             committedPLYEvidence = nil
             showPLYEvidenceOverlay = false
@@ -1496,19 +1535,83 @@ final class PlanOpsisMobileStore: ObservableObject {
             resetEditHistory()
             clearPhysicalEditState(clearUndo: true)
             diagnostics = []
+            importedDXFPreview = nil
+            dxfImportDiagnostics = []
+            creationTool = nil
+            componentCreationTool = nil
+            pendingWallStart = nil
             focusedRoomID = nil
-            let first = project?.rooms.first?.walls.first?.id
+            let first = loaded.rooms.first?.walls.first?.id
             setSelection(first.map { [$0] } ?? [], primary: first)
             regenerate()
-            statusMessage = "Reopened project and regenerated \(project?.rooms.count ?? 0) room(s)."
+            statusMessage = "Opened \u{201C}\(loaded.displayName)\u{201D}."
             restoreSurveyEvidence()
+            refreshLibrary()
         } catch {
-            statusMessage = "Reopen failed: \(error.localizedDescription)"
+            statusMessage = "Open failed: \(error.localizedDescription)"
         }
     }
 
-    func closeProject() {
+    /// Deletes a library project. Deleting the open project closes it without saving it again.
+    func deleteProject(_ id: UUID) {
+        do {
+            if project?.id == id {
+                autosaveTask?.cancel()
+                lastSavedProject = nil
+                closeProject(saving: false)
+            }
+            try projectLibrary().delete(id)
+            refreshLibrary()
+            statusMessage = "Deleted project."
+        } catch {
+            statusMessage = "Delete failed: \(error.localizedDescription)"
+        }
+    }
+
+    func renameProject(_ name: String) {
+        guard var next = project else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        next.name = trimmed.isEmpty ? nil : name
+        commitSemanticProject(next, label: "Rename project", coalescingKey: "project-name")
+    }
+
+    /// v12.2 autosave: every project change is written to the library shortly after it happens.
+    private func scheduleAutosave() {
+        autosaveTask?.cancel()
+        autosaveTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard !Task.isCancelled else { return }
+            self?.persistCurrentProject()
+        }
+    }
+
+    /// Writes any pending change immediately. Called before the open project is replaced and when the app
+    /// leaves the foreground, so a new scan or import can never discard unsaved work.
+    @discardableResult
+    func flushAutosave() -> Bool {
+        autosaveTask?.cancel()
+        autosaveTask = nil
+        return persistCurrentProject()
+    }
+
+    @discardableResult
+    private func persistCurrentProject() -> Bool {
+        guard let project else { return true }
+        guard project != lastSavedProject else { return true }
+        do {
+            try projectLibrary().save(project)
+            lastSavedProject = project
+            return true
+        } catch {
+            statusMessage = "Autosave failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    func closeProject(saving: Bool = true) {
+        if saving { flushAutosave() } else { autosaveTask?.cancel() }
         project = nil
+        lastSavedProject = nil
         plyEvidenceProjectID = nil
         committedPLYEvidence = nil
         showPLYEvidenceOverlay = false
@@ -1535,7 +1638,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         pendingWallStart = nil
         importedDXFPreview = nil
         dxfImportDiagnostics = []
-        statusMessage = "Closed in-memory project."
+        statusMessage = saving ? "Closed project; it is kept in Projects." : "Closed project."
     }
 
     private func doorOperationLabel(_ operation: PlanOpsisDoor.Operation) -> String {
@@ -1573,6 +1676,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         geometry = next.semanticGeometry
         physicalGeometry = next.physicalGeometry
         derivation = next
+        if project != lastSavedProject { scheduleAutosave() }
     }
 
     private static func describe(_ diagnostic: RoomPlanAdapter.Diagnostic) -> String {
