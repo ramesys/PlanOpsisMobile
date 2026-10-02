@@ -339,8 +339,8 @@ struct PlanOpsisRootView: View {
                         Divider()
                     }
                     Button("Import DXF") { showingDXFImporter = true }
-                    Button("Export DXF") { prepareDXFExport() }
-                        .disabled(!store.canExportDXF)
+                    // v12.2: never silently disabled. A blocked export opens the readiness review explaining why.
+                    Button(store.canExportDXF ? "Export DXF" : "Export DXF (review issues)") { prepareDXFExport() }
                     Button("Export IFC4") { prepareIFC4Export() }
                     Divider()
                     Button("Save project", action: store.save)
@@ -556,8 +556,8 @@ struct PlanOpsisRootView: View {
                         .frame(width: 36, height: 34)
                 }
                 .planOpsisGlassProminentButton(active: true)
-                .disabled(!store.canExportDXF)
                 .accessibilityLabel("Export DXF")
+                .accessibilityHint(store.canExportDXF ? "" : "Opens the drawing review explaining what blocks export")
             }
 
             Spacer(minLength: 4)
