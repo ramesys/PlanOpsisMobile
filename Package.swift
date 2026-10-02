@@ -1,0 +1,74 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "PlanOpsisMobileCore",
+    platforms: [.macOS(.v14), .iOS(.v17)],
+    products: [
+        .library(name: "PlanOpsisCore", targets: ["PlanOpsisCore"])
+    ],
+    targets: [
+        .target(
+            name: "PlanOpsisCore",
+            path: "PlanOpsisMobileApp",
+            exclude: ["Survey/UI", "App", "Views", "PLY/UI", "Capture/RoomPlanCaptureService.swift", "DXF/DXFFileDocument.swift"],
+            sources: [
+                "Adapter/RoomPlanAdapter.swift",
+                "Adapter/RoomPlanCoordinateConverter.swift",
+                "Architecture/ArchitecturalDraftingConvention.swift",
+                "Architecture/ArchitecturalSurveyReadiness.swift",
+                "Architecture/ArchitecturalSymbol.swift",
+                "Capture/MockRoomCaptureProvider.swift",
+                "Capture/RoomCaptureSnapshot.swift",
+                "DXF/DXFDrawingValidator.swift",
+                "DXF/DXFExchange.swift",
+                "DXF/EditableDXFReader.swift",
+                "DXF/EditableDXFWriter.swift",
+                "DXF/SurveyDXFDocument.swift",
+                "Exchange/ExchangeGeometryValidation.swift",
+                "Exchange/PlanOpsisExchangeIdentity.swift",
+                "Exchange/SurveyDXFReconciliationEngine.swift",
+                "Exchange/SurveyExchangeManifest.swift",
+                "Geometry/ArchitecturalGeometrySnapshot.swift",
+                "Geometry/ArchitecturalRoomEnvelope.swift",
+                "Geometry/ArchitecturalWallDrawing.swift",
+                "Geometry/ParametricGeometryEngine.swift",
+                "Geometry/PhysicalDisplayGeometryEngine.swift",
+                "Geometry/WallJunctionResolver.swift",
+                "IFC/IFC4Exchange.swift",
+                "Interaction/PlanEditingConstraintEngine.swift",
+                "Interaction/SemanticObjectEditingEngine.swift",
+                "PLY/Core/PLYDXFPreviewExporter.swift",
+                "PLY/Core/PLYParser.swift",
+                "PLY/Core/PLYPlanOpsisAdapter.swift",
+                "PLY/Core/PLYSectionReconstructor.swift",
+                "PLY/Core/PLYTypes.swift",
+                "PLY/Core/PLYWallCandidateEngine.swift",
+                "Persistence/ProjectMigrator.swift",
+                "Persistence/ProjectStore.swift",
+                "Persistence/SurveyAttachmentStore.swift",
+                "Persistence/SurveyDeliveryReader.swift",
+                "Persistence/SurveyDeliveryWriter.swift",
+                "Persistence/SurveyExchangeStore.swift",
+                "Reconciliation/PhysicalPartitionEditTransactionEngine.swift",
+                "Reconciliation/StructureReconciliationEngine.swift",
+                "Semantic/PlanOpsisOpening.swift",
+                "Semantic/PlanOpsisProject.swift",
+                "Semantic/PlanOpsisWall.swift",
+                "Survey/Core/SurveyCorrectionEngine.swift",
+                "Survey/Core/SurveyDimensionBuilder.swift",
+                "Survey/Core/SurveyMeasurementEngine.swift",
+                "Survey/Documentation/SurveySheetRenderer.swift",
+                "Survey/Model/PLYSurveyEvidence.swift",
+                "Survey/Model/SurveyRecord.swift",
+                "Topology/StructureTopologyEngine.swift"
+            ]
+        ),
+        .testTarget(
+            name: "PlanOpsisCoreTests",
+            dependencies: ["PlanOpsisCore"],
+            path: "PlanOpsisMobileTests"
+        )
+    ],
+    swiftLanguageModes: [.v5]
+)

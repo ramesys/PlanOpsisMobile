@@ -1,0 +1,952 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		13B9B4ED3BB775C7962B7C7B /* PlanOpsisProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EBC4A633F7E8FC23AE5EC7D /* PlanOpsisProject.swift */; };
+		1625CFBE84F997740CAE8C4D /* ArchitecturalWallDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C717C68610515AD332FC9435 /* ArchitecturalWallDrawing.swift */; };
+		1EA4BFD59F7528A168756BCF /* ArchitecturalGeometrySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29D772AC5781FC4B08F312D /* ArchitecturalGeometrySnapshot.swift */; };
+		2A4C9867D72CADF511643E09 /* PlanOpsisMobileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BB1F652F4D35A7319A5D75 /* PlanOpsisMobileStore.swift */; };
+		36E67C9FC1B81E90AC2DE1E7 /* DXFDrawingValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */; };
+		3F69D4EE3C7DEED1EFEDB5AF /* RoomPlanAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA86A347CAFC7ED98EADADB /* RoomPlanAdapter.swift */; };
+		49578B0BE304398403C2A638 /* GoldenExchangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C9D7C3E24B9CEA8E669A27 /* GoldenExchangeTests.swift */; };
+		58D4FBFA3D09E9E6150FC9FD /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */; };
+		7F29AAD04B076E50802129F7 /* MockRoomCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09EA51373250A63D51F4E47 /* MockRoomCaptureProvider.swift */; };
+		809C623655833DF602CDEBC2 /* RoomPlanCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1188FC0B1D376DF6A748C3AC /* RoomPlanCaptureService.swift */; };
+		82EC6A63ED9FF50DE3452216 /* ProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEEFC110B97F7111F4E58489 /* ProjectStore.swift */; };
+		9A53580B405F36451D5E905B /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E52FAC9AD128948801CB36 /* CaptureView.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* StructureTopologyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4A39281706F5E4D3C2B1A /* StructureTopologyEngine.swift */; };
+		A84000000000000000000001 /* ArchitecturalDraftingConvention.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000002 /* ArchitecturalDraftingConvention.swift */; };
+		A84000000000000000000003 /* DXFExchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000004 /* DXFExchange.swift */; };
+		A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000006 /* SemanticObjectEditingEngine.swift */; };
+		A84000000000000000000007 /* DXFFileDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000008 /* DXFFileDocument.swift */; };
+		A84000000000000000000009 /* DXFPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000010 /* DXFPreviewView.swift */; };
+		A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05C6B76633F0B8705875FA6 /* PlanOpsisWall.swift */; };
+		AA2000000000000000000000 /* ArchitecturalSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000000 /* ArchitecturalSymbol.swift */; };
+		AA2000000000000000000001 /* ArchitecturalExchangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000001 /* ArchitecturalExchangeTests.swift */; };
+		C12900000000000000000002 /* PlanOpsisPLYCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12900000000000000000001 /* PlanOpsisPLYCoreTests.swift */; };
+		AA27D8E3A3B76B388B8B342C /* Room3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC416E7713062A8A90B8EBB /* Room3DView.swift */; };
+		B10000000000000000000001 /* PlanOpsisExchangeIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* PlanOpsisExchangeIdentity.swift */; };
+		B10000000000000000000003 /* IFC4Exchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* IFC4Exchange.swift */; };
+		B5A1C2D3E4F5061728394A5B /* StructureReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F1E2D3C4B5A69788776655 /* StructureReconciliationEngine.swift */; };
+		B6E8B0668B1BBD98449A503A /* ArchitecturalRoomEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4418F41F58BA7AF24ED9630 /* ArchitecturalRoomEnvelope.swift */; };
+		C394FC884325AF2DE036E206 /* PlanOpsisMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F998FCC8A5E2273DCB075C8 /* PlanOpsisMobileApp.swift */; };
+		C83000000000000000000001 /* PlanEditingConstraintEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83000000000000000000002 /* PlanEditingConstraintEngine.swift */; };
+		D288B729BBC601EC7199384A /* RoomPlanCoordinateConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF915D417A742D7B07862745 /* RoomPlanCoordinateConverter.swift */; };
+		D6A1B2C3D4E5F60718293A4B /* PhysicalDisplayGeometryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F1E2D3C4B5A69788776655 /* PhysicalDisplayGeometryEngine.swift */; };
+		D9DFC86DD339C12241314F52 /* FloorPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */; };
+		DA2DFA6B4F89E7DE58EBB655 /* PlanOpsisOpening.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3387C26B0D4DFC1C09F7F3C /* PlanOpsisOpening.swift */; };
+		E32052533989C0B60CD7964C /* ExchangeGeometryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2BBDAEEE8B2BB80EC16444 /* ExchangeGeometryValidation.swift */; };
+		E7A1B2C3D4E5F60718293A4B /* PhysicalPartitionEditTransactionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F1E2D3C4B5A69788776655 /* PhysicalPartitionEditTransactionEngine.swift */; };
+		EC55213750A0C1BB77944D61 /* ParametricGeometryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C729A83867A30F8362D4E747 /* ParametricGeometryEngine.swift */; };
+		ECA7E40FE60E490295FA6EBB /* PlanOpsisMobileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A8329547AECC09478850D7B /* PlanOpsisMobileTests.swift */; };
+		F8A1B2C3D4E5F60718293A4B /* WallJunctionResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F1E2D3C4B5A69788776655 /* WallJunctionResolver.swift */; };
+		F90000000000000000000001 /* ArchitecturalSurveyReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90000000000000000000002 /* ArchitecturalSurveyReadiness.swift */; };
+		FD2928439BEA2AEB821945B3 /* RoomCaptureSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F1537FD3CEB7FA512F87F6 /* RoomCaptureSnapshot.swift */; };
+		C11000000000000000000001 /* PLYTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000001 /* PLYTypes.swift */; };
+
+		C11000000000000000000002 /* PLYParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000002 /* PLYParser.swift */; };
+
+		C11000000000000000000003 /* PLYSectionReconstructor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000003 /* PLYSectionReconstructor.swift */; };
+
+		C11000000000000000000004 /* PLYWallCandidateEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000004 /* PLYWallCandidateEngine.swift */; };
+
+		C11000000000000000000005 /* PLYDXFPreviewExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000005 /* PLYDXFPreviewExporter.swift */; };
+
+		C11000000000000000000006 /* PLYImportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000006 /* PLYImportViewModel.swift */; };
+
+		C11000000000000000000007 /* PLYPlanPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000007 /* PLYPlanPreview.swift */; };
+
+		C11000000000000000000008 /* PLYImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000008 /* PLYImportView.swift */; };
+
+		C11000000000000000000009 /* PLYPlanOpsisAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12000000000000000000009 /* PLYPlanOpsisAdapter.swift */; };
+		3441EAB59745702134176B98 /* ProjectMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74882C55A2DBCEFCEEB03D77; };
+		A5925DDE52B39CD56D5901DF /* SurveyRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A1453976322E4BC650B67D; };
+		9816BC246679AA8535299C22 /* SurveyPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B48FF4F774A547BEA81C15D; };
+		04A318CE44CCE4D9741D9551 /* SurveyAttachmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCB58EFA25B9588FDA288F; };
+		2D5B3FFB5E86CE2CBD77FBED /* SurveyMeasurementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0335AC059E0DEE8552AFC48; };
+		137D57FF6A8852F97BCA8A3A /* SurveyAttachmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCEBC2101D564A8CA6CA7D0; };
+		69848A9DEDA2D78A45BA62E3 /* SurveyMeasurementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE5B96D4F74C0CC73822F594; };
+		B4EDCE40E4A827C07C81E477 /* PLYSurveyEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A825018E681C2E5C86C8FCEE; };
+		06B94BB62C04F43B7D83DF67 /* SurveyWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 157890E62AF2E13B4342D4C7; };
+		A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD18F7952FD206BECFF1D32B; };
+		CD52F1B75239EA2A2191D595 /* SurveyDimensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CDAE35C1BDDFB9E0D3D951A; };
+		EDD024596DAA7CFDC2244502 /* SurveyCorrectionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D822B54E44F84C3B089604D9; };
+		3A6AB2696316EAC9A36A127B /* SurveyDimensionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E49C5563219667F0748BF3B; };
+		1E6602E5625CEDC7F79AB400 /* EditableDXFTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6C09AB04470AB89488E743; };
+		4630D0CE3CE92D779074B581 /* EditableDXFReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A06F331B51443F35EB79EB; };
+		90B9D8AEB387D7240082F133 /* EditableDXFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 510A6279FDE3EC15E62B0697; };
+		DFD69C04C8125BE31D318710 /* SurveyDXFDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574A60E0285B516DF0F8A951; };
+		FE513B6D1AAFCC408908D4D6 /* SurveyExchangeManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A52D44A3CF1E818AEE1F08D; };
+		1D3EC8143DC3ECC20257BDED /* SurveyDXFRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857FC47897EABCF6F392B261; };
+		EBA631692022D703ED8D8771 /* SurveyDXFReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECF5A0BCF44BF2332B68172; };
+		81A9861BAFDC4E9463B5941E /* SurveyExchangeStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3110259E5CE282D0BDE020BB; };
+		806F31C8B858DA30BBB5300F /* SurveyExchangeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C81438B91D663D78DE8CA8E; };
+		C66872B9D2FDFDFD17E4FF9B /* SurveyExchangeReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C716C645F4653CA85B06EBEC; };
+		8DFD9E0E593C34089C0FAF68 /* SurveyPointPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C419DA028114A8E5EFE799; };
+		1358D20DF8AE5D15ED700DD5 /* SurveyDimensionPlacementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA4EF3C6B968902C9B552FC; };
+		1E5B645D03D2F67B0C684284 /* SurveyDeliveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F0AA2F8575ACFB4FE7B2CD; };
+		62702B5A086DD1B614DBC12D /* SurveyDeliveryWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5D938C6E93B2F9D1B1B199; };
+		286B2F7D1D4017043A6BA7FA /* SurveySheetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F106D7135230D6857E91308; };
+		0106C3855380BE434CD5098D /* SurveyDeliveryReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385030FC5829367D44795C51; };
+		CA77E2E7788A721C4A238C55 /* SurveyDeliveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D558179A1127C45867FBDC7D; };
+		B8A86CFF0D5AAE3D1B548A73 /* SurveyEvidenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19048CB7D58DCC142E24E9B; };
+		D0D6B1D53667146347F6294F /* SurveyApartmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD97C6C43D531B0F72B0492A; };
+		D655B3071F34B1579B4CE257 /* SurveyNativeWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7EF5679E6F7E9ACE7E1BA5; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		83A8297435215A3C81E6A85B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CCD1BDFE40AA20836710EC01;
+			remoteInfo = PlanOpsisMobile;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		03C9D7C3E24B9CEA8E669A27 /* GoldenExchangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldenExchangeTests.swift; sourceTree = "<group>"; };
+		0FA86A347CAFC7ED98EADADB /* RoomPlanAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomPlanAdapter.swift; sourceTree = "<group>"; };
+		1188FC0B1D376DF6A748C3AC /* RoomPlanCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomPlanCaptureService.swift; sourceTree = "<group>"; };
+		19BB1F652F4D35A7319A5D75 /* PlanOpsisMobileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisMobileStore.swift; sourceTree = "<group>"; };
+		1EBC4A633F7E8FC23AE5EC7D /* PlanOpsisProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisProject.swift; sourceTree = "<group>"; };
+		38F1537FD3CEB7FA512F87F6 /* RoomCaptureSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCaptureSnapshot.swift; sourceTree = "<group>"; };
+		3AC416E7713062A8A90B8EBB /* Room3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Room3DView.swift; sourceTree = "<group>"; };
+		42E52FAC9AD128948801CB36 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
+		4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloorPlanView.swift; sourceTree = "<group>"; };
+		4EF5F27FC2840F4EF5595DEE /* PlanOpsisMobileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlanOpsisMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F998FCC8A5E2273DCB075C8 /* PlanOpsisMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisMobileApp.swift; sourceTree = "<group>"; };
+		5718BA8B2965F0F686C8E55B /* PlanOpsisMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PlanOpsisMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFDrawingValidator.swift; sourceTree = "<group>"; };
+		8A8329547AECC09478850D7B /* PlanOpsisMobileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisMobileTests.swift; sourceTree = "<group>"; };
+		8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
+		9D2BBDAEEE8B2BB80EC16444 /* ExchangeGeometryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeGeometryValidation.swift; sourceTree = "<group>"; };
+		A84000000000000000000002 /* ArchitecturalDraftingConvention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalDraftingConvention.swift; sourceTree = "<group>"; };
+		A84000000000000000000004 /* DXFExchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFExchange.swift; sourceTree = "<group>"; };
+		A84000000000000000000006 /* SemanticObjectEditingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticObjectEditingEngine.swift; sourceTree = "<group>"; };
+		A84000000000000000000008 /* DXFFileDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFFileDocument.swift; sourceTree = "<group>"; };
+		A84000000000000000000010 /* DXFPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFPreviewView.swift; sourceTree = "<group>"; };
+		AA1000000000000000000000 /* ArchitecturalSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalSymbol.swift; sourceTree = "<group>"; };
+		AA1000000000000000000001 /* ArchitecturalExchangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalExchangeTests.swift; sourceTree = "<group>"; };
+		C12900000000000000000001 /* PlanOpsisPLYCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisPLYCoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* PlanOpsisExchangeIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisExchangeIdentity.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* IFC4Exchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IFC4Exchange.swift; sourceTree = "<group>"; };
+		B5F1E2D3C4B5A69788776655 /* StructureReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructureReconciliationEngine.swift; sourceTree = "<group>"; };
+		C3387C26B0D4DFC1C09F7F3C /* PlanOpsisOpening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisOpening.swift; sourceTree = "<group>"; };
+		C4418F41F58BA7AF24ED9630 /* ArchitecturalRoomEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalRoomEnvelope.swift; sourceTree = "<group>"; };
+		C5B4A39281706F5E4D3C2B1A /* StructureTopologyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructureTopologyEngine.swift; sourceTree = "<group>"; };
+		C717C68610515AD332FC9435 /* ArchitecturalWallDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalWallDrawing.swift; sourceTree = "<group>"; };
+		C729A83867A30F8362D4E747 /* ParametricGeometryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametricGeometryEngine.swift; sourceTree = "<group>"; };
+		C83000000000000000000002 /* PlanEditingConstraintEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEditingConstraintEngine.swift; sourceTree = "<group>"; };
+		D6F1E2D3C4B5A69788776655 /* PhysicalDisplayGeometryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicalDisplayGeometryEngine.swift; sourceTree = "<group>"; };
+		DEEFC110B97F7111F4E58489 /* ProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStore.swift; sourceTree = "<group>"; };
+		E05C6B76633F0B8705875FA6 /* PlanOpsisWall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisWall.swift; sourceTree = "<group>"; };
+		E7F1E2D3C4B5A69788776655 /* PhysicalPartitionEditTransactionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicalPartitionEditTransactionEngine.swift; sourceTree = "<group>"; };
+		EF915D417A742D7B07862745 /* RoomPlanCoordinateConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomPlanCoordinateConverter.swift; sourceTree = "<group>"; };
+		F09EA51373250A63D51F4E47 /* MockRoomCaptureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRoomCaptureProvider.swift; sourceTree = "<group>"; };
+		F29D772AC5781FC4B08F312D /* ArchitecturalGeometrySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalGeometrySnapshot.swift; sourceTree = "<group>"; };
+		F8F1E2D3C4B5A69788776655 /* WallJunctionResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallJunctionResolver.swift; sourceTree = "<group>"; };
+		F90000000000000000000002 /* ArchitecturalSurveyReadiness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalSurveyReadiness.swift; sourceTree = "<group>"; };
+		C12000000000000000000001 /* PLYTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYTypes.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000002 /* PLYParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYParser.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000003 /* PLYSectionReconstructor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYSectionReconstructor.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000004 /* PLYWallCandidateEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYWallCandidateEngine.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000005 /* PLYDXFPreviewExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYDXFPreviewExporter.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000006 /* PLYImportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYImportViewModel.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000007 /* PLYPlanPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYPlanPreview.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000008 /* PLYImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYImportView.swift; sourceTree = "<group>"; };
+
+		C12000000000000000000009 /* PLYPlanOpsisAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLYPlanOpsisAdapter.swift; sourceTree = "<group>"; };
+		74882C55A2DBCEFCEEB03D77 /* ProjectMigrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/ProjectMigrator.swift"; sourceTree = SOURCE_ROOT; };
+		87A1453976322E4BC650B67D /* SurveyRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Model/SurveyRecord.swift"; sourceTree = SOURCE_ROOT; };
+		7B48FF4F774A547BEA81C15D /* SurveyPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyPersistenceTests.swift"; sourceTree = SOURCE_ROOT; };
+		68CCB58EFA25B9588FDA288F /* SurveyAttachmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyAttachmentTests.swift"; sourceTree = SOURCE_ROOT; };
+		B0335AC059E0DEE8552AFC48 /* SurveyMeasurementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyMeasurementTests.swift"; sourceTree = SOURCE_ROOT; };
+		EDCEBC2101D564A8CA6CA7D0 /* SurveyAttachmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/SurveyAttachmentStore.swift"; sourceTree = SOURCE_ROOT; };
+		FE5B96D4F74C0CC73822F594 /* SurveyMeasurementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Core/SurveyMeasurementEngine.swift"; sourceTree = SOURCE_ROOT; };
+		A825018E681C2E5C86C8FCEE /* PLYSurveyEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Model/PLYSurveyEvidence.swift"; sourceTree = SOURCE_ROOT; };
+		157890E62AF2E13B4342D4C7 /* SurveyWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
+		FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyCorrectionTests.swift"; sourceTree = SOURCE_ROOT; };
+		1CDAE35C1BDDFB9E0D3D951A /* SurveyDimensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyDimensionTests.swift"; sourceTree = SOURCE_ROOT; };
+		D822B54E44F84C3B089604D9 /* SurveyCorrectionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Core/SurveyCorrectionEngine.swift"; sourceTree = SOURCE_ROOT; };
+		6E49C5563219667F0748BF3B /* SurveyDimensionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Core/SurveyDimensionBuilder.swift"; sourceTree = SOURCE_ROOT; };
+		1D6C09AB04470AB89488E743 /* EditableDXFTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/EditableDXFTests.swift"; sourceTree = SOURCE_ROOT; };
+		B2A06F331B51443F35EB79EB /* EditableDXFReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/DXF/EditableDXFReader.swift"; sourceTree = SOURCE_ROOT; };
+		510A6279FDE3EC15E62B0697 /* EditableDXFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/DXF/EditableDXFWriter.swift"; sourceTree = SOURCE_ROOT; };
+		574A60E0285B516DF0F8A951 /* SurveyDXFDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/DXF/SurveyDXFDocument.swift"; sourceTree = SOURCE_ROOT; };
+		1A52D44A3CF1E818AEE1F08D /* SurveyExchangeManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Exchange/SurveyExchangeManifest.swift"; sourceTree = SOURCE_ROOT; };
+		857FC47897EABCF6F392B261 /* SurveyDXFRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyDXFRoundTripTests.swift"; sourceTree = SOURCE_ROOT; };
+		9ECF5A0BCF44BF2332B68172 /* SurveyDXFReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Exchange/SurveyDXFReconciliationEngine.swift"; sourceTree = SOURCE_ROOT; };
+		3110259E5CE282D0BDE020BB /* SurveyExchangeStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyExchangeStoreTests.swift"; sourceTree = SOURCE_ROOT; };
+		8C81438B91D663D78DE8CA8E /* SurveyExchangeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/SurveyExchangeStore.swift"; sourceTree = SOURCE_ROOT; };
+		C716C645F4653CA85B06EBEC /* SurveyExchangeReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyExchangeReviewView.swift"; sourceTree = SOURCE_ROOT; };
+		02C419DA028114A8E5EFE799 /* SurveyPointPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyPointPicker.swift"; sourceTree = SOURCE_ROOT; };
+		3AA4EF3C6B968902C9B552FC /* SurveyDimensionPlacementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyDimensionPlacementView.swift"; sourceTree = SOURCE_ROOT; };
+		61F0AA2F8575ACFB4FE7B2CD /* SurveyDeliveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyDeliveryTests.swift"; sourceTree = SOURCE_ROOT; };
+		0B5D938C6E93B2F9D1B1B199 /* SurveyDeliveryWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/SurveyDeliveryWriter.swift"; sourceTree = SOURCE_ROOT; };
+		6F106D7135230D6857E91308 /* SurveySheetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/Documentation/SurveySheetRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		385030FC5829367D44795C51 /* SurveyDeliveryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/SurveyDeliveryReader.swift"; sourceTree = SOURCE_ROOT; };
+		D558179A1127C45867FBDC7D /* SurveyDeliveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyDeliveryView.swift"; sourceTree = SOURCE_ROOT; };
+		D19048CB7D58DCC142E24E9B /* SurveyEvidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Survey/UI/SurveyEvidenceView.swift"; sourceTree = SOURCE_ROOT; };
+		CD97C6C43D531B0F72B0492A /* SurveyApartmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyApartmentTests.swift"; sourceTree = SOURCE_ROOT; };
+		BF7EF5679E6F7E9ACE7E1BA5 /* SurveyNativeWorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/SurveyNativeWorkflowTests.swift"; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		205F2BC6E24D7D856CEED464 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8BB80BA9436BB8095981AD3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		021F2B7F3E0C61452C987484 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5718BA8B2965F0F686C8E55B /* PlanOpsisMobile.app */,
+				4EF5F27FC2840F4EF5595DEE /* PlanOpsisMobileTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		12E9DF2F0820E9F612A165AB /* PlanOpsisMobileTests */ = {
+			isa = PBXGroup;
+			children = (
+				BF7EF5679E6F7E9ACE7E1BA5 /* SurveyNativeWorkflowTests.swift */,
+				CD97C6C43D531B0F72B0492A /* SurveyApartmentTests.swift */,
+				61F0AA2F8575ACFB4FE7B2CD /* SurveyDeliveryTests.swift */,
+				3110259E5CE282D0BDE020BB /* SurveyExchangeStoreTests.swift */,
+				857FC47897EABCF6F392B261 /* SurveyDXFRoundTripTests.swift */,
+				1D6C09AB04470AB89488E743 /* EditableDXFTests.swift */,
+				1CDAE35C1BDDFB9E0D3D951A /* SurveyDimensionTests.swift */,
+				FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */,
+				B0335AC059E0DEE8552AFC48 /* SurveyMeasurementTests.swift */,
+				68CCB58EFA25B9588FDA288F /* SurveyAttachmentTests.swift */,
+				7B48FF4F774A547BEA81C15D /* SurveyPersistenceTests.swift */,
+				8A8329547AECC09478850D7B /* PlanOpsisMobileTests.swift */,
+				03C9D7C3E24B9CEA8E669A27 /* GoldenExchangeTests.swift */,
+				AA1000000000000000000001 /* ArchitecturalExchangeTests.swift */,
+				C12900000000000000000001 /* PlanOpsisPLYCoreTests.swift */,
+			);
+			path = PlanOpsisMobileTests;
+			sourceTree = "<group>";
+		};
+		19A63134181A6B93E16868C3 /* Semantic */ = {
+			isa = PBXGroup;
+			children = (
+				C3387C26B0D4DFC1C09F7F3C /* PlanOpsisOpening.swift */,
+				1EBC4A633F7E8FC23AE5EC7D /* PlanOpsisProject.swift */,
+				E05C6B76633F0B8705875FA6 /* PlanOpsisWall.swift */,
+			);
+			path = Semantic;
+			sourceTree = "<group>";
+		};
+		1C48CE29E4E135EE62951B22 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				4F998FCC8A5E2273DCB075C8 /* PlanOpsisMobileApp.swift */,
+				19BB1F652F4D35A7319A5D75 /* PlanOpsisMobileStore.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		58492F208780FA5EF3807E8F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
+				4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */,
+				8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */,
+				3AC416E7713062A8A90B8EBB /* Room3DView.swift */,
+				A84000000000000000000010 /* DXFPreviewView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		58E9ADE652AF179ADC513A41 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				DEEFC110B97F7111F4E58489 /* ProjectStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		6CFC827E67DCAE34C72B9CED = {
+			isa = PBXGroup;
+			children = (
+				932704417AB46D25E8F18983 /* PlanOpsisMobileApp */,
+				12E9DF2F0820E9F612A165AB /* PlanOpsisMobileTests */,
+				021F2B7F3E0C61452C987484 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		932704417AB46D25E8F18983 /* PlanOpsisMobileApp */ = {
+			isa = PBXGroup;
+			children = (
+				D19048CB7D58DCC142E24E9B /* SurveyEvidenceView.swift */,
+				D558179A1127C45867FBDC7D /* SurveyDeliveryView.swift */,
+				385030FC5829367D44795C51 /* SurveyDeliveryReader.swift */,
+				6F106D7135230D6857E91308 /* SurveySheetRenderer.swift */,
+				0B5D938C6E93B2F9D1B1B199 /* SurveyDeliveryWriter.swift */,
+				3AA4EF3C6B968902C9B552FC /* SurveyDimensionPlacementView.swift */,
+				02C419DA028114A8E5EFE799 /* SurveyPointPicker.swift */,
+				C716C645F4653CA85B06EBEC /* SurveyExchangeReviewView.swift */,
+				8C81438B91D663D78DE8CA8E /* SurveyExchangeStore.swift */,
+				9ECF5A0BCF44BF2332B68172 /* SurveyDXFReconciliationEngine.swift */,
+				1A52D44A3CF1E818AEE1F08D /* SurveyExchangeManifest.swift */,
+				574A60E0285B516DF0F8A951 /* SurveyDXFDocument.swift */,
+				510A6279FDE3EC15E62B0697 /* EditableDXFWriter.swift */,
+				B2A06F331B51443F35EB79EB /* EditableDXFReader.swift */,
+				6E49C5563219667F0748BF3B /* SurveyDimensionBuilder.swift */,
+				D822B54E44F84C3B089604D9 /* SurveyCorrectionEngine.swift */,
+				157890E62AF2E13B4342D4C7 /* SurveyWorkspaceView.swift */,
+				A825018E681C2E5C86C8FCEE /* PLYSurveyEvidence.swift */,
+				FE5B96D4F74C0CC73822F594 /* SurveyMeasurementEngine.swift */,
+				EDCEBC2101D564A8CA6CA7D0 /* SurveyAttachmentStore.swift */,
+				87A1453976322E4BC650B67D /* SurveyRecord.swift */,
+				74882C55A2DBCEFCEEB03D77 /* ProjectMigrator.swift */,
+				1C48CE29E4E135EE62951B22 /* App */,
+				B1345A6DEBF6ACBB010DC8B9 /* Capture */,
+				19A63134181A6B93E16868C3 /* Semantic */,
+				F97032637E78F7BD1C080911 /* Adapter */,
+				F25F3CCD83D51BCC28AB31EB /* Geometry */,
+				D0C1B2A39485766758493A2B /* Topology */,
+				B5ABCDEF0123456789ABCDEF /* Reconciliation */,
+				C83000000000000000000003 /* Interaction */,
+				B10000000000000000000005 /* Exchange */,
+				A84000000000000000000011 /* Architecture */,
+				B10000000000000000000006 /* IFC */,
+				A84000000000000000000012 /* DXF */,
+				58E9ADE652AF179ADC513A41 /* Persistence */,
+				58492F208780FA5EF3807E8F /* Views */,
+				C13000000000000000000000 /* PLY */,
+			);
+			path = PlanOpsisMobileApp;
+			sourceTree = "<group>";
+		};
+		A84000000000000000000011 /* Architecture */ = {
+			isa = PBXGroup;
+			children = (
+				A84000000000000000000002 /* ArchitecturalDraftingConvention.swift */,
+				AA1000000000000000000000 /* ArchitecturalSymbol.swift */,
+				F90000000000000000000002 /* ArchitecturalSurveyReadiness.swift */,
+			);
+			path = Architecture;
+			sourceTree = "<group>";
+		};
+		A84000000000000000000012 /* DXF */ = {
+			isa = PBXGroup;
+			children = (
+				A84000000000000000000004 /* DXFExchange.swift */,
+				87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */,
+				A84000000000000000000008 /* DXFFileDocument.swift */,
+			);
+			path = DXF;
+			sourceTree = "<group>";
+		};
+		B10000000000000000000005 /* Exchange */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000002 /* PlanOpsisExchangeIdentity.swift */,
+				9D2BBDAEEE8B2BB80EC16444 /* ExchangeGeometryValidation.swift */,
+			);
+			path = Exchange;
+			sourceTree = "<group>";
+		};
+		B10000000000000000000006 /* IFC */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000004 /* IFC4Exchange.swift */,
+			);
+			path = IFC;
+			sourceTree = "<group>";
+		};
+		B1345A6DEBF6ACBB010DC8B9 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				F09EA51373250A63D51F4E47 /* MockRoomCaptureProvider.swift */,
+				38F1537FD3CEB7FA512F87F6 /* RoomCaptureSnapshot.swift */,
+				1188FC0B1D376DF6A748C3AC /* RoomPlanCaptureService.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+		B5ABCDEF0123456789ABCDEF /* Reconciliation */ = {
+			isa = PBXGroup;
+			children = (
+				B5F1E2D3C4B5A69788776655 /* StructureReconciliationEngine.swift */,
+				E7F1E2D3C4B5A69788776655 /* PhysicalPartitionEditTransactionEngine.swift */,
+			);
+			path = Reconciliation;
+			sourceTree = "<group>";
+		};
+		C83000000000000000000003 /* Interaction */ = {
+			isa = PBXGroup;
+			children = (
+				C83000000000000000000002 /* PlanEditingConstraintEngine.swift */,
+				A84000000000000000000006 /* SemanticObjectEditingEngine.swift */,
+			);
+			path = Interaction;
+			sourceTree = "<group>";
+		};
+		D0C1B2A39485766758493A2B /* Topology */ = {
+			isa = PBXGroup;
+			children = (
+				C5B4A39281706F5E4D3C2B1A /* StructureTopologyEngine.swift */,
+			);
+			path = Topology;
+			sourceTree = "<group>";
+		};
+		F25F3CCD83D51BCC28AB31EB /* Geometry */ = {
+			isa = PBXGroup;
+			children = (
+				F29D772AC5781FC4B08F312D /* ArchitecturalGeometrySnapshot.swift */,
+				C717C68610515AD332FC9435 /* ArchitecturalWallDrawing.swift */,
+				C4418F41F58BA7AF24ED9630 /* ArchitecturalRoomEnvelope.swift */,
+				F8F1E2D3C4B5A69788776655 /* WallJunctionResolver.swift */,
+				C729A83867A30F8362D4E747 /* ParametricGeometryEngine.swift */,
+				D6F1E2D3C4B5A69788776655 /* PhysicalDisplayGeometryEngine.swift */,
+			);
+			path = Geometry;
+			sourceTree = "<group>";
+		};
+		F97032637E78F7BD1C080911 /* Adapter */ = {
+			isa = PBXGroup;
+			children = (
+				0FA86A347CAFC7ED98EADADB /* RoomPlanAdapter.swift */,
+				EF915D417A742D7B07862745 /* RoomPlanCoordinateConverter.swift */,
+			);
+			path = Adapter;
+			sourceTree = "<group>";
+		};
+		C13000000000000000000000 /* PLY */ = {
+
+			isa = PBXGroup;
+
+			children = (
+
+				C13000000000000000000001 /* Core */,
+
+				C13000000000000000000002 /* UI */,
+
+			);
+
+			path = PLY;
+
+			sourceTree = "<group>";
+
+		};
+
+		C13000000000000000000001 /* Core */ = {
+
+			isa = PBXGroup;
+
+			children = (
+
+				C12000000000000000000001 /* PLYTypes.swift */,
+
+				C12000000000000000000002 /* PLYParser.swift */,
+
+				C12000000000000000000003 /* PLYSectionReconstructor.swift */,
+
+				C12000000000000000000004 /* PLYWallCandidateEngine.swift */,
+
+				C12000000000000000000005 /* PLYDXFPreviewExporter.swift */,
+
+				C12000000000000000000009 /* PLYPlanOpsisAdapter.swift */,
+
+			);
+
+			path = Core;
+
+			sourceTree = "<group>";
+
+		};
+
+		C13000000000000000000002 /* UI */ = {
+
+			isa = PBXGroup;
+
+			children = (
+
+				C12000000000000000000006 /* PLYImportViewModel.swift */,
+
+				C12000000000000000000007 /* PLYPlanPreview.swift */,
+
+				C12000000000000000000008 /* PLYImportView.swift */,
+
+
+			);
+
+			path = UI;
+
+			sourceTree = "<group>";
+
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5D9688571339E638D7EAD326 /* PlanOpsisMobileTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F9B0E16AD5B8480358C8B0BD /* Build configuration list for PBXNativeTarget "PlanOpsisMobileTests" */;
+			buildPhases = (
+				BE4BC27101E7F29EB444ED01 /* Sources */,
+				D8BB80BA9436BB8095981AD3 /* Frameworks */,
+				9675AE965AB2731D6C0E64EA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6E581A665F98C7986760C02E /* PBXTargetDependency */,
+			);
+			name = PlanOpsisMobileTests;
+			productName = PlanOpsisMobileTests;
+			productReference = 4EF5F27FC2840F4EF5595DEE /* PlanOpsisMobileTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CCD1BDFE40AA20836710EC01 /* PlanOpsisMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F2835358D79238265300CDAC /* Build configuration list for PBXNativeTarget "PlanOpsisMobile" */;
+			buildPhases = (
+				DBF6CD71B0C4EC30100789D3 /* Sources */,
+				205F2BC6E24D7D856CEED464 /* Frameworks */,
+				05E689F15507506FE0040640 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PlanOpsisMobile;
+			productName = PlanOpsisMobile;
+			productReference = 5718BA8B2965F0F686C8E55B /* PlanOpsisMobile.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					5D9688571339E638D7EAD326 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = CCD1BDFE40AA20836710EC01;
+					};
+					CCD1BDFE40AA20836710EC01 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 45DEA8368E74E8D36B2EC1B0 /* Build configuration list for PBXProject "PlanOpsisMobile" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 6CFC827E67DCAE34C72B9CED;
+			productRefGroup = 021F2B7F3E0C61452C987484 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CCD1BDFE40AA20836710EC01 /* PlanOpsisMobile */,
+				5D9688571339E638D7EAD326 /* PlanOpsisMobileTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		05E689F15507506FE0040640 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9675AE965AB2731D6C0E64EA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BE4BC27101E7F29EB444ED01 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D655B3071F34B1579B4CE257 /* SurveyNativeWorkflowTests.swift */,
+				D0D6B1D53667146347F6294F /* SurveyApartmentTests.swift */,
+				1E5B645D03D2F67B0C684284 /* SurveyDeliveryTests.swift */,
+				81A9861BAFDC4E9463B5941E /* SurveyExchangeStoreTests.swift */,
+				1D3EC8143DC3ECC20257BDED /* SurveyDXFRoundTripTests.swift */,
+				1E6602E5625CEDC7F79AB400 /* EditableDXFTests.swift */,
+				CD52F1B75239EA2A2191D595 /* SurveyDimensionTests.swift */,
+				A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift */,
+				2D5B3FFB5E86CE2CBD77FBED /* SurveyMeasurementTests.swift */,
+				04A318CE44CCE4D9741D9551 /* SurveyAttachmentTests.swift */,
+				9816BC246679AA8535299C22 /* SurveyPersistenceTests.swift */,
+				ECA7E40FE60E490295FA6EBB /* PlanOpsisMobileTests.swift in Sources */,
+				49578B0BE304398403C2A638 /* GoldenExchangeTests.swift in Sources */,
+				AA2000000000000000000001 /* ArchitecturalExchangeTests.swift in Sources */,
+				C12900000000000000000002 /* PlanOpsisPLYCoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DBF6CD71B0C4EC30100789D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8A86CFF0D5AAE3D1B548A73 /* SurveyEvidenceView.swift */,
+				CA77E2E7788A721C4A238C55 /* SurveyDeliveryView.swift */,
+				0106C3855380BE434CD5098D /* SurveyDeliveryReader.swift */,
+				286B2F7D1D4017043A6BA7FA /* SurveySheetRenderer.swift */,
+				62702B5A086DD1B614DBC12D /* SurveyDeliveryWriter.swift */,
+				1358D20DF8AE5D15ED700DD5 /* SurveyDimensionPlacementView.swift */,
+				8DFD9E0E593C34089C0FAF68 /* SurveyPointPicker.swift */,
+				C66872B9D2FDFDFD17E4FF9B /* SurveyExchangeReviewView.swift */,
+				806F31C8B858DA30BBB5300F /* SurveyExchangeStore.swift */,
+				EBA631692022D703ED8D8771 /* SurveyDXFReconciliationEngine.swift */,
+				FE513B6D1AAFCC408908D4D6 /* SurveyExchangeManifest.swift */,
+				DFD69C04C8125BE31D318710 /* SurveyDXFDocument.swift */,
+				90B9D8AEB387D7240082F133 /* EditableDXFWriter.swift */,
+				4630D0CE3CE92D779074B581 /* EditableDXFReader.swift */,
+				3A6AB2696316EAC9A36A127B /* SurveyDimensionBuilder.swift */,
+				EDD024596DAA7CFDC2244502 /* SurveyCorrectionEngine.swift */,
+				06B94BB62C04F43B7D83DF67 /* SurveyWorkspaceView.swift */,
+				B4EDCE40E4A827C07C81E477 /* PLYSurveyEvidence.swift */,
+				69848A9DEDA2D78A45BA62E3 /* SurveyMeasurementEngine.swift */,
+				137D57FF6A8852F97BCA8A3A /* SurveyAttachmentStore.swift */,
+				A5925DDE52B39CD56D5901DF /* SurveyRecord.swift */,
+				3441EAB59745702134176B98 /* ProjectMigrator.swift */,
+				3F69D4EE3C7DEED1EFEDB5AF /* RoomPlanAdapter.swift in Sources */,
+				D288B729BBC601EC7199384A /* RoomPlanCoordinateConverter.swift in Sources */,
+				C394FC884325AF2DE036E206 /* PlanOpsisMobileApp.swift in Sources */,
+				2A4C9867D72CADF511643E09 /* PlanOpsisMobileStore.swift in Sources */,
+				7F29AAD04B076E50802129F7 /* MockRoomCaptureProvider.swift in Sources */,
+				FD2928439BEA2AEB821945B3 /* RoomCaptureSnapshot.swift in Sources */,
+				809C623655833DF602CDEBC2 /* RoomPlanCaptureService.swift in Sources */,
+				1EA4BFD59F7528A168756BCF /* ArchitecturalGeometrySnapshot.swift in Sources */,
+				1625CFBE84F997740CAE8C4D /* ArchitecturalWallDrawing.swift in Sources */,
+				B6E8B0668B1BBD98449A503A /* ArchitecturalRoomEnvelope.swift in Sources */,
+				F8A1B2C3D4E5F60718293A4B /* WallJunctionResolver.swift in Sources */,
+				C83000000000000000000001 /* PlanEditingConstraintEngine.swift in Sources */,
+				EC55213750A0C1BB77944D61 /* ParametricGeometryEngine.swift in Sources */,
+				D6A1B2C3D4E5F60718293A4B /* PhysicalDisplayGeometryEngine.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* StructureTopologyEngine.swift in Sources */,
+				B5A1C2D3E4F5061728394A5B /* StructureReconciliationEngine.swift in Sources */,
+				E7A1B2C3D4E5F60718293A4B /* PhysicalPartitionEditTransactionEngine.swift in Sources */,
+				A84000000000000000000001 /* ArchitecturalDraftingConvention.swift in Sources */,
+				AA2000000000000000000000 /* ArchitecturalSymbol.swift in Sources */,
+				F90000000000000000000001 /* ArchitecturalSurveyReadiness.swift in Sources */,
+				B10000000000000000000001 /* PlanOpsisExchangeIdentity.swift in Sources */,
+				E32052533989C0B60CD7964C /* ExchangeGeometryValidation.swift in Sources */,
+				B10000000000000000000003 /* IFC4Exchange.swift in Sources */,
+				A84000000000000000000003 /* DXFExchange.swift in Sources */,
+				36E67C9FC1B81E90AC2DE1E7 /* DXFDrawingValidator.swift in Sources */,
+				A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */,
+				A84000000000000000000007 /* DXFFileDocument.swift in Sources */,
+				A84000000000000000000009 /* DXFPreviewView.swift in Sources */,
+				82EC6A63ED9FF50DE3452216 /* ProjectStore.swift in Sources */,
+				DA2DFA6B4F89E7DE58EBB655 /* PlanOpsisOpening.swift in Sources */,
+				13B9B4ED3BB775C7962B7C7B /* PlanOpsisProject.swift in Sources */,
+				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
+				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
+				D9DFC86DD339C12241314F52 /* FloorPlanView.swift in Sources */,
+				58D4FBFA3D09E9E6150FC9FD /* InspectorView.swift in Sources */,
+				AA27D8E3A3B76B388B8B342C /* Room3DView.swift in Sources */,
+				C11000000000000000000001 /* PLYTypes.swift in Sources */,
+
+				C11000000000000000000002 /* PLYParser.swift in Sources */,
+
+				C11000000000000000000003 /* PLYSectionReconstructor.swift in Sources */,
+
+				C11000000000000000000004 /* PLYWallCandidateEngine.swift in Sources */,
+
+				C11000000000000000000005 /* PLYDXFPreviewExporter.swift in Sources */,
+
+				C11000000000000000000006 /* PLYImportViewModel.swift in Sources */,
+
+				C11000000000000000000007 /* PLYPlanPreview.swift in Sources */,
+
+				C11000000000000000000008 /* PLYImportView.swift in Sources */,
+
+				C11000000000000000000009 /* PLYPlanOpsisAdapter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6E581A665F98C7986760C02E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CCD1BDFE40AA20836710EC01 /* PlanOpsisMobile */;
+			targetProxy = 83A8297435215A3C81E6A85B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		49B4940C5F901788C278DD41 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = P8GCN87B4N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rafail.planopsis;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		5283471FF90C511CFE244FFF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION_AGGRESSIVE = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AB52CB08E0FDF02BF6C67C33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION_AGGRESSIVE = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		BA1313667AFF67C3D4D3D6F1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.planopsis.mobileTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PlanOpsisMobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PlanOpsisMobile";
+			};
+			name = Debug;
+		};
+		DA3246F3964ABD33305FD4C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.planopsis.mobileTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PlanOpsisMobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PlanOpsisMobile";
+			};
+			name = Release;
+		};
+		EF00B4C26D3BA245CBAB3F00 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = P8GCN87B4N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rafail.planopsis;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		45DEA8368E74E8D36B2EC1B0 /* Build configuration list for PBXProject "PlanOpsisMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB52CB08E0FDF02BF6C67C33 /* Debug */,
+				5283471FF90C511CFE244FFF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F2835358D79238265300CDAC /* Build configuration list for PBXNativeTarget "PlanOpsisMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF00B4C26D3BA245CBAB3F00 /* Debug */,
+				49B4940C5F901788C278DD41 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F9B0E16AD5B8480358C8B0BD /* Build configuration list for PBXNativeTarget "PlanOpsisMobileTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA1313667AFF67C3D4D3D6F1 /* Debug */,
+				DA3246F3964ABD33305FD4C3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}
