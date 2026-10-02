@@ -50,6 +50,7 @@ let package = Package(
                 "Geometry/RoomFaceBoundary.swift",
                 "Geometry/WallJunctionResolver.swift",
                 "IFC/IFC4Exchange.swift",
+                "Interaction/PlanDirectEditing.swift",
                 "Interaction/PlanEditingConstraintEngine.swift",
                 "Interaction/SemanticObjectEditingEngine.swift",
                 "PLY/Core/PLYDXFPreviewExporter.swift",

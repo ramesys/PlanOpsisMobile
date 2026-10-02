@@ -1,6 +1,6 @@
 # Changelog
 
-## 12.3 — Professional DXF viewer (in progress)
+## 12.3 — Professional editing and DXF viewer
 
 ### DXF tab
 - **View any DXF, not only PlanOpsis drawings.** *Open DXF…* shows drawings from AutoCAD, Rhino or an
@@ -16,6 +16,27 @@
 - **Measure with object snaps.** Distance (with ΔX, ΔY and angle), chained length, and area with
   perimeter. Snaps: endpoint, midpoint, intersection, centre, quadrant, perpendicular, insertion, node
   and (optional) nearest. Touch and hold for a precision cursor above the finger with a live snap marker.
+
+### Plan editing
+- **Object snaps while editing.** Wall grips and wall drawing snap to wall axes (endpoint, midpoint,
+  intersection, perpendicular), component centres and the DXF underlay, with the snap shown on the plan.
+  Polar tracking keeps directions on 15° steps unless Ortho is on.
+- **Draw walls as a chain.** Each tap adds a wall from the last corner; returning to the first corner
+  closes the outline; *Done* finishes. Type a length (`3450`), length and angle (`3450<90`), relative
+  (`@1200,-300`) or absolute (`#5000,2000`) point instead of tapping.
+- **Push/pull walls.** Drag the arrow grip in the middle of a selected wall to move it parallel to
+  itself; connected walls and T-junction walls stretch with it and openings stay put. Moves that would
+  collapse a wall or push a door off its wall are refused.
+- **Slide doors and windows** along their wall with the grip on a selected opening; the clear distances
+  to both wall ends show while dragging and round to 10 mm (or the grid).
+- **Edit dimensions by value.** Tap a wall or opening dimension (or the length label of the selected
+  wall), type the size, and choose which end stays for walls.
+- **Box selection.** Touch and hold the plan, then drag: to the right selects what is fully inside
+  (window), to the left what is touched (crossing). The selection menu adds *Select all*, *Connected
+  walls* and *Similar objects*.
+- **DXF underlay.** The DXF opened in the viewer can be shown faded under the plan (scaled to
+  millimetres), centred, moved and rotated, and snapped to.
+- **iPad keyboard:** ⌘Z / ⇧⌘Z undo and redo, ⌘⌫ delete, ⌘A select all, Esc cancels, ⌥⌘W draws walls.
 
 ## 12.2 — Accuracy from real scans
 
