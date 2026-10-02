@@ -6,15 +6,19 @@ public struct RoomPlanAdapter {
         /// Openings whose bottom lies this far or less below the floor datum are treated as resting on
         /// the floor (capture noise). Deeper ones are clamped and diagnosed.
         public var floorNoiseToleranceMM: Double
+        /// v12.1: close wall junctions within `GeometryTolerances.junctionJoinMM` in the semantic model.
+        public var normalizeJunctions: Bool
         public var uuidProvider: () -> UUID
 
         public init(
             defaultWallThicknessMM: Double = 120,
             floorNoiseToleranceMM: Double = 30,
+            normalizeJunctions: Bool = true,
             uuidProvider: @escaping () -> UUID = UUID.init
         ) {
             self.defaultWallThicknessMM = defaultWallThicknessMM
             self.floorNoiseToleranceMM = floorNoiseToleranceMM
+            self.normalizeJunctions = normalizeJunctions
             self.uuidProvider = uuidProvider
         }
     }
@@ -74,11 +78,14 @@ public struct RoomPlanAdapter {
             diagnostics.append(contentsOf: result.diagnostics)
         }
 
-        let project = PlanOpsisProject(
+        var project = PlanOpsisProject(
             id: configuration.uuidProvider(),
             sourceStructureRoomPlanID: snapshot.sourceStructureRoomPlanID,
             rooms: rooms
         )
+        if configuration.normalizeJunctions {
+            project = JunctionNormalizer().normalize(project).project
+        }
         return Result(project: project, diagnostics: diagnostics)
     }
 

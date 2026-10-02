@@ -32,6 +32,8 @@ let package = Package(
                 "Geometry/ArchitecturalGeometrySnapshot.swift",
                 "Geometry/ArchitecturalRoomEnvelope.swift",
                 "Geometry/ArchitecturalWallDrawing.swift",
+                "Geometry/GeometryTolerances.swift",
+                "Geometry/JunctionNormalizer.swift",
                 "Geometry/ParametricGeometryEngine.swift",
                 "Geometry/PhysicalDisplayGeometryEngine.swift",
                 "Geometry/WallJunctionResolver.swift",

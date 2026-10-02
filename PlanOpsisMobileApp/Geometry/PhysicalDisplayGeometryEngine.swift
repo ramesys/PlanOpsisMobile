@@ -735,7 +735,7 @@ public struct PhysicalDisplayGeometryEngine {
             endpoints.append(Endpoint(partitionID: partition.id, isStart: false, point: geometry.end))
         }
 
-        let tolerance = 160.0
+        let tolerance = GeometryTolerances.junctionJoinMM
         var flags: [String: PhysicalPartitionJoinFlags] = [:]
         for endpoint in endpoints {
             let joined = endpoints.contains { other in

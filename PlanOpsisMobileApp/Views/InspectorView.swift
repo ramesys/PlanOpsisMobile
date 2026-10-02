@@ -262,6 +262,15 @@ struct InspectorView: View {
             }
 
             Section {
+                Button { store.closeWallJunctions() } label: {
+                    Label("Close wall junctions", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                }
+                .disabled(store.representationMode != .semanticObservations)
+            } footer: {
+                Text("Joins wall endpoints closer than \(Int(GeometryTolerances.junctionJoinMM)) mm into exact corners. Doors and windows keep their position.")
+            }
+
+            Section {
                 DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
                     advancedContent
                 }

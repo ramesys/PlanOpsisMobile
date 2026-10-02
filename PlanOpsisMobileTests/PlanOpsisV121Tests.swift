@@ -168,4 +168,66 @@ final class PlanOpsisV121Tests: XCTestCase {
         XCTAssertFalse(result.project.rooms[0].openings.contains { $0.kind == .door })
         XCTAssertTrue(result.diagnostics.contains { if case .openingMostlyOutsideHost = $0 { return true }; return false })
     }
+
+    // MARK: TASK-005 single tolerance table and exact junctions
+
+    /// 4000 × 3000 room whose corners are each off by up to 80 mm, with a door on the first wall.
+    static func gappedRoom() -> (PlanOpsisProject, doorID: UUID) {
+        let corners = [Point2D(x: 0, y: 0), Point2D(x: 4_000, y: 0), Point2D(x: 4_000, y: 3_000), Point2D(x: 0, y: 3_000)]
+        let startError = [Point2D(x: 40, y: -30), Point2D(x: -55, y: 20), Point2D(x: 10, y: 60), Point2D(x: -25, y: -70)]
+        let endError = [Point2D(x: -60, y: 15), Point2D(x: 35, y: -45), Point2D(x: -20, y: -50), Point2D(x: 70, y: 25)]
+        let walls = corners.indices.map { i -> PlanOpsisWall in
+            let a = corners[i] + startError[i], b = corners[(i + 1) % 4] + endError[i], v = b - a
+            return PlanOpsisWall(start: a, length: v.length, angleRadians: atan2(v.y, v.x), height: 2_700, thickness: 150)
+        }
+        let door = PlanOpsisOpening.door(PlanOpsisDoor(parameters: HostedOpeningParameters(
+            hostWallID: walls[0].id, offsetAlongWall: 1_500, width: 900, height: 2_100, sillHeight: 0)))
+        return (PlanOpsisProject(rooms: [PlanOpsisRoom(walls: walls, openings: [door])]), door.id)
+    }
+
+    func testNormalizerMakesJunctionsExactlyCoincident() throws {
+        let (project, doorID) = Self.gappedRoom()
+        let strict = StructureTopologyEngine(configuration: .init(endpointSnapToleranceMM: GeometryTolerances.coincidenceMM))
+        XCTAssertFalse(try XCTUnwrap(strict.generate(from: project).roomBoundaries.first).isClosed)
+
+        let result = JunctionNormalizer().normalize(project)
+        XCTAssertEqual(result.movedEndpointCount, 8)
+        XCTAssertTrue(result.skippedRoomIDs.isEmpty)
+        let walls = result.project.rooms[0].walls
+        for (index, wall) in walls.enumerated() {
+            XCTAssertEqual((wall.end - walls[(index + 1) % 4].start).length, 0, accuracy: 1e-6)
+        }
+        XCTAssertTrue(try XCTUnwrap(strict.generate(from: result.project).roomBoundaries.first).isClosed)
+
+        // The door keeps its world station along its (slightly moved) host wall.
+        let before = try XCTUnwrap(Self.worldCenter(of: doorID, in: project))
+        let after = try XCTUnwrap(Self.worldCenter(of: doorID, in: result.project))
+        XCTAssertEqual((after - before).dot(walls[0].direction), 0, accuracy: 1e-6)
+        XCTAssertEqual(ExchangeGeometryValidation.errors(in: result.project), [])
+    }
+
+    func testNormalizerIsIdempotentAndLeavesUnfittableRoomsUnchanged() throws {
+        let normalized = JunctionNormalizer().normalize(Self.gappedRoom().0).project
+        XCTAssertEqual(JunctionNormalizer().normalize(normalized).movedEndpointCount, 0)
+
+        var tight = Self.gappedRoom().0
+        // A door filling its whole wall cannot survive the corner moving inwards.
+        tight.rooms[0].openings[0].parameters.width = tight.rooms[0].walls[0].length
+        tight.rooms[0].openings[0].parameters.offsetAlongWall = tight.rooms[0].walls[0].length / 2
+        let result = JunctionNormalizer().normalize(tight)
+        XCTAssertEqual(result.skippedRoomIDs, [tight.rooms[0].id])
+        XCTAssertEqual(result.project, tight)
+    }
+
+    func testRoomPlanImportClosesNearlyMeetingWalls() throws {
+        var mock = MockRoomCaptureProvider().snapshot()
+        let wallIndex = try XCTUnwrap(mock.surfaces.firstIndex { $0.category == .wall })
+        mock.surfaces[wallIndex].dimensions.x -= 0.12 // 60 mm short at both corners
+        let strict = StructureTopologyEngine(configuration: .init(endpointSnapToleranceMM: GeometryTolerances.coincidenceMM))
+
+        let raw = RoomPlanAdapter(configuration: .init(normalizeJunctions: false)).adapt(mock)
+        XCTAssertFalse(try XCTUnwrap(strict.generate(from: raw.project).roomBoundaries.first).isClosed)
+        let imported = RoomPlanAdapter().adapt(mock)
+        XCTAssertTrue(try XCTUnwrap(strict.generate(from: imported.project).roomBoundaries.first).isClosed)
+    }
 }

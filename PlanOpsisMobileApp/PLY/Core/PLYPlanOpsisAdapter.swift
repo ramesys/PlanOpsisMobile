@@ -88,8 +88,10 @@ public struct PLYPlanOpsisAdapter: Sendable {
         // Keep the reconstruction ordering deterministic for a given result while minting fresh
         // PlanOpsis UUIDs at the semantic boundary. IDs then persist through normal project saving.
         let room = PlanOpsisRoom(walls: walls, components: components)
+        // v12.1: reviewed corners become exact semantic junctions, not display-time joins.
+        let project = JunctionNormalizer().normalize(PlanOpsisProject(rooms: [room])).project
         return Result(
-            project: PlanOpsisProject(rooms: [room]),
+            project: project,
             acceptedWallCount: walls.count,
             rejectedWallCount: rejected,
             acceptedStructuralCount: components.count,

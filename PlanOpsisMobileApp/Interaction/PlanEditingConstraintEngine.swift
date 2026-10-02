@@ -30,8 +30,8 @@ public struct PlanEditingSettings: Codable, Hashable, Sendable {
         orthoEnabled: Bool = false,
         gridEnabled: Bool = false,
         gridSpacing: Double = 250,
-        endpointSnapTolerance: Double = 140,
-        connectedEndpointTolerance: Double = 1
+        endpointSnapTolerance: Double = GeometryTolerances.endpointSnapMM,
+        connectedEndpointTolerance: Double = GeometryTolerances.coincidenceMM
     ) {
         self.orthoEnabled = orthoEnabled
         self.gridEnabled = gridEnabled
@@ -311,7 +311,7 @@ extension PlanEditingConstraintEngine {
     }
 
     /// Re-anchors openings hosted by edited walls. An opening keeps its distance from the wall end that
-    /// did not move; when both ends moved (pure transforms) the wall-local offset is already invariant.
+    /// did not move; when both ends moved it keeps its world station projected onto the new axis.
     public static func reanchorHostedOpenings(
         _ openings: [PlanOpsisOpening],
         previousWalls: [UUID: PlanOpsisWall],
@@ -327,6 +327,9 @@ extension PlanEditingConstraintEngine {
             let endMoved = (old.end - new.end).length > coincidenceTolerance
             if startMoved && !endMoved {
                 parameters.offsetAlongWall = new.length - (old.length - parameters.offsetAlongWall)
+            } else if startMoved && endMoved {
+                let world = old.start + old.direction * parameters.offsetAlongWall
+                parameters.offsetAlongWall = (world - new.start).dot(new.direction)
             }
             let half = parameters.width * 0.5
             guard parameters.offsetAlongWall - half >= -coincidenceTolerance,

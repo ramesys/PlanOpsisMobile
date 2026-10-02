@@ -226,7 +226,7 @@ public struct StructureTopologyEngine {
         public var passageCenterToleranceMM: Double
 
         public init(
-            endpointSnapToleranceMM: Double = 160,
+            endpointSnapToleranceMM: Double = GeometryTolerances.junctionJoinMM,
             parallelAngleToleranceRadians: Double = 3 * .pi / 180,
             strongAngleToleranceRadians: Double = 1 * .pi / 180,
             centerlineSeparationToleranceMM: Double = 220,

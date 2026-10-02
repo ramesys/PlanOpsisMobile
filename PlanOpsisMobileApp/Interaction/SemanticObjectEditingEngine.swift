@@ -805,7 +805,7 @@ public struct SemanticObjectEditingEngine {
         return nil
     }
 
-    private func hasExternalJunctions(selectedWallIDs: Set<UUID>, room: PlanOpsisRoom, tolerance: Double = 2.0) -> Bool {
+    private func hasExternalJunctions(selectedWallIDs: Set<UUID>, room: PlanOpsisRoom, tolerance: Double = GeometryTolerances.coincidenceMM) -> Bool {
         guard !selectedWallIDs.isEmpty else { return false }
         let selected = room.walls.filter { selectedWallIDs.contains($0.id) }
         let unselected = room.walls.filter { !selectedWallIDs.contains($0.id) }

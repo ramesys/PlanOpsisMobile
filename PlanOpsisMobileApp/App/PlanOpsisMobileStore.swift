@@ -516,6 +516,22 @@ final class PlanOpsisMobileStore: ObservableObject {
         statusMessage = "Trimmed/extended wall to nearest safe intersection."
     }
 
+    /// v12.1: write near-coincident wall endpoints back as exact junctions (one undoable edit).
+    func closeWallJunctions() {
+        guard representationMode == .semanticObservations, let project else { return }
+        let result = JunctionNormalizer().normalize(project)
+        let skippedNote = result.skippedRoomIDs.isEmpty
+            ? ""
+            : " \(result.skippedRoomIDs.count) room(s) unchanged: an opening would leave its wall."
+        guard result.movedEndpointCount > 0 else {
+            statusMessage = "No open wall junctions within \(Int(GeometryTolerances.junctionJoinMM)) mm." + skippedNote
+            return
+        }
+        if commitSemanticProject(result.project, label: "Close junctions") {
+            statusMessage = "Closed \(result.movedEndpointCount) wall endpoint(s) into exact junctions." + skippedNote
+        }
+    }
+
     func exportDXFText() -> String? {
         guard let project else { return nil }
         let readiness = surveyReadinessEngine.evaluate(project: project, geometry: geometry, captureDiagnostics: diagnostics)
@@ -601,7 +617,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         var candidate = gridEnabled ? editingConstraintEngine.snapToGrid(point, spacing: gridSpacingMM) : point
         if orthoEnabled, let anchor { candidate = editingConstraintEngine.orthoPoint(candidate, anchor: anchor) }
         guard let room = project.rooms.first(where: { $0.id == roomID }) else { return candidate }
-        let tolerance = 140.0
+        let tolerance = GeometryTolerances.endpointSnapMM
         let endpoints = room.walls.flatMap { [($0.start, $0.id), ($0.end, $0.id)] }
         if let nearest = endpoints.map({ ($0.0, ($0.0 - candidate).length) }).filter({ $0.1 <= tolerance }).min(by: { $0.1 < $1.1 }) {
             if orthoEnabled, let anchor {
