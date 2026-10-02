@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */; };
+		85F1AA147ABBA8153333D341 /* PlanDirectEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */; };
 		4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */; };
 		CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */; };
 		B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */; };
@@ -131,6 +133,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123EditingTests.swift"; sourceTree = SOURCE_ROOT; };
+		28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Interaction/PlanDirectEditing.swift"; sourceTree = SOURCE_ROOT; };
 		3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/DXFWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
 		F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/CADViewerView.swift"; sourceTree = SOURCE_ROOT; };
 		23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADViewerDocument.swift"; sourceTree = SOURCE_ROOT; };
@@ -285,6 +289,7 @@
 				1CDAE35C1BDDFB9E0D3D951A /* SurveyDimensionTests.swift */,
 				4B5EE543ED1871D3986975B6 /* PlanOpsisV121Tests.swift */,
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
+				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
 				A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */,
 				FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */,
@@ -463,6 +468,7 @@
 		C83000000000000000000003 /* Interaction */ = {
 			isa = PBXGroup;
 			children = (
+				28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */,
 				C83000000000000000000002 /* PlanEditingConstraintEngine.swift */,
 				A84000000000000000000006 /* SemanticObjectEditingEngine.swift */,
 			);
@@ -674,6 +680,7 @@
 				CD52F1B75239EA2A2191D595 /* SurveyDimensionTests.swift */,
 				986975B6A2E7EB89058A70FA /* PlanOpsisV121Tests.swift in Sources */,
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
+				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
 				B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */,
 				A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift */,
@@ -729,6 +736,7 @@
 				1664EA3D2CB9B572B7D95B9B /* PlanViewTransform.swift in Sources */,
 				7DBBDFF55D723317316B73CB /* RoomFaceBoundary.swift in Sources */,
 				F8A1B2C3D4E5F60718293A4B /* WallJunctionResolver.swift in Sources */,
+				85F1AA147ABBA8153333D341 /* PlanDirectEditing.swift in Sources */,
 				C83000000000000000000001 /* PlanEditingConstraintEngine.swift in Sources */,
 				EC55213750A0C1BB77944D61 /* ParametricGeometryEngine.swift in Sources */,
 				D6A1B2C3D4E5F60718293A4B /* PhysicalDisplayGeometryEngine.swift in Sources */,

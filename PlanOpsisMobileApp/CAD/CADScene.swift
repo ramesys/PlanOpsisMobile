@@ -107,8 +107,10 @@ public struct CADScene: Sendable {
     public let diagnostics: CADReadDiagnostics
     public let index: CADSpatialIndex
 
-    public init(document: CADDocument, limits: CADSceneLimits = CADSceneLimits()) {
-        var builder = CADSceneBuilder(document: document, limits: limits)
+    /// - Parameter transform: placement of the whole drawing, e.g. a unit scale and offset when a DXF is
+    ///   used as an underlay below the plan.
+    public init(document: CADDocument, limits: CADSceneLimits = CADSceneLimits(), transform: CADAffine = .identity) {
+        var builder = CADSceneBuilder(document: document, limits: limits, root: transform)
         builder.build()
         items = builder.items
         bounds = builder.items.reduce(CADRect.empty) { $0.union($1.bounds) }
@@ -192,10 +194,12 @@ private struct CADSceneBuilder {
     var truncated = false
     var cyclicBlocks = Set<String>()
     var simplifiedHatches = 0
+    let root: CADAffine
 
-    init(document: CADDocument, limits: CADSceneLimits) {
+    init(document: CADDocument, limits: CADSceneLimits, root: CADAffine) {
         self.document = document
         self.limits = limits
+        self.root = root
         for layer in document.layers { layerLookup[layer.name.uppercased()] = layer }
     }
 
@@ -203,7 +207,7 @@ private struct CADSceneBuilder {
         for (i, entity) in document.entities.enumerated() {
             entityIndex = i
             hostLayer = entity.layer
-            let root = InsertContext(transform: .identity, layer: entity.layer, color: .white, lineWeightMM: nil, blockName: nil, depth: 0, blockStack: [])
+            let root = InsertContext(transform: self.root, layer: entity.layer, color: .white, lineWeightMM: nil, blockName: nil, depth: 0, blockStack: [])
             draw(entity, in: root)
             if truncated { break }
         }

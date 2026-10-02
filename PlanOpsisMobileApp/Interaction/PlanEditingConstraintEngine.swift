@@ -25,14 +25,19 @@ public struct PlanEditingSettings: Codable, Hashable, Sendable {
     public var gridSpacing: Double
     public var endpointSnapTolerance: Double
     public var connectedEndpointTolerance: Double
+    /// v12.3 polar tracking: when ortho is off, directions within a few degrees of a multiple of this
+    /// angle snap to it. Nil turns polar tracking off.
+    public var polarIncrementDegrees: Double?
 
     public init(
         orthoEnabled: Bool = false,
         gridEnabled: Bool = false,
         gridSpacing: Double = 250,
         endpointSnapTolerance: Double = GeometryTolerances.endpointSnapMM,
-        connectedEndpointTolerance: Double = GeometryTolerances.coincidenceMM
+        connectedEndpointTolerance: Double = GeometryTolerances.coincidenceMM,
+        polarIncrementDegrees: Double? = nil
     ) {
+        self.polarIncrementDegrees = polarIncrementDegrees
         self.orthoEnabled = orthoEnabled
         self.gridEnabled = gridEnabled
         self.gridSpacing = max(1, gridSpacing)
@@ -169,6 +174,8 @@ public struct PlanEditingConstraintEngine: Sendable {
         if settings.orthoEnabled {
             point = orthoPoint(point, anchor: anchor)
             usedOrtho = true
+        } else if let increment = settings.polarIncrementDegrees, let polar = polarPoint(point, anchor: anchor, incrementDegrees: increment) {
+            point = polar
         }
 
         let snapCandidate = nearestCompatibleEndpoint(
