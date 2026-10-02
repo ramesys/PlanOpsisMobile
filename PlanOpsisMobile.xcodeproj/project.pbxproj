@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		526EC7E9CCC6D229F10E42FC /* ProjectDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA0271B7114D619526EC7E9 /* ProjectDerivation.swift */; };
 		DDA0DADAD0A04614B127A782 /* CaptureEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BEA6B6FC3C818CEDDA0DADA /* CaptureEvidence.swift */; };
 		8F5FDE26AB136DDDE619A91E /* JunctionNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D6FA5B986F03D78F5FDE26 /* JunctionNormalizer.swift */; };
 		DE8AC6EB53DA1FE255B39D48 /* GeometryTolerances.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F2CC3966E76125DE8AC6EB /* GeometryTolerances.swift */; };
@@ -114,6 +115,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4AA0271B7114D619526EC7E9 /* ProjectDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Architecture/ProjectDerivation.swift"; sourceTree = SOURCE_ROOT; };
 		7BEA6B6FC3C818CEDDA0DADA /* CaptureEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Capture/CaptureEvidence.swift"; sourceTree = SOURCE_ROOT; };
 		63D6FA5B986F03D78F5FDE26 /* JunctionNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/JunctionNormalizer.swift"; sourceTree = SOURCE_ROOT; };
 		D2F2CC3966E76125DE8AC6EB /* GeometryTolerances.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/GeometryTolerances.swift"; sourceTree = SOURCE_ROOT; };
@@ -359,6 +361,7 @@
 			children = (
 				A84000000000000000000002 /* ArchitecturalDraftingConvention.swift */,
 				AA1000000000000000000000 /* ArchitecturalSymbol.swift */,
+				4AA0271B7114D619526EC7E9 /* ProjectDerivation.swift */,
 				F90000000000000000000002 /* ArchitecturalSurveyReadiness.swift */,
 			);
 			path = Architecture;
@@ -681,6 +684,7 @@
 				E7A1B2C3D4E5F60718293A4B /* PhysicalPartitionEditTransactionEngine.swift in Sources */,
 				A84000000000000000000001 /* ArchitecturalDraftingConvention.swift in Sources */,
 				AA2000000000000000000000 /* ArchitecturalSymbol.swift in Sources */,
+				526EC7E9CCC6D229F10E42FC /* ProjectDerivation.swift in Sources */,
 				F90000000000000000000001 /* ArchitecturalSurveyReadiness.swift in Sources */,
 				B10000000000000000000001 /* PlanOpsisExchangeIdentity.swift in Sources */,
 				E32052533989C0B60CD7964C /* ExchangeGeometryValidation.swift in Sources */,

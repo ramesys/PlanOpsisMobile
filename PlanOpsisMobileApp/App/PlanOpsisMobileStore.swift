@@ -19,7 +19,9 @@ final class PlanOpsisMobileStore: ObservableObject {
         roomFloors: []
     )
     @Published private(set) var physicalGeometry = DisplayGeometrySnapshot.empty
-    @Published var representationMode: GeometryRepresentationMode = .semanticObservations
+    @Published var representationMode: GeometryRepresentationMode = .semanticObservations { didSet { rederive() } }
+    /// v12.1 drawing, annotations and readiness for the current project revision and view settings.
+    @Published private(set) var derivation: ProjectDerivation?
     // Selection is published as one atomic UI invalidation in setSelection().
     // Keeping these as two @Published properties caused two full Plan canvas
     // refreshes for every tap on device.
@@ -33,7 +35,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published var transformRotationDegrees: Double = 90
     @Published var wallOffsetMM: Double = 200
     /// nil means show the complete multi-room structure.
-    @Published var focusedRoomID: UUID?
+    @Published var focusedRoomID: UUID? { didSet { rederive() } }
     /// v8.3 drafting aids. These are editor/session state, not architectural persistence.
     @Published var orthoEnabled: Bool = false
     @Published var gridEnabled: Bool = false
@@ -44,11 +46,11 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published private(set) var pendingWallStart: Point2D?
     @Published private(set) var importedDXFPreview: DXFPreviewSnapshot?
     @Published private(set) var dxfImportDiagnostics: [DXFImportDiagnostic] = []
-    @Published private(set) var diagnostics: [RoomPlanAdapter.Diagnostic] = []
+    @Published private(set) var diagnostics: [RoomPlanAdapter.Diagnostic] = [] { didSet { rederive() } }
     @Published var statusMessage: String?
     @Published var surveyImportProposal:SurveyDXFChangeProposal?
     @Published var showSurveyImportReview=false
-    @Published var dxfExportProfile=DXFExportProfile.compatible
+    @Published var dxfExportProfile=DXFExportProfile.compatible { didSet { rederive() } }
     @Published private(set) var physicalEditDraft: PhysicalPartitionEditDraft?
     @Published private(set) var physicalEditPlan: PhysicalPartitionEditPlan?
     @Published private(set) var physicalEditPreviewGeometry: DisplayGeometrySnapshot?
@@ -66,10 +68,9 @@ final class PlanOpsisMobileStore: ObservableObject {
     private let semanticEditingEngine = SemanticObjectEditingEngine()
     private var dxfExchangeEngine: DXFExchangeEngine { DXFExchangeEngine(includeOpeningDimensions:showOpeningWidths,surveyDrawing:dxfExportProfile == .rhinoEditable || (project.map{$0.survey != .empty} ?? false)) }
     private let ifc4ExchangeEngine = IFC4ExchangeEngine()
-    private let surveyReadinessEngine = ArchitecturalSurveyReadinessEngine()
     @Published var showDimensions = true
     @Published var showRoomText = true
-    @Published var showOpeningWidths = false
+    @Published var showOpeningWidths = false { didSet { rederive() } }
     /// Keeps the latest PLY plan-section evidence visible under the semantic drawing for direct
     /// scan-vs-reconstruction comparison. This is editor/session state, not architectural state.
     @Published var showPLYEvidenceOverlay = false
@@ -198,23 +199,36 @@ final class PlanOpsisMobileStore: ObservableObject {
     }
 
     var dxfPreview: DXFPreviewSnapshot {
-        if let project {
-            return dxfExchangeEngine.preview(for: project, representation: representationMode)
-        }
+        if project != nil { return derivation?.drawing ?? .empty }
         return importedDXFPreview ?? .empty
     }
 
     var planAnnotations: [DXFPrimitive] {
-        guard let project else { return [] }
-        return dxfExchangeEngine.annotations(for: project, focusedRoomID: focusedRoomID, representation: representationMode).filter {
+        guard project != nil, let annotations = derivation?.annotations else { return [] }
+        return annotations.filter {
             (showDimensions && $0.layer == ArchitecturalDraftingConvention.Layer.dimensions.rawValue) ||
             (showRoomText && $0.layer == ArchitecturalDraftingConvention.Layer.roomAnnotation.rawValue)
         }
     }
 
     var dxfReadiness: ArchitecturalSurveyReadinessReport {
-        guard let project else { return .empty }
-        return surveyReadinessEngine.evaluate(project: project, geometry: geometry, captureDiagnostics: diagnostics)
+        guard project != nil else { return .empty }
+        return derivation?.readiness ?? .empty
+    }
+
+    private var derivationSettings: ProjectDerivation.Settings {
+        ProjectDerivation.Settings(
+            representation: representationMode,
+            focusedRoomID: focusedRoomID,
+            includeOpeningDimensions: showOpeningWidths,
+            surveyDrawing: dxfExportProfile == .rhinoEditable || (project.map { $0.survey != .empty } ?? false)
+        )
+    }
+
+    /// Rebuilds derived drawing data for a settings change, reusing geometry when the project is unchanged.
+    private func rederive() {
+        guard let project else { derivation = nil; return }
+        derivation = ProjectDerivation(project: project, settings: derivationSettings, captureDiagnostics: diagnostics, reusing: derivation)
     }
 
     var canExportDXF: Bool { dxfReadiness.canExportDXF }
@@ -540,7 +554,7 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func exportDXFText() -> String? {
         guard let project else { return nil }
-        let readiness = surveyReadinessEngine.evaluate(project: project, geometry: geometry, captureDiagnostics: diagnostics)
+        let readiness = dxfReadiness
         guard readiness.canExportDXF else {
             statusMessage = "DXF export blocked: resolve \(readiness.errorCount) architectural QA error\(readiness.errorCount == 1 ? "" : "s") first."
             return nil
@@ -1506,6 +1520,7 @@ final class PlanOpsisMobileStore: ObservableObject {
             roomFloors: []
         )
         physicalGeometry = .empty
+        derivation = nil
         representationMode = .semanticObservations
         orthoEnabled = false
         gridEnabled = false
@@ -1544,10 +1559,14 @@ final class PlanOpsisMobileStore: ObservableObject {
                 roomFloors: []
             )
             physicalGeometry = .empty
+            derivation = nil
             return
         }
-        geometry = geometryEngine.generate(from: project)
-        physicalGeometry = physicalDisplayEngine.generate(from: project, semanticGeometry: geometry)
+        // One geometry pass per project revision; drawing, annotations and readiness come with it.
+        let next = ProjectDerivation(project: project, settings: derivationSettings, captureDiagnostics: diagnostics, reusing: derivation)
+        geometry = next.semanticGeometry
+        physicalGeometry = next.physicalGeometry
+        derivation = next
     }
 
     private static func describe(_ diagnostic: RoomPlanAdapter.Diagnostic) -> String {

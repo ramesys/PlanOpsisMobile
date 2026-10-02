@@ -18,6 +18,7 @@ let package = Package(
                 "Architecture/ArchitecturalDraftingConvention.swift",
                 "Architecture/ArchitecturalSurveyReadiness.swift",
                 "Architecture/ArchitecturalSymbol.swift",
+                "Architecture/ProjectDerivation.swift",
                 "Capture/CaptureEvidence.swift",
                 "Capture/MockRoomCaptureProvider.swift",
                 "Capture/RoomCaptureSnapshot.swift",

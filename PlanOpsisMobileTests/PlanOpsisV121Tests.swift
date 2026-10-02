@@ -314,4 +314,47 @@ final class PlanOpsisV121Tests: XCTestCase {
         let delivered = try SurveyDeliveryReader().read(root: destination)
         XCTAssertEqual(try CaptureEvidence.latestCapture(of: delivered, in: SurveyAttachmentStore(root: destination)), capture)
     }
+
+    // MARK: TASK-008 single-pass derivation
+
+    func testDerivationMatchesIndependentlyComputedOutputs() throws {
+        let project = RoomPlanAdapter().adapt(MockStructureCaptureProvider().snapshot()).project
+        for representation in GeometryRepresentationMode.allCases {
+            for focus in [nil] + project.rooms.map(\.id) as [UUID?] {
+                for openingWidths in [false, true] {
+                    let settings = ProjectDerivation.Settings(representation: representation, focusedRoomID: focus, includeOpeningDimensions: openingWidths)
+                    let derived = ProjectDerivation(project: project, settings: settings)
+                    let engine = DXFExchangeEngine(includeOpeningDimensions: openingWidths)
+                    XCTAssertEqual(derived.semanticGeometry, ParametricGeometryEngine().generate(from: project))
+                    XCTAssertEqual(derived.drawing, engine.preview(for: project, representation: representation))
+                    let expected = engine.annotations(for: project, focusedRoomID: focus, representation: representation)
+                    XCTAssertEqual(derived.annotations, expected, "\(representation) focus \(String(describing: focus))")
+                    XCTAssertEqual(derived.readiness, ArchitecturalSurveyReadinessEngine().evaluate(project: project))
+                }
+            }
+        }
+    }
+
+    func testDerivationReusesGeometryOnlyForTheSameProject() throws {
+        let project = RoomPlanAdapter().adapt(MockRoomCaptureProvider().snapshot()).project
+        let first = ProjectDerivation(project: project)
+        let refocused = ProjectDerivation(project: project, settings: .init(focusedRoomID: project.rooms[0].id), reusing: first)
+        XCTAssertEqual(refocused.semanticGeometry, first.semanticGeometry)
+
+        var edited = project
+        edited.rooms[0].walls[0].editThickness(300)
+        let rebuilt = ProjectDerivation(project: edited, reusing: first)
+        XCTAssertEqual(rebuilt.semanticGeometry, ParametricGeometryEngine().generate(from: edited))
+        XCTAssertNotEqual(rebuilt.semanticGeometry, first.semanticGeometry)
+    }
+
+    /// Physical passage jambs collected host wall IDs through a Set, so identical projects produced
+    /// differently ordered drawings (DXF files were unaffected: XDATA is sorted on write).
+    func testReconciledDrawingIsDeterministicForRandomIdentities() {
+        for _ in 0..<20 {
+            let project = RoomPlanAdapter().adapt(MockStructureCaptureProvider().snapshot()).project
+            XCTAssertEqual(DXFExchangeEngine().preview(for: project, representation: .reconciledPhysical),
+                           DXFExchangeEngine().preview(for: project, representation: .reconciledPhysical))
+        }
+    }
 }

@@ -126,12 +126,16 @@ public struct DXFExchangeEngine {
 
     // MARK: - Export
 
+    /// - Parameters: semanticGeometry/physicalGeometry: geometry already generated from exactly this
+    ///   `project` (v12.1 `ProjectDerivation`); generated here when nil.
     public func preview(
         for project: PlanOpsisProject,
-        representation: GeometryRepresentationMode = .reconciledPhysical
+        representation: GeometryRepresentationMode = .reconciledPhysical,
+        semanticGeometry precomputedSemantic: ArchitecturalGeometrySnapshot? = nil,
+        physicalGeometry precomputedPhysical: DisplayGeometrySnapshot? = nil
     ) -> DXFPreviewSnapshot {
-        let semanticGeometry = ParametricGeometryEngine().generate(from: project)
-        let physicalGeometry = PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semanticGeometry)
+        let semanticGeometry = precomputedSemantic ?? ParametricGeometryEngine().generate(from: project)
+        let physicalGeometry = precomputedPhysical ?? PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semanticGeometry)
         var primitives: [DXFPrimitive] = []
 
         // v9.5 drafting rule:
@@ -191,7 +195,7 @@ public struct DXFExchangeEngine {
             }
         }
 
-        if includeOpeningDimensions { primitives.append(contentsOf: openingDimensions(for: project)) }
+        if includeOpeningDimensions { primitives.append(contentsOf: openingDimensions(for: project, semanticGeometry: semanticGeometry)) }
         let wallSegments = representation == .reconciledPhysical && project.rooms.count > 1
             ? physicalGeometry.planWallSegments : semanticGeometry.semanticDisplaySnapshot().planWallSegments
         primitives = ArchitecturalWallDrawing.resolve(primitives, segments: wallSegments, project: project)
@@ -226,8 +230,8 @@ public struct DXFExchangeEngine {
     }
 
     /// Optional outer dimension chain for actual semantic opening widths.
-    public func openingDimensions(for project: PlanOpsisProject) -> [DXFPrimitive] {
-        let geometry = ParametricGeometryEngine().generate(from: project)
+    public func openingDimensions(for project: PlanOpsisProject, semanticGeometry: ArchitecturalGeometrySnapshot? = nil) -> [DXFPrimitive] {
+        let geometry = semanticGeometry ?? ParametricGeometryEngine().generate(from: project)
         return project.rooms.flatMap { room in
             let boundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: geometry.topology)
             return room.openings.flatMap { opening -> [DXFPrimitive] in
@@ -1486,7 +1490,7 @@ public struct DXFExchangeEngine {
         }
         let hosts = project.rooms.flatMap(\.openings).filter { opening.sourceOpeningIDs.contains($0.id) }.map { $0.parameters.hostWallID }
         return symbolPrimitives(ArchitecturalSymbolLibrary.opening(opening, roomFloors: roomFloors), ifc: ifcClass(for: opening.kind),
-                                type: type, objectIDs: opening.sourceOpeningIDs, roomIDs: opening.sourceRoomIDs, hostIDs: Array(Set(hosts)))
+                                type: type, objectIDs: opening.sourceOpeningIDs, roomIDs: opening.sourceRoomIDs, hostIDs: Set(hosts).sorted { $0.uuidString < $1.uuidString })
     }
 
     private func dimensionPrimitives(for wall: PlanOpsisWall, roomCentroid: Point2D?) -> [DXFPrimitive] {
