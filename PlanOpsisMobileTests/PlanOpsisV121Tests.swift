@@ -400,4 +400,42 @@ final class PlanOpsisV121Tests: XCTestCase {
         XCTAssertEqual(moved.y, focus.y - 12, accuracy: 1e-9)
         XCTAssertEqual(t.zoomed(by: 0, about: focus, viewWidth: 390, viewHeight: 700), t)
     }
+
+    // MARK: TASK-010 IfcSpace clear interior, names and net area
+
+    static func rectangleRoom(width: Double, depth: Double, thickness: Double) -> PlanOpsisProject {
+        let corners = [Point2D(x: 0, y: 0), Point2D(x: width, y: 0), Point2D(x: width, y: depth), Point2D(x: 0, y: depth)]
+        let walls = corners.indices.map { i -> PlanOpsisWall in
+            let a = corners[i], v = corners[(i + 1) % 4] - a
+            return PlanOpsisWall(start: a, length: v.length, angleRadians: atan2(v.y, v.x), height: 2_700, thickness: thickness)
+        }
+        return PlanOpsisProject(rooms: [PlanOpsisRoom(walls: walls)])
+    }
+
+    func testIfcSpaceUsesClearInteriorAreaMatchingDXF() throws {
+        let project = Self.rectangleRoom(width: 4_000, depth: 3_000, thickness: 120)
+        let topology = StructureTopologyEngine().generate(from: project)
+        let faces = try XCTUnwrap(RoomFaceBoundary(room: project.rooms[0], centerline: ArchitecturalRoomEnvelope.polygon(for: project.rooms[0], topology: topology)))
+        XCTAssertEqual(faces.netArea, 3_880 * 2_880, accuracy: 1e-6)
+
+        let ifc = IFC4ExchangeEngine().exportValidated(project: project)
+        XCTAssertTrue(ifc.canWrite)
+        XCTAssertTrue(ifc.text.contains("IFCQUANTITYAREA('NetFloorArea',$,$,11.174400,$)"), "net floor area in m²")
+        XCTAssertTrue(ifc.text.contains("'Qto_SpaceBaseQuantities'"))
+        XCTAssertTrue(ifc.text.contains("IFCCARTESIANPOINT((60.,60.))"), "space profile starts at the inner face corner")
+        XCTAssertEqual(ifc.objectGlobalIDs[project.rooms[0].id], PlanOpsisExchangeIdentity.ifcGlobalID(for: project.rooms[0].id))
+
+        let space = try XCTUnwrap(DXFExchangeEngine().preview(for: project, representation: .semanticObservations).primitives.first {
+            $0.layer == ArchitecturalDraftingConvention.Layer.space.rawValue && $0.points.count >= 3
+        })
+        XCTAssertEqual(PlanPolygon.area(space.points), faces.netArea, accuracy: 1e-6)
+    }
+
+    func testIfcSpaceCarriesSurveyRoomNameAsEscapedLongName() {
+        var project = Self.rectangleRoom(width: 4_000, depth: 3_000, thickness: 120)
+        project.survey.roomNames[project.rooms[0].id] = "Καθιστικό"
+        let text = IFC4ExchangeEngine().exportValidated(project: project).text
+        XCTAssertTrue(text.contains("'Room 1',$,$,"), "Name stays the stable room number")
+        XCTAssertTrue(text.contains("'\\X2\\039A03B103B803B903C303C403B903BA03CC\\X0\\',.ELEMENT.,.SPACE."), text.components(separatedBy: "\r\n").first { $0.contains("IFCSPACE") } ?? "")
+    }
 }

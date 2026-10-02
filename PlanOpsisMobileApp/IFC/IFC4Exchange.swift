@@ -80,19 +80,30 @@ public struct IFC4ExchangeEngine {
         var openingRefs: [UUID: Int] = [:]
 
         for (roomIndex, room) in project.rooms.enumerated() {
-            let boundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
+            let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
+            // v12.1: the space body is the clear interior between wall faces, the same construction as
+            // the DXF A-SPACE boundary, so drawn and modelled floor areas agree.
+            let faces = RoomFaceBoundary(room: room, centerline: centerline)
             let roomHeight = max(1, room.walls.map(\.height).max() ?? 2_800)
             let roomPlacement = makeLocalPlacement(&writer, relativeTo: storeyPlacement, x: 0, y: 0, z: 0, angleRadians: 0)
             let roomRepresentation: String
-            if boundary.count >= 3 {
-                roomRepresentation = "#\(makeSpaceRepresentation(&writer, context: modelContext, boundary: boundary, height: roomHeight))"
+            if let faces {
+                roomRepresentation = "#\(makeSpaceRepresentation(&writer, context: modelContext, boundary: faces.inner, height: roomHeight))"
             } else {
                 roomRepresentation = "$"
                 issues.append(.init(.warning, "Room \(room.id) has no proven closed boundary; IfcSpace has no invented body."))
             }
             let roomGUID = PlanOpsisExchangeIdentity.ifcGlobalID(for: room.id)
             objectGlobalIDs[room.id] = roomGUID
-            let roomRef = writer.add("IFCSPACE('\(roomGUID)',#\(owner),'Room \(roomIndex + 1)',$,$,#\(roomPlacement),\(roomRepresentation),$,.ELEMENT.,.SPACE.,0.)")
+            // Name is the stable room number; the surveyed room name is the IFC LongName.
+            let surveyName = project.survey.roomNames[room.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let longName = surveyName.isEmpty ? "$" : "'\(stepString(surveyName))'"
+            let roomRef = writer.add("IFCSPACE('\(roomGUID)',#\(owner),'Room \(roomIndex + 1)',$,$,#\(roomPlacement),\(roomRepresentation),\(longName),.ELEMENT.,.SPACE.,0.)")
+            if let faces {
+                let area = writer.add("IFCQUANTITYAREA('NetFloorArea',$,$,\(number(faces.netArea / 1_000_000)),$)")
+                let quantities = writer.add("IFCELEMENTQUANTITY('\(relGUID(room.id, "qto.space.base"))',#\(owner),'Qto_SpaceBaseQuantities',$,$,(#\(area)))")
+                _ = writer.add("IFCRELDEFINESBYPROPERTIES('\(relGUID(room.id, "rel.qto.space.base"))',#\(owner),$,$,(#\(roomRef)),#\(quantities))")
+            }
             spaceRefs[room.id] = roomRef
             roomContainedRefs[room.id] = []
             addIdentityProperties(&writer, owner: owner, semanticID: room.id, entityRef: roomRef, ifcClass: "IfcSpace", semanticType: "space", roomID: room.id, hostID: nil)
