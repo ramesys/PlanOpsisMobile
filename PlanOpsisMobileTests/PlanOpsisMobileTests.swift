@@ -178,7 +178,9 @@ final class PlanOpsisMobileTests: XCTestCase {
         })
     }
 
-    func testOpeningOutsideHostIsPreservedAsSemanticEvidenceButDiagnosed() throws {
+    /// v12.1: an observation lying entirely off its host wall is diagnosed and not imported
+    /// (it previously produced an unexportable opening). Partial overhangs: PlanOpsisV121Tests.
+    func testOpeningOutsideHostIsDiagnosedAndNotImported() throws {
         var snapshot = MockRoomCaptureProvider().snapshot()
         let doorIndex = try XCTUnwrap(snapshot.surfaces.firstIndex { $0.category == .door })
         snapshot.surfaces[doorIndex].transform = .wallTransform(
@@ -190,9 +192,9 @@ final class PlanOpsisMobileTests: XCTestCase {
 
         let result = RoomPlanAdapter().adapt(snapshot)
         let room = try XCTUnwrap(result.project.rooms.first)
-        XCTAssertEqual(room.openings.filter { $0.kind == .door }.count, 1)
+        XCTAssertEqual(room.openings.filter { $0.kind == .door }.count, 0)
         XCTAssertTrue(result.diagnostics.contains {
-            if case .openingExtendsBeyondHost(surfaceSourceID: snapshot.surfaces[doorIndex].sourceRoomPlanID, hostWallID: _) = $0 { return true }
+            if case .openingMostlyOutsideHost(surfaceSourceID: snapshot.surfaces[doorIndex].sourceRoomPlanID, hostWallID: _) = $0 { return true }
             return false
         })
     }

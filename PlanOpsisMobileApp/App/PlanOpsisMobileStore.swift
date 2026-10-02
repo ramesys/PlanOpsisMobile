@@ -1533,9 +1533,11 @@ final class PlanOpsisMobileStore: ObservableObject {
         case .unsupportedComplexWall(let sourceID, let count):
             return "Wall \(short(sourceID)) has a non-uniform polygon (\(count) corners). It was skipped rather than flattened."
         case .openingExtendsBeyondHost(let sourceID, _):
-            return "Opening \(short(sourceID)) extends beyond its host wall; derived geometry is clipped to the wall."
+            return "Opening \(short(sourceID)) extended beyond its host wall and was clipped to the wall."
         case .openingVerticalExtentOutsideHost(let sourceID, _):
-            return "Opening \(short(sourceID)) exceeds host-wall height; derived geometry is clipped vertically."
+            return "Opening \(short(sourceID)) extended below the floor or above its host wall and was clipped vertically."
+        case .openingMostlyOutsideHost(let sourceID, _):
+            return "Opening \(short(sourceID)) lay mostly outside its host wall and was not imported."
         }
     }
 

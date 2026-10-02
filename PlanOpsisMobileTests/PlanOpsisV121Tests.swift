@@ -139,4 +139,33 @@ final class PlanOpsisV121Tests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(deeper.project.rooms[0].openings.first { $0.kind == .door }).parameters.sillHeight, 0)
         XCTAssertTrue(deeper.diagnostics.contains { if case .openingVerticalExtentOutsideHost = $0 { return true }; return false })
     }
+
+    // MARK: TASK-004 RoomPlan opening overhang policy
+
+    func testPartiallyOverhangingDoorIsClampedAndExportable() throws {
+        var mock = MockRoomCaptureProvider().snapshot()
+        let doorIndex = try XCTUnwrap(mock.surfaces.firstIndex { $0.category == .door })
+        // Host wall runs x = 0…4 m; a 0.9 m door centred 0.1 m from its start overhangs by 0.35 m.
+        mock.surfaces[doorIndex].transform = .wallTransform(centerX: 0.1, centerY: 1.05, centerZ: 0, planAngleRadians: 0)
+        let result = Self.adapter().adapt(mock)
+        let door = try XCTUnwrap(result.project.rooms[0].openings.first { $0.kind == .door })
+        XCTAssertEqual(door.parameters.offsetAlongWall - door.parameters.width / 2, 0, accuracy: 1e-6)
+        XCTAssertEqual(door.parameters.offsetAlongWall + door.parameters.width / 2, 550, accuracy: 1e-6)
+        XCTAssertTrue(result.diagnostics.contains { if case .openingExtendsBeyondHost = $0 { return true }; return false })
+
+        let readiness = ArchitecturalSurveyReadinessEngine().evaluate(project: result.project, captureDiagnostics: result.diagnostics)
+        XCTAssertEqual(readiness.errorCount, 0, readiness.issues.map(\.message).joined(separator: ";"))
+        XCTAssertTrue(DXFExchangeEngine().exportValidated(project: result.project).canWrite)
+        XCTAssertTrue(IFC4ExchangeEngine().exportValidated(project: result.project).canWrite)
+    }
+
+    func testDoorMostlyOffItsWallIsNotImported() throws {
+        var mock = MockRoomCaptureProvider().snapshot()
+        let doorIndex = try XCTUnwrap(mock.surfaces.firstIndex { $0.category == .door })
+        // Only 0.3 m of the 0.9 m door lies on the wall.
+        mock.surfaces[doorIndex].transform = .wallTransform(centerX: -0.15, centerY: 1.05, centerZ: 0, planAngleRadians: 0)
+        let result = Self.adapter().adapt(mock)
+        XCTAssertFalse(result.project.rooms[0].openings.contains { $0.kind == .door })
+        XCTAssertTrue(result.diagnostics.contains { if case .openingMostlyOutsideHost = $0 { return true }; return false })
+    }
 }

@@ -178,6 +178,8 @@ public struct ArchitecturalSurveyReadinessEngine {
                 issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence had invalid dimensions and was skipped."))
             case .openingExtendsBeyondHost(let sourceID, _), .openingVerticalExtentOutsideHost(let sourceID, _):
                 issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence required clipping to its host wall."))
+            case .openingMostlyOutsideHost(let sourceID, _):
+                issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence lay mostly outside its host wall and was not imported."))
             }
         }
 

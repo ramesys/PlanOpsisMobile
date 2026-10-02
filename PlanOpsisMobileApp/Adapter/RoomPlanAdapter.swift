@@ -28,6 +28,8 @@ public struct RoomPlanAdapter {
         case unsupportedComplexWall(surfaceSourceID: UUID, polygonCornerCount: Int)
         case openingExtendsBeyondHost(surfaceSourceID: UUID, hostWallID: UUID)
         case openingVerticalExtentOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
+        /// v12.1: less than half of the observed opening lies on its host wall; it was not imported.
+        case openingMostlyOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
     }
 
     public struct Result {
@@ -158,9 +160,25 @@ public struct RoomPlanAdapter {
             let heightMM = coordinates.millimetres(fromMetres: surface.dimensions.y)
             let rawSillMM = coordinates.bottomElevationMM(surface: surface) - (floorElevationMM ?? 0)
             let sillMM = max(0, rawSillMM)
-            let halfWidth = widthMM * 0.5
+            // v12.1 overhang policy: the semantic opening is the part of the observation that lies on its
+            // host wall. Exporters reject openings outside their host, so clamping here keeps real scans
+            // exportable; an observation mostly off its host is evidence of a wrong host, not an opening.
+            let observedStart = offset - widthMM * 0.5
+            let observedEnd = offset + widthMM * 0.5
+            let clampedStart = max(0, observedStart)
+            let clampedEnd = min(hostWall.length, observedEnd)
+            let clampedTop = min(hostWall.height, sillMM + heightMM)
+            let clampedWidth = clampedEnd - clampedStart
+            let clampedHeight = clampedTop - sillMM
+            guard clampedWidth >= widthMM * 0.5, clampedHeight >= heightMM * 0.5 else {
+                diagnostics.append(.openingMostlyOutsideHost(
+                    surfaceSourceID: surface.sourceRoomPlanID,
+                    hostWallID: hostWallID
+                ))
+                continue
+            }
 
-            if offset - halfWidth < -1e-6 || offset + halfWidth > hostWall.length + 1e-6 {
+            if observedStart < -1e-6 || observedEnd > hostWall.length + 1e-6 {
                 diagnostics.append(.openingExtendsBeyondHost(
                     surfaceSourceID: surface.sourceRoomPlanID,
                     hostWallID: hostWallID
@@ -177,9 +195,9 @@ public struct RoomPlanAdapter {
                 id: configuration.uuidProvider(),
                 sourceRoomPlanID: surface.sourceRoomPlanID,
                 hostWallID: hostWallID,
-                offsetAlongWall: offset,
-                width: widthMM,
-                height: heightMM,
+                offsetAlongWall: (clampedStart + clampedEnd) * 0.5,
+                width: clampedWidth,
+                height: clampedHeight,
                 sillHeight: sillMM,
                 confidence: surface.confidence
             )
