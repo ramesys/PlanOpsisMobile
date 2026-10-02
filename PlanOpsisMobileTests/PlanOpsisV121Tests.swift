@@ -230,4 +230,52 @@ final class PlanOpsisV121Tests: XCTestCase {
         let imported = RoomPlanAdapter().adapt(mock)
         XCTAssertTrue(try XCTUnwrap(strict.generate(from: imported.project).roomBoundaries.first).isClosed)
     }
+
+    // MARK: TASK-006 survey-aware delete
+
+    static func measuredWallProject() -> (PlanOpsisProject, wallID: UUID, observationIDs: [UUID]) {
+        var project = GoldenExchangeTests.project()
+        let room = project.rooms[0]
+        let wall = room.walls.first { $0.start == Point2D(x: -5_000, y: -3_000) }!
+        let door = room.openings.first { $0.parameters.hostWallID == wall.id }!
+        let length = SurveyObservation(target: .wallLength(roomID: room.id, wallID: wall.id), observedMM: 12_000, toleranceMM: 5)
+        // A check measured from another wall to this wall's door edge also depends on the deleted wall.
+        let other = room.walls.first { $0.id != wall.id }!
+        let edge = SurveyObservation(target: .distance(
+            from: SurveyPoint(roomID: room.id, wallID: other.id, location: .start),
+            to: SurveyPoint(roomID: room.id, wallID: wall.id, location: .openingEdge(openingID: door.id, side: -1))), observedMM: 3_000)
+        project.survey.observations = [length, edge]
+        project.survey.dimensions = [SurveyDimensionDefinition(target: .wallLength(roomID: room.id, wallID: wall.id), offsetMM: 600)]
+        let hash = String(repeating: "a", count: 64)
+        project.survey.evidence = [SurveyEvidenceReference(id: UUID(), projectID: project.id, relativePath: "assets/\(project.id.uuidString)/\(hash).asset",
+                                                           sha256: hash, sourceName: "wall.jpg", kind: .photo, entityID: wall.id)]
+        return (project, wall.id, [length.id, edge.id])
+    }
+
+    func testDeletingMeasuredWallRemovesItsSurveyReferences() throws {
+        let (project, wallID, observationIDs) = Self.measuredWallProject()
+        let result = try XCTUnwrap(SemanticObjectEditingEngine().deleteReportingSurveyConflicts(entityIDs: [wallID], from: project))
+        XCTAssertNoThrow(try SurveyValidation.validate(result.project))
+        XCTAssertEqual(Set(result.removedObservationIDs), Set(observationIDs))
+        XCTAssertEqual(result.removedDimensionIDs, project.survey.dimensions.map(\.id))
+        XCTAssertTrue(result.project.survey.observations.isEmpty)
+        XCTAssertTrue(result.project.survey.dimensions.isEmpty)
+        XCTAssertEqual(result.project.survey.evidence.count, 1)
+        XCTAssertNil(result.project.survey.evidence[0].entityID)
+        XCTAssertEqual(result.unlinkedEvidenceIDs, [project.survey.evidence[0].id])
+
+        var history = PlanOpsisEditHistory()
+        history.record(EditorHistorySnapshot(project: project), label: "Delete")
+        XCTAssertEqual(history.undo(current: EditorHistorySnapshot(project: result.project))?.project, project)
+    }
+
+    func testLockedMeasurementBlocksDeleteWithExplanation() throws {
+        var (project, wallID, observationIDs) = Self.measuredWallProject()
+        project.survey.observations[0].locked = true
+        XCTAssertThrowsError(try SemanticObjectEditingEngine().deleteReportingSurveyConflicts(entityIDs: [wallID], from: project)) { error in
+            XCTAssertEqual(error as? SemanticDeleteError, .lockedMeasurements([observationIDs[0]]))
+            XCTAssertTrue(error.localizedDescription.contains("Unlock"))
+        }
+        XCTAssertNil(SemanticObjectEditingEngine().delete(entityID: wallID, from: project))
+    }
 }

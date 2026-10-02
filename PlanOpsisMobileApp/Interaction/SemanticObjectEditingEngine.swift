@@ -10,9 +10,27 @@ public enum PlanObjectKind: String, Codable, Hashable, Sendable, CaseIterable {
 public struct SemanticDeleteResult: Sendable {
     public var project: PlanOpsisProject
     public var deletedIDs: [UUID]
+    /// v12.1 survey bookkeeping: measurements and dimension placements that referenced deleted objects
+    /// are removed with them; evidence linked to a deleted object stays in the project, unlinked.
+    public var removedObservationIDs: [UUID] = []
+    public var removedDimensionIDs: [UUID] = []
+    public var unlinkedEvidenceIDs: [UUID] = []
     public init(project: PlanOpsisProject, deletedIDs: [UUID]) {
         self.project = project
         self.deletedIDs = deletedIDs
+    }
+}
+
+public enum SemanticDeleteError: Error, Equatable, LocalizedError {
+    /// Locked measurements are field-verified facts; they must be unlocked explicitly before the object
+    /// they measure can be deleted.
+    case lockedMeasurements([UUID])
+
+    public var errorDescription: String? {
+        switch self {
+        case .lockedMeasurements(let ids):
+            return "Unlock \(ids.count) locked measured check\(ids.count == 1 ? "" : "s") on this object before deleting it."
+        }
     }
 }
 
@@ -379,7 +397,24 @@ public struct SemanticObjectEditingEngine {
     }
 
     /// v9.8 atomic multi-delete. Selected walls cascade their hosted openings exactly once.
+    /// Returns nil when nothing was deleted or a locked measurement protects a deleted object;
+    /// use `deleteReportingSurveyConflicts` to learn which.
     public func delete(
+        entityIDs: Set<UUID>,
+        from project: PlanOpsisProject
+    ) -> SemanticDeleteResult? {
+        try? deleteReportingSurveyConflicts(entityIDs: entityIDs, from: project)
+    }
+
+    /// v12.1 survey-aware multi-delete (see `SemanticDeleteResult` for the survey rules).
+    public func deleteReportingSurveyConflicts(
+        entityIDs: Set<UUID>,
+        from project: PlanOpsisProject
+    ) throws -> SemanticDeleteResult? {
+        try deleteGeometry(entityIDs: entityIDs, from: project).map(reconcileSurvey)
+    }
+
+    private func deleteGeometry(
         entityIDs: Set<UUID>,
         from project: PlanOpsisProject
     ) -> SemanticDeleteResult? {
@@ -904,8 +939,33 @@ public struct SemanticObjectEditingEngine {
     }
 
     /// Deletes one semantic object. Deleting a wall cascades to openings hosted by that wall,
-    /// because orphaned openings are invalid architectural state.
+    /// because orphaned openings are invalid architectural state. Survey references follow the
+    /// v12.1 rules; nil if a locked measurement protects the object.
     public func delete(entityID: UUID, from project: PlanOpsisProject) -> SemanticDeleteResult? {
+        try? deleteGeometry(entityID: entityID, from: project).map(reconcileSurvey)
+    }
+
+    private func reconcileSurvey(_ result: SemanticDeleteResult) throws -> SemanticDeleteResult {
+        let deleted = Set(result.deletedIDs)
+        var output = result
+        var survey = result.project.survey
+        let stale = survey.observations.filter { !deleted.isDisjoint(with: $0.target.referencedEntityIDs) }
+        let locked = stale.filter(\.locked).map(\.id)
+        guard locked.isEmpty else { throw SemanticDeleteError.lockedMeasurements(locked) }
+        output.removedObservationIDs = stale.map(\.id)
+        survey.observations.removeAll { !deleted.isDisjoint(with: $0.target.referencedEntityIDs) }
+        output.removedDimensionIDs = survey.dimensions.filter { !deleted.isDisjoint(with: $0.target.referencedEntityIDs) }.map(\.id)
+        survey.dimensions.removeAll { !deleted.isDisjoint(with: $0.target.referencedEntityIDs) }
+        for index in survey.evidence.indices {
+            guard let entityID = survey.evidence[index].entityID, deleted.contains(entityID) else { continue }
+            survey.evidence[index].entityID = nil
+            output.unlinkedEvidenceIDs.append(survey.evidence[index].id)
+        }
+        output.project.survey = survey
+        return output
+    }
+
+    private func deleteGeometry(entityID: UUID, from project: PlanOpsisProject) -> SemanticDeleteResult? {
         var next = project
         for roomIndex in next.rooms.indices {
             if let wallIndex = next.rooms[roomIndex].walls.firstIndex(where: { $0.id == entityID }) {

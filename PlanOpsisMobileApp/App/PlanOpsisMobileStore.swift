@@ -399,12 +399,18 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func deleteSelectedObject() {
         let ids = selectionSet(primary: selectedID)
-        guard let project, !ids.isEmpty, let result = semanticEditingEngine.delete(entityIDs: ids, from: project) else { return }
+        guard let project, !ids.isEmpty else { return }
+        let deletion: SemanticDeleteResult?
+        do { deletion = try semanticEditingEngine.deleteReportingSurveyConflicts(entityIDs: ids, from: project) }
+        catch { statusMessage = error.localizedDescription; return }
+        guard let result = deletion else { return }
         creationTool = nil
         componentCreationTool = nil
         pendingWallStart = nil
-        commitSemanticProject(result.project, label: "Delete", selectionAfter: [], primaryAfter: nil)
-        statusMessage = "Deleted \(result.deletedIDs.count) semantic object\(result.deletedIDs.count == 1 ? "" : "s")."
+        guard commitSemanticProject(result.project, label: "Delete", selectionAfter: [], primaryAfter: nil) else { return }
+        let surveyCount = result.removedObservationIDs.count + result.removedDimensionIDs.count
+        statusMessage = "Deleted \(result.deletedIDs.count) semantic object\(result.deletedIDs.count == 1 ? "" : "s")"
+            + (surveyCount > 0 ? " and \(surveyCount) measurement/dimension reference\(surveyCount == 1 ? "" : "s")." : ".")
     }
 
     func alignSelection(_ alignment: PlanAlignment) {
