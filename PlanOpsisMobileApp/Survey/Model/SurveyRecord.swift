@@ -20,14 +20,18 @@ public struct SurveyPoint: Codable, Hashable, Sendable {
 }
 public enum SurveyProjectionAxis:String,Codable,Hashable,Sendable { case horizontal,vertical }
 public enum SurveyMeasurementTarget: Codable, Hashable, Sendable {
+    /// Wall axis (centreline) length. Not physically tapeable; kept for drawing checks and old records.
     case wallLength(roomID: UUID, wallID: UUID)
     case wallThickness(roomID: UUID, wallID: UUID)
+    /// v12.2: length of one wall face as a surveyor tapes it, corner to corner. `side` is +1 or -1 along the
+    /// wall's normal; ends are trimmed or extended to the matching face of each connected wall.
+    case wallFaceLength(roomID: UUID, wallID: UUID, side: Int)
     case openingWidth(roomID: UUID, openingID: UUID)
     case distance(from: SurveyPoint, to: SurveyPoint)
     case projectedDistance(from:SurveyPoint,to:SurveyPoint,axis:SurveyProjectionAxis)
     public var entityIDs: [UUID] {
         switch self {
-        case .wallLength(_, let id), .wallThickness(_, let id), .openingWidth(_, let id): return [id]
+        case .wallLength(_, let id), .wallThickness(_, let id), .openingWidth(_, let id), .wallFaceLength(_, let id, _): return [id]
         case .distance(let a, let b),.projectedDistance(let a,let b,_): return [a.wallID, b.wallID]
         }
     }
@@ -136,6 +140,9 @@ public enum SurveyValidation {
         }
         switch target {
         case .wallLength(let r, let w), .wallThickness(let r, let w): _ = try wall(r,w)
+        case .wallFaceLength(let r, let w, let side):
+            _ = try wall(r,w)
+            guard side == -1 || side == 1 else { throw SurveyError.invalid("Invalid wall-face side.") }
         case .openingWidth(let r, let id):
             guard let room = project.rooms.first(where: { $0.id == r }), let o = room.openings.first(where: { $0.id == id }), o.parameters.width.isFinite, o.parameters.width > 0, room.walls.contains(where: { $0.id == o.parameters.hostWallID }) else { throw SurveyError.invalid("Measurement opening is missing or invalid.") }
         case .distance(let a, let b),.projectedDistance(let a,let b,_):

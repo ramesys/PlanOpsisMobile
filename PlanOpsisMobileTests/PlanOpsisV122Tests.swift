@@ -115,4 +115,61 @@ final class PlanOpsisV122Tests: XCTestCase {
         XCTAssertTrue(DXFExchangeEngine().exportValidated(project: result.project, representation: .semanticObservations).canWrite)
         XCTAssertTrue(IFC4ExchangeEngine().exportValidated(project: result.project).canWrite)
     }
+
+    // MARK: 2. Face-based survey measurements
+
+    func testFaceLengthsAtSquareCornersAndRoomSide() throws {
+        let project = PlanOpsisV121Tests.rectangleRoom(width: 4_000, depth: 3_000, thickness: 200)
+        let room = project.rooms[0]
+        let bottom = try XCTUnwrap(room.walls.first { $0.start == .zero })
+        let engine = SurveyMeasurementEngine()
+        let inside = try XCTUnwrap(engine.roomSide(ofWall: bottom.id, in: room))
+        XCTAssertEqual(inside, 1, "the room lies on the +normal side of a counter-clockwise loop")
+        let (a, b) = try engine.faceSegment(wallID: bottom.id, side: inside, in: room)
+        XCTAssertEqual((b - a).length, 3_800, accuracy: 1e-9)
+        XCTAssertEqual(a.x, 100, accuracy: 1e-9); XCTAssertEqual(a.y, 100, accuracy: 1e-9)
+        let (c, d) = try engine.faceSegment(wallID: bottom.id, side: -inside, in: room)
+        XCTAssertEqual((d - c).length, 4_200, accuracy: 1e-9)
+        // Every wall's inside face agrees with the clear interior used for drawings and IFC.
+        for wall in room.walls {
+            let side = try XCTUnwrap(engine.roomSide(ofWall: wall.id, in: room))
+            let (p, q) = try engine.faceSegment(wallID: wall.id, side: side, in: room)
+            XCTAssertEqual((q - p).length, wall.length - 200, accuracy: 1e-9)
+        }
+    }
+
+    func testFaceStopsAtThroughWallAtTJunction() throws {
+        var project = PlanOpsisV121Tests.rectangleRoom(width: 4_000, depth: 3_000, thickness: 200)
+        // A 100 mm partition from the bottom wall's axis up to the top wall's axis at x = 2000.
+        let partition = PlanOpsisWall(start: Point2D(x: 2_000, y: 0), length: 3_000, angleRadians: .pi / 2, height: 2_700, thickness: 100)
+        project.rooms[0].walls.append(partition)
+        let (a, b) = try SurveyMeasurementEngine().faceSegment(wallID: partition.id, side: 1, in: project.rooms[0])
+        XCTAssertEqual(a.y, 100, accuracy: 1e-9)
+        XCTAssertEqual(b.y, 2_900, accuracy: 1e-9)
+        XCTAssertEqual((b - a).length, 2_800, accuracy: 1e-9)
+    }
+
+    func testFaceLengthMeasurementCorrectsTheAxis() throws {
+        var project = PlanOpsisV121Tests.rectangleRoom(width: 4_000, depth: 3_000, thickness: 200)
+        let room = project.rooms[0]
+        let bottom = try XCTUnwrap(room.walls.first { $0.start == .zero })
+        let target = SurveyMeasurementTarget.wallFaceLength(roomID: room.id, wallID: bottom.id, side: 1)
+        XCTAssertNoThrow(try SurveyValidation.validate(target, in: project))
+        XCTAssertThrowsError(try SurveyValidation.validate(.wallFaceLength(roomID: room.id, wallID: bottom.id, side: 0), in: project))
+        let observation = SurveyObservation(target: target, observedMM: 3_900, toleranceMM: 2)
+        project.survey.observations = [observation]
+        XCTAssertEqual(SurveyMeasurementEngine().evaluate(observation, in: project).residualMM ?? .nan, -100, accuracy: 1e-9)
+
+        let engine = SurveyCorrectionEngine()
+        let proposal = engine.preview(observationID: observation.id, anchor: .start, project: project)
+        XCTAssertTrue(proposal.canApply, proposal.issues.joined(separator: ";"))
+        let corrected = try engine.apply(proposal, to: project)
+        XCTAssertEqual(SurveyMeasurementEngine().evaluate(observation, in: corrected).residualMM ?? .nan, 0, accuracy: 1e-6)
+        // The corner moved ~100 mm, so the connected wall now leans slightly and the axis needs a little more.
+        XCTAssertEqual(try XCTUnwrap(corrected.rooms[0].walls.first { $0.id == bottom.id }).length, 4_100, accuracy: 10)
+
+        // The new target persists and reloads.
+        let data = try JSONEncoder().encode(corrected)
+        XCTAssertEqual(try ProjectMigrator().decode(data), corrected)
+    }
 }

@@ -35,7 +35,10 @@ struct SurveyWorkspaceView: View {
                         Text("Choose a parameter").tag(Optional<SurveyMeasurementTarget>.none)
                         ForEach(project.rooms) { room in
                             ForEach(Array(room.walls.enumerated()),id:\.element.id) { index,wall in
-                                Text("Wall \(index+1) · axis length").tag(Optional(SurveyMeasurementTarget.wallLength(roomID:room.id,wallID:wall.id)))
+                                // v12.2: offer what can be taped on site: face lengths corner to corner.
+                                let inside=SurveyMeasurementEngine().roomSide(ofWall:wall.id,in:room) ?? 1
+                                Text("Wall \(index+1) · inside face").tag(Optional(SurveyMeasurementTarget.wallFaceLength(roomID:room.id,wallID:wall.id,side:inside)))
+                                Text("Wall \(index+1) · outside face").tag(Optional(SurveyMeasurementTarget.wallFaceLength(roomID:room.id,wallID:wall.id,side:-inside)))
                                 Text("Wall \(index+1) · thickness").tag(Optional(SurveyMeasurementTarget.wallThickness(roomID:room.id,wallID:wall.id)))
                             }
                             ForEach(Array(room.openings.enumerated()),id:\.element.id) { index,opening in
@@ -50,7 +53,7 @@ struct SurveyWorkspaceView: View {
                     TextField("Method",text:$method)
                     Button("Record measurement") { record() }.disabled(checkDistance ? (from==nil || to==nil):target==nil)
                     if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
-                    Text("Axis length and clear face distance are different measurements. No tolerance means no accuracy pass/fail.").font(.caption)
+                    Text("Face lengths run corner to corner along the wall surface, as taped on site. No tolerance means no accuracy pass/fail.").font(.caption)
                 }
                 Section("Measured checks") {
                     ForEach(project.survey.observations) { o in
