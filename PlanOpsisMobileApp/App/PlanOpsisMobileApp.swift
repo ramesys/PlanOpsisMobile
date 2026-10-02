@@ -303,15 +303,7 @@ struct PlanOpsisRootView: View {
                 emptyProject
             }
         case .dxf:
-            if !store.dxfPreview.primitives.isEmpty {
-                DXFPreviewView(snapshot: store.dxfPreview)
-            } else {
-                ContentUnavailableView(
-                    "No DXF drawing",
-                    systemImage: "doc.text",
-                    description: Text("Scan a room, open a project, or import DXF geometry.")
-                )
-            }
+            DXFWorkspaceView(store: store)
         }
     }
 

@@ -252,6 +252,27 @@ final class PlanOpsisV123CADTests: XCTestCase {
         XCTAssertTrue(compatibleScene.layers.contains { $0.id == ArchitecturalDraftingConvention.Layer.wall.rawValue })
     }
 
+    func testProjectDrawingAdapterKeepsLayersAndIdentity() throws {
+        let project = GoldenExchangeTests.project()
+        let preview = ProjectDerivation(project: project).drawing
+        let drawing = CADViewerDocument(source: .project, document: CADDocument(preview: preview))
+        XCTAssertEqual(drawing.title, "Project drawing")
+        XCTAssertEqual(drawing.document.units, .millimetres)
+        XCTAssertEqual(drawing.document.entities.count, preview.primitives.filter { $0.kind != .text || $0.text != nil }.count)
+        let wallLayer = ArchitecturalDraftingConvention.Layer.wall.rawValue
+        XCTAssertEqual(drawing.document.layer(named: wallLayer).lineWeight, .hundredthsMM(50))
+        XCTAssertTrue(drawing.scene.initiallyHiddenLayers.contains(ArchitecturalDraftingConvention.Layer.wallCenter.rawValue))
+        let wall = try XCTUnwrap(drawing.scene.items.first { $0.layer == wallLayer })
+        let entity = try XCTUnwrap(drawing.entity(for: wall))
+        let wallIDs = Set(project.rooms.flatMap(\.walls).map(\.id.uuidString))
+        XCTAssertTrue(entity.xdata[DXFExchangeEngine.applicationID]?.contains(where: wallIDs.contains) == true)
+        let rows = drawing.inspection(of: wall)
+        XCTAssertEqual(rows.first, CADInspectionRow("Type", entity.type))
+        XCTAssertEqual(rows[1], CADInspectionRow("Layer", wallLayer))
+        XCTAssertTrue(rows.contains { $0.title == "PlanOpsis object" })
+        XCTAssertTrue(rows.contains { $0.title == "Area" || $0.title == "Length" })
+    }
+
     /// Opens a DXF from outside the repository: `PLANOPSIS_DXF_SAMPLE=/path/to/file.dxf swift test`.
     func testExternalSampleDrawing() throws {
         guard let path = ProcessInfo.processInfo.environment["PLANOPSIS_DXF_SAMPLE"] else { throw XCTSkip("PLANOPSIS_DXF_SAMPLE not set") }

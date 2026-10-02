@@ -7,6 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */; };
+		CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */; };
+		B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */; };
+		834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */; };
+		AD32316DD5DDA5015C528575 /* CADSpatialIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */; };
+		25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */; };
+		01AFB708D544BB83BF84537D /* CADScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */; };
+		331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D589FA234E905733113569 /* CADMeasurement.swift */; };
+		8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */; };
+		BE543E7624A0AA7DC09BFF26 /* CADDocumentReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3A6A6DC29392BFBE543E76 /* CADDocumentReader.swift */; };
+		9800C7C476A6E40FC838D23D /* CADDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6D9909657535279800C7C4 /* CADDocument.swift */; };
 		771B4D1882C7CF0CA680A2ED /* ProjectLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */; };
 		B913E12E5C85AE607AA8B8C7 /* ProjectLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD5484BD409EC90B913E12E /* ProjectLibrary.swift */; };
 		B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */; };
@@ -35,7 +46,6 @@
 		A84000000000000000000003 /* DXFExchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000004 /* DXFExchange.swift */; };
 		A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000006 /* SemanticObjectEditingEngine.swift */; };
 		A84000000000000000000007 /* DXFFileDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000008 /* DXFFileDocument.swift */; };
-		A84000000000000000000009 /* DXFPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84000000000000000000010 /* DXFPreviewView.swift */; };
 		A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05C6B76633F0B8705875FA6 /* PlanOpsisWall.swift */; };
 		AA2000000000000000000000 /* ArchitecturalSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000000 /* ArchitecturalSymbol.swift */; };
 		AA2000000000000000000001 /* ArchitecturalExchangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000001 /* ArchitecturalExchangeTests.swift */; };
@@ -121,6 +131,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/DXFWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
+		F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/CADViewerView.swift"; sourceTree = SOURCE_ROOT; };
+		23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADViewerDocument.swift"; sourceTree = SOURCE_ROOT; };
+		A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123CADTests.swift"; sourceTree = SOURCE_ROOT; };
+		0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADSpatialIndex.swift"; sourceTree = SOURCE_ROOT; };
+		3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADSnapEngine.swift"; sourceTree = SOURCE_ROOT; };
+		FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADScene.swift"; sourceTree = SOURCE_ROOT; };
+		D0D589FA234E905733113569 /* CADMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADMeasurement.swift"; sourceTree = SOURCE_ROOT; };
+		F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADGeometryMath.swift"; sourceTree = SOURCE_ROOT; };
+		AD3A6A6DC29392BFBE543E76 /* CADDocumentReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADDocumentReader.swift"; sourceTree = SOURCE_ROOT; };
+		7B6D9909657535279800C7C4 /* CADDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/CADDocument.swift"; sourceTree = SOURCE_ROOT; };
 		D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/ProjectLibraryView.swift"; sourceTree = SOURCE_ROOT; };
 		8FD5484BD409EC90B913E12E /* ProjectLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Persistence/ProjectLibrary.swift"; sourceTree = SOURCE_ROOT; };
 		A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV122Tests.swift"; sourceTree = SOURCE_ROOT; };
@@ -152,7 +173,6 @@
 		A84000000000000000000004 /* DXFExchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFExchange.swift; sourceTree = "<group>"; };
 		A84000000000000000000006 /* SemanticObjectEditingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticObjectEditingEngine.swift; sourceTree = "<group>"; };
 		A84000000000000000000008 /* DXFFileDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFFileDocument.swift; sourceTree = "<group>"; };
-		A84000000000000000000010 /* DXFPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DXFPreviewView.swift; sourceTree = "<group>"; };
 		AA1000000000000000000000 /* ArchitecturalSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalSymbol.swift; sourceTree = "<group>"; };
 		AA1000000000000000000001 /* ArchitecturalExchangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitecturalExchangeTests.swift; sourceTree = "<group>"; };
 		C12900000000000000000001 /* PlanOpsisPLYCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOpsisPLYCoreTests.swift; sourceTree = "<group>"; };
@@ -265,6 +285,7 @@
 				1CDAE35C1BDDFB9E0D3D951A /* SurveyDimensionTests.swift */,
 				4B5EE543ED1871D3986975B6 /* PlanOpsisV121Tests.swift */,
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
+				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
 				A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */,
 				FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */,
 				B0335AC059E0DEE8552AFC48 /* SurveyMeasurementTests.swift */,
@@ -301,11 +322,12 @@
 			isa = PBXGroup;
 			children = (
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
+				F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */,
+				3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */,
 				D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */,
 				4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */,
 				8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */,
 				3AC416E7713062A8A90B8EBB /* Room3DView.swift */,
-				A84000000000000000000010 /* DXFPreviewView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -386,6 +408,14 @@
 		A84000000000000000000012 /* DXF */ = {
 			isa = PBXGroup;
 			children = (
+				7B6D9909657535279800C7C4 /* CADDocument.swift */,
+				AD3A6A6DC29392BFBE543E76 /* CADDocumentReader.swift */,
+				F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */,
+				D0D589FA234E905733113569 /* CADMeasurement.swift */,
+				FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */,
+				3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */,
+				0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */,
+				23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */,
 				A84000000000000000000004 /* DXFExchange.swift */,
 				87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */,
 				A84000000000000000000008 /* DXFFileDocument.swift */,
@@ -644,6 +674,7 @@
 				CD52F1B75239EA2A2191D595 /* SurveyDimensionTests.swift */,
 				986975B6A2E7EB89058A70FA /* PlanOpsisV121Tests.swift in Sources */,
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
+				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
 				B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */,
 				A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift */,
 				2D5B3FFB5E86CE2CBD77FBED /* SurveyMeasurementTests.swift */,
@@ -711,17 +742,26 @@
 				B10000000000000000000001 /* PlanOpsisExchangeIdentity.swift in Sources */,
 				E32052533989C0B60CD7964C /* ExchangeGeometryValidation.swift in Sources */,
 				B10000000000000000000003 /* IFC4Exchange.swift in Sources */,
+				9800C7C476A6E40FC838D23D /* CADDocument.swift in Sources */,
+				BE543E7624A0AA7DC09BFF26 /* CADDocumentReader.swift in Sources */,
+				8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */,
+				331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */,
+				01AFB708D544BB83BF84537D /* CADScene.swift in Sources */,
+				25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */,
+				AD32316DD5DDA5015C528575 /* CADSpatialIndex.swift in Sources */,
+				B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */,
 				A84000000000000000000003 /* DXFExchange.swift in Sources */,
 				36E67C9FC1B81E90AC2DE1E7 /* DXFDrawingValidator.swift in Sources */,
 				A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */,
 				A84000000000000000000007 /* DXFFileDocument.swift in Sources */,
-				A84000000000000000000009 /* DXFPreviewView.swift in Sources */,
 				B913E12E5C85AE607AA8B8C7 /* ProjectLibrary.swift in Sources */,
 				82EC6A63ED9FF50DE3452216 /* ProjectStore.swift in Sources */,
 				DA2DFA6B4F89E7DE58EBB655 /* PlanOpsisOpening.swift in Sources */,
 				13B9B4ED3BB775C7962B7C7B /* PlanOpsisProject.swift in Sources */,
 				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
+				CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */,
+				4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */,
 				771B4D1882C7CF0CA680A2ED /* ProjectLibraryView.swift in Sources */,
 				D9DFC86DD339C12241314F52 /* FloorPlanView.swift in Sources */,
 				58D4FBFA3D09E9E6150FC9FD /* InspectorView.swift in Sources */,

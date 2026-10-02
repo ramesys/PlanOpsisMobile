@@ -26,6 +26,7 @@ let package = Package(
                 "CAD/CADScene.swift",
                 "CAD/CADSnapEngine.swift",
                 "CAD/CADSpatialIndex.swift",
+                "CAD/CADViewerDocument.swift",
                 "Capture/CaptureEvidence.swift",
                 "Capture/MockRoomCaptureProvider.swift",
                 "Capture/RoomCaptureSnapshot.swift",
