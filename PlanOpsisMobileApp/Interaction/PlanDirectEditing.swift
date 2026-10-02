@@ -279,6 +279,11 @@ public enum PlanDimensionTarget: Hashable, Sendable {
         }
     }
 
+    public var isWall: Bool {
+        if case .wallLength = self { return true }
+        return false
+    }
+
     /// The dimension's text and measured length in the annotation set.
     public static func dimensions(in annotations: [DXFPrimitive]) -> [(target: PlanDimensionTarget, text: DXFPrimitive, measured: Double)] {
         var lines: [String: Double] = [:]

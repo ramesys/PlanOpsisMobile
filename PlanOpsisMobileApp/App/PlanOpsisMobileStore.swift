@@ -497,6 +497,20 @@ final class PlanOpsisMobileStore: ObservableObject {
         return true
     }
 
+    /// Walls a grip drag must not snap to: the selected walls and the walls joined to their ends,
+    /// which move with them.
+    var snapExclusions: Set<UUID> {
+        guard let project else { return [] }
+        let selected = selectedWallIDs
+        guard !selected.isEmpty else { return [] }
+        let walls = project.rooms.flatMap(\.walls)
+        let ends = walls.filter { selected.contains($0.id) }.flatMap { [$0.start, $0.end] }
+        let joined = walls.filter { wall in
+            ends.contains { ($0 - wall.start).length <= GeometryTolerances.coincidenceMM || ($0 - wall.end).length <= GeometryTolerances.coincidenceMM }
+        }
+        return selected.union(joined.map(\.id))
+    }
+
     /// Object snaps for the plan, excluding the walls being edited. Rebuilt only when the project changes.
     func editorSnapper(excluding excluded: Set<UUID>) -> PlanObjectSnapper? {
         guard objectSnapsEnabled, let project else { return nil }

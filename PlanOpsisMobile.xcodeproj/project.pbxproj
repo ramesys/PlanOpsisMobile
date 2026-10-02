@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EF80BD26D0DBB98C3FDA9E52 /* PlanEditingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */; };
 		958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */; };
 		85F1AA147ABBA8153333D341 /* PlanDirectEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */; };
 		4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */; };
@@ -133,6 +134,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PlanEditingViews.swift"; sourceTree = SOURCE_ROOT; };
 		C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123EditingTests.swift"; sourceTree = SOURCE_ROOT; };
 		28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Interaction/PlanDirectEditing.swift"; sourceTree = SOURCE_ROOT; };
 		3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/DXFWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
@@ -329,6 +331,7 @@
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
 				F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */,
 				3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */,
+				A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */,
 				D497B278400C8F10771B4D18 /* ProjectLibraryView.swift */,
 				4DE96CEDB155B1E577D65666 /* FloorPlanView.swift */,
 				8EC600E6A0BF579A0D4F5860 /* InspectorView.swift */,
@@ -770,6 +773,7 @@
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
 				CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */,
 				4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */,
+				EF80BD26D0DBB98C3FDA9E52 /* PlanEditingViews.swift in Sources */,
 				771B4D1882C7CF0CA680A2ED /* ProjectLibraryView.swift in Sources */,
 				D9DFC86DD339C12241314F52 /* FloorPlanView.swift in Sources */,
 				58D4FBFA3D09E9E6150FC9FD /* InspectorView.swift in Sources */,

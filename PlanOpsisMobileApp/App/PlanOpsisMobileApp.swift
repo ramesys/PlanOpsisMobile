@@ -156,6 +156,13 @@ struct PlanOpsisRootView: View {
                         .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented:$store.showSurveyImportReview) { SurveyExchangeReviewView(store:store) }
+                .sheet(item: $store.dimensionEdit) { edit in
+                    PlanDimensionEditor(edit: edit) { value, anchor in
+                        store.applyDimension(edit, value: value, anchor: anchor)
+                    }
+                    .presentationDetents([.height(edit.target.isWall ? 260 : 200)])
+                    .presentationDragIndicator(.visible)
+                }
                 .sheet(isPresented: $showingProjects) {
                     ProjectLibraryView(store: store)
                         .presentationDetents([.medium, .large])
@@ -271,8 +278,7 @@ struct PlanOpsisRootView: View {
                     gridEnabled: store.gridEnabled,
                     gridSpacingMM: store.gridSpacingMM,
                     onSelect: store.select,
-                    onMoveWallStart: store.moveSelectedWallStart,
-                    onMoveWallEnd: store.moveSelectedWallEnd,
+                    onMoveWallEndpoint: store.moveSelectedWallEndpoint(_:to:snapped:),
                     onMoveWallThickness: store.moveSelectedWallThicknessGrip,
                     onSetWallLength: store.setSelectedWallLength,
                     onSetWallDeltaX: store.setSelectedWallDeltaX,
@@ -283,8 +289,28 @@ struct PlanOpsisRootView: View {
                     creationTool: store.creationTool,
                     componentCreationTool: store.componentCreationTool,
                     pendingWallStart: store.pendingWallStart,
-                    onPlanTap: store.handlePlanTap
+                    onPlanTap: { point, hit, snapped in store.handlePlanTap(point: point, hitID: hit, snapped: snapped) },
+                    editableOpening: store.representationMode == .semanticObservations && store.selectedIDs.count <= 1 ? store.selectedOpening : nil,
+                    openingHostWall: store.selectedOpeningHostWall,
+                    openingClearances: store.selectedOpeningClearances,
+                    snapper: store.editorSnapper(excluding: store.creationTool == nil ? store.snapExclusions : []),
+                    underlay: store.underlayScene,
+                    underlayHiddenLayers: store.underlayHiddenLayers,
+                    isMovingUnderlay: store.isMovingUnderlay,
+                    dimensions: store.showDimensions ? store.planDimensions : [],
+                    pushPullOffset: store.pushPullOffset,
+                    onBoxSelect: { rect, mode in store.boxSelect(rect, mode: mode, adding: store.multiSelectEnabled) },
+                    onBeginPushPull: store.beginPushPull,
+                    onPushPull: store.updatePushPull(to:snapped:),
+                    onEndPushPull: store.endPushPull,
+                    onSlideOpening: store.slideSelectedOpening(to:),
+                    onEditDimension: store.beginDimensionEdit,
+                    onMoveUnderlay: store.moveUnderlay(by:),
+                    onStopMovingUnderlay: { store.isMovingUnderlay = false },
+                    onPrecisionInput: { store.enterPrecisionPoint($0) },
+                    onFinishCreation: store.cancelCreation
                 )
+                .background { PlanKeyboardShortcuts(store: store) }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
             } else {
@@ -525,21 +551,45 @@ struct PlanOpsisRootView: View {
                     )
                 }
 
-                PlanOpsisToggleButton(
-                    title: "Ortho",
-                    systemName: "angle",
-                    isOn: store.orthoEnabled
-                ) {
-                    store.orthoEnabled.toggle()
+                Menu {
+                    Button("Select all") { store.selectAll() }
+                    Button("Connected walls") { store.selectConnectedWalls() }
+                        .disabled(store.selectedWall == nil)
+                    Button("Similar objects") { store.selectSimilar() }
+                        .disabled(store.selectedID == nil)
+                    Button("Clear selection") { store.clearSelection() }
+                        .disabled(store.selectedIDs.isEmpty)
+                    Section {
+                        Text("Touch and hold the plan, then drag: right for a window, left for a crossing box.")
+                    }
+                } label: {
+                    Image(systemName: "rectangle.dashed")
+                        .frame(width: 36, height: 34)
                 }
+                .planOpsisGlassButton()
+                .accessibilityLabel("Selection tools")
 
-                PlanOpsisToggleButton(
-                    title: "Grid",
-                    systemName: "grid",
-                    isOn: store.gridEnabled
-                ) {
-                    store.gridEnabled.toggle()
+                Menu {
+                    Section("Drafting aids") {
+                        Toggle("Object snaps", isOn: $store.objectSnapsEnabled)
+                        Toggle("Polar tracking 15°", isOn: $store.polarTrackingEnabled)
+                        Toggle("Ortho", isOn: $store.orthoEnabled)
+                        Toggle("Grid", isOn: $store.gridEnabled)
+                    }
+                    Section("DXF underlay") {
+                        Toggle("Show underlay", isOn: Binding(get: { store.showUnderlay }, set: { _ in store.toggleUnderlay() }))
+                        if store.showUnderlay {
+                            Button("Move underlay") { store.isMovingUnderlay = true }
+                            Button("Rotate 90°") { store.rotateUnderlay(byDegrees: 90) }
+                            Button("Centre on plan") { store.centreUnderlayOnPlan() }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "scope")
+                        .frame(width: 36, height: 34)
                 }
+                .planOpsisGlassProminentButton(active: store.orthoEnabled || store.gridEnabled || store.showUnderlay)
+                .accessibilityLabel("Drafting aids and underlay")
             }
 
             if mode == .dxf {

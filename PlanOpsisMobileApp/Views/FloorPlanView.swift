@@ -11,6 +11,15 @@ struct FloorPlanView: View {
     @State private var isPinching = false
     @State private var panBaseCamera: PlanViewTransform?
     @State private var isPanning = false
+    /// v12.3 object snap shown while a grip is dragged or after a snapped tap.
+    @State private var activeSnap: CADSnap?
+    /// v12.3 box selection in view coordinates (touch and hold, then drag).
+    @State private var marqueeStart: CGPoint?
+    @State private var marqueeEnd: CGPoint?
+    @State private var isPushPulling = false
+    @State private var underlayDragTranslation: CGSize = .zero
+    @State private var precisionText = ""
+    @Environment(\.colorScheme) private var colorScheme
 
     private let minimumZoom: Double = 0.35
     private let maximumZoom: Double = 4.0
@@ -33,8 +42,8 @@ struct FloorPlanView: View {
     let gridEnabled: Bool
     let gridSpacingMM: Double
     let onSelect: (UUID?) -> Void
-    let onMoveWallStart: (Point2D) -> Void
-    let onMoveWallEnd: (Point2D) -> Void
+    /// Endpoint, proposed point, and whether the point is an object snap.
+    let onMoveWallEndpoint: (WallEndpointKind, Point2D, Bool) -> Void
     let onMoveWallThickness: (Point2D) -> Void
     let onSetWallLength: (Double) -> Void
     let onSetWallDeltaX: (Double) -> Void
@@ -45,7 +54,28 @@ struct FloorPlanView: View {
     let creationTool: PlanObjectKind?
     let componentCreationTool: PlanOpsisComponent.Kind?
     let pendingWallStart: Point2D?
-    let onPlanTap: (Point2D, UUID?) -> Void
+    /// Point, hit object, and whether the point is an object snap.
+    let onPlanTap: (Point2D, UUID?, Bool) -> Void
+    // v12.3 professional editing
+    let editableOpening: PlanOpsisOpening?
+    let openingHostWall: PlanOpsisWall?
+    let openingClearances: (fromStart: Double, toEnd: Double)?
+    let snapper: PlanObjectSnapper?
+    let underlay: CADScene?
+    let underlayHiddenLayers: Set<String>
+    let isMovingUnderlay: Bool
+    let dimensions: [PlanDimensionEdit]
+    let pushPullOffset: Double?
+    let onBoxSelect: (CADRect, PlanBoxSelectionMode) -> Void
+    let onBeginPushPull: () -> Void
+    let onPushPull: (Point2D, Bool) -> Void
+    let onEndPushPull: () -> Void
+    let onSlideOpening: (Point2D) -> Void
+    let onEditDimension: (PlanDimensionEdit) -> Void
+    let onMoveUnderlay: (Point2D) -> Void
+    let onStopMovingUnderlay: () -> Void
+    let onPrecisionInput: (String) -> Bool
+    let onFinishCreation: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
@@ -53,6 +83,14 @@ struct FloorPlanView: View {
             let viewport = PlanViewport(transform: camera ?? fittedCamera(size: size), size: size)
             ZStack {
                 Canvas { context, _ in
+                    if let underlay {
+                        // The underlay is reference only: faded, below the grid and the model.
+                        context.drawLayer { layer in
+                            layer.opacity = isMovingUnderlay ? 0.7 : 0.4
+                            CADCanvasRenderer(scene: underlay, transform: viewport.transform, size: size, hiddenLayers: underlayHiddenLayers, dark: colorScheme == .dark)
+                                .draw(in: &layer)
+                        }
+                    }
                     if gridEnabled {
                         drawGrid(viewport: viewport, context: &context)
                     }
@@ -101,6 +139,9 @@ struct FloorPlanView: View {
                     }
                     for annotation in annotations { draw(annotation: annotation, viewport: viewport, context: &context) }
 
+                    if let activeSnap {
+                        drawSnap(activeSnap, viewport: viewport, context: &context)
+                    }
                 }
                 .contentShape(Rectangle())
                 // v9.9.3: taps select/place; drags navigate the drawing. Keeping
@@ -110,11 +151,18 @@ struct FloorPlanView: View {
                 .simultaneousGesture(
                     SpatialTapGesture(coordinateSpace: .named("plan-space"))
                         .onEnded { value in
-                            guard !isPinching, !isPanning else { return }
+                            guard !isPinching, !isPanning, marqueeStart == nil, !isMovingUnderlay else { return }
                             let hit = hitTest(value.location, viewport: viewport)
-                            if creationTool != nil || componentCreationTool != nil {
-                                onPlanTap(viewport.plan(value.location), hit)
+                            if creationTool == .wall || componentCreationTool != nil {
+                                let resolved = snappedPoint(value.location, viewport: viewport, from: pendingWallStart)
+                                onPlanTap(resolved.point, hit, resolved.snapped)
+                            } else if creationTool != nil {
+                                activeSnap = nil
+                                onPlanTap(viewport.plan(value.location), hit, false)
+                            } else if directEditingEnabled, let dimension = dimensionHit(value.location, viewport: viewport) {
+                                onEditDimension(dimension)
                             } else {
+                                activeSnap = nil
                                 onSelect(hit)
                             }
                         }
@@ -122,17 +170,26 @@ struct FloorPlanView: View {
                 .gesture(
                     DragGesture(minimumDistance: 6, coordinateSpace: .named("plan-space"))
                         .onChanged { value in
-                            guard !isPinching else { return }
+                            guard !isPinching, marqueeStart == nil else { return }
+                            isPanning = true
+                            if isMovingUnderlay {
+                                let dx = value.translation.width - underlayDragTranslation.width
+                                let dy = value.translation.height - underlayDragTranslation.height
+                                underlayDragTranslation = value.translation
+                                onMoveUnderlay(Point2D(x: Double(dx) / viewport.scale, y: -Double(dy) / viewport.scale))
+                                return
+                            }
                             let base = panBaseCamera ?? viewport.transform
                             if panBaseCamera == nil { panBaseCamera = base }
-                            isPanning = true
                             camera = base.panned(byScreenDX: Double(value.translation.width), dy: Double(value.translation.height))
                         }
                         .onEnded { _ in
                             panBaseCamera = nil
+                            underlayDragTranslation = .zero
                             DispatchQueue.main.async { isPanning = false }
                         }
                 )
+                .simultaneousGesture(marqueeGesture(viewport: viewport))
 
                 if directEditingEnabled, creationTool == nil, componentCreationTool == nil {
                     if let wall = editableWall {
@@ -140,23 +197,28 @@ struct FloorPlanView: View {
                         wallDimensionEditor(wall: wall)
                     } else if let component = editableComponent {
                         componentHandles(component: component, viewport: viewport)
+                    } else if let opening = editableOpening, let host = openingHostWall {
+                        openingHandle(opening: opening, wall: host, viewport: viewport)
                     }
+                }
+
+                if let marqueeStart, let marqueeEnd {
+                    marqueeOverlay(from: marqueeStart, to: marqueeEnd)
+                }
+
+                if isMovingUnderlay {
+                    underlayMoveBanner
                 }
 
                 if creationTool != nil || componentCreationTool != nil {
                     VStack {
-                        HStack {
-                            Label(creationPrompt, systemImage: "cursorarrow.click")
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .planOpsisLiquidSurface(cornerRadius: 16)
+                        HStack(alignment: .top) {
+                            creationBar
                             Spacer()
                         }
                         Spacer()
                     }
                     .padding(12)
-                    .allowsHitTesting(false)
                 }
 
                 zoomControls(size: size, current: viewport.transform)
@@ -297,7 +359,7 @@ struct FloorPlanView: View {
     private var creationPrompt: String {
         if let componentCreationTool { return "Place \(componentCreationTool.displayName)" }
         if let creationTool {
-            if creationTool == .wall && pendingWallStart != nil { return "Tap wall end" }
+            if creationTool == .wall { return pendingWallStart == nil ? "Tap the first corner" : "Tap the next corner" }
             return "Add \(creationTool.rawValue.capitalized)"
         }
         return "Add object"
@@ -471,20 +533,30 @@ struct FloorPlanView: View {
         .stroke(.secondary.opacity(0.65), lineWidth: 1)
         .allowsHitTesting(false)
 
-        Text("L \(wall.length.formatted(.number.precision(.fractionLength(0...1)))) mm")
-            .font(.caption2.monospacedDigit().weight(.semibold))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(Color(uiColor: .systemBackground).opacity(0.92), in: Capsule())
-            .position(dimensionMid)
-            .allowsHitTesting(false)
+        Button {
+            onEditDimension(PlanDimensionEdit(target: .wallLength(wall.id), measured: wall.length, labelPosition: wall.center, rotationDegrees: 0))
+        } label: {
+            Text("L \(wall.length.formatted(.number.precision(.fractionLength(0...1)))) mm")
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color(uiColor: .systemBackground).opacity(0.92), in: Capsule())
+                .overlay(Capsule().stroke(Color.accentColor.opacity(0.5), lineWidth: 0.75))
+        }
+        .buttonStyle(.plain)
+        .position(dimensionMid)
+        .accessibilityLabel("Wall length \(Int(wall.length.rounded())) millimetres")
+        .accessibilityHint("Edit the length by value")
 
         editHandle(label: "S", color: .accentColor, position: start) { point in
-            onMoveWallStart(viewport.plan(point))
+            let resolved = snappedPoint(point, viewport: viewport, from: wall.end)
+            onMoveWallEndpoint(.start, resolved.point, resolved.snapped)
         }
         editHandle(label: "E", color: .accentColor, position: end) { point in
-            onMoveWallEnd(viewport.plan(point))
+            let resolved = snappedPoint(point, viewport: viewport, from: wall.start)
+            onMoveWallEndpoint(.end, resolved.point, resolved.snapped)
         }
+        pushPullHandle(wall: wall, viewport: viewport)
         editHandle(label: "T", color: .secondary, position: thicknessPoint) { point in
             onMoveWallThickness(viewport.plan(point))
         }
@@ -495,6 +567,207 @@ struct FloorPlanView: View {
         }
         .stroke(.secondary.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         .allowsHitTesting(false)
+    }
+
+    // MARK: v12.3 professional editing
+
+    /// The model point under `screenPoint`, moved to an object snap when one is within reach.
+    private func snappedPoint(_ screenPoint: CGPoint, viewport: PlanViewport, from origin: Point2D?) -> (point: Point2D, snapped: Bool) {
+        let model = viewport.plan(screenPoint)
+        guard let snapper else {
+            activeSnap = nil
+            return (model, false)
+        }
+        let radius = 18 / max(viewport.scale, 1e-9)
+        if let snap = snapper.snap(model, radius: radius, from: origin, underlay: underlay, underlayHiddenLayers: underlayHiddenLayers) {
+            activeSnap = snap
+            return (snap.point, true)
+        }
+        activeSnap = nil
+        return (model, false)
+    }
+
+    private func drawSnap(_ snap: CADSnap, viewport: PlanViewport, context: inout GraphicsContext) {
+        let s = viewport.screen(snap.point)
+        context.stroke(CADCanvasRenderer.snapGlyph(snap.kind, at: s), with: .color(.green), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+        let label = context.resolve(Text(snap.kind.title).font(.caption2.weight(.semibold)).foregroundStyle(.white))
+        let size = label.measure(in: CGSize(width: 200, height: 30))
+        let box = CGRect(x: s.x + 10, y: s.y - size.height - 12, width: size.width + 10, height: size.height + 4)
+        context.fill(Path(roundedRect: box, cornerRadius: 5), with: .color(.green.opacity(0.9)))
+        context.draw(label, at: CGPoint(x: box.midX, y: box.midY), anchor: .center)
+    }
+
+    /// The editable dimension whose text is under the tap.
+    private func dimensionHit(_ screenPoint: CGPoint, viewport: PlanViewport) -> PlanDimensionEdit? {
+        dimensions
+            .map { ($0, hypot(viewport.screen($0.labelPosition).x - screenPoint.x, viewport.screen($0.labelPosition).y - screenPoint.y)) }
+            .filter { $0.1 <= 22 }
+            .min { $0.1 < $1.1 }?
+            .0
+    }
+
+    /// Touch and hold on the plan, then drag: left to right selects objects fully inside (window),
+    /// right to left selects everything touched (crossing).
+    private func marqueeGesture(viewport: PlanViewport) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("plan-space")))
+            .onChanged { value in
+                guard directEditingEnabled, creationTool == nil, componentCreationTool == nil, !isMovingUnderlay, !isPinching,
+                      case .second(true, let drag?) = value else { return }
+                if marqueeStart == nil { marqueeStart = drag.startLocation }
+                marqueeEnd = drag.location
+            }
+            .onEnded { _ in
+                defer { marqueeStart = nil; marqueeEnd = nil }
+                guard let a = marqueeStart, let b = marqueeEnd, hypot(b.x - a.x, b.y - a.y) > 8 else { return }
+                let p = viewport.plan(a), q = viewport.plan(b)
+                let rect = CADRect(minX: min(p.x, q.x), minY: min(p.y, q.y), maxX: max(p.x, q.x), maxY: max(p.y, q.y))
+                onBoxSelect(rect, PlanBoxSelectionMode(from: Point2D(x: Double(a.x), y: 0), to: Point2D(x: Double(b.x), y: 0)))
+            }
+    }
+
+    @ViewBuilder
+    private func marqueeOverlay(from a: CGPoint, to b: CGPoint) -> some View {
+        let crossing = b.x < a.x
+        let tint: Color = crossing ? .green : .blue
+        let rect = CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(b.x - a.x), height: abs(b.y - a.y))
+        Rectangle()
+            .fill(tint.opacity(0.08))
+            .overlay(Rectangle().stroke(tint, style: StrokeStyle(lineWidth: 1.2, dash: crossing ? [6, 4] : [])))
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
+            .allowsHitTesting(false)
+        Text(crossing ? "Crossing" : "Window")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(tint, in: Capsule())
+            .position(x: b.x, y: b.y - 18)
+            .allowsHitTesting(false)
+    }
+
+    /// Push/pull grip at the middle of the selected wall: drag across the wall to move it parallel.
+    @ViewBuilder
+    private func pushPullHandle(wall: PlanOpsisWall, viewport: PlanViewport) -> some View {
+        let position = viewport.screen(wall.center)
+        ZStack {
+            Circle().fill(Color.accentColor)
+            Image(systemName: "arrow.up.and.down")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                // Screen Y points down, so the wall normal's screen angle is the negated model angle.
+                .rotationEffect(.radians(-wall.angleRadians))
+        }
+        .frame(width: 30, height: 30)
+        .contentShape(Circle())
+        .position(position)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named("plan-space"))
+                .onChanged { value in
+                    if !isPushPulling {
+                        isPushPulling = true
+                        onBeginPushPull()
+                    }
+                    let resolved = snappedPoint(value.location, viewport: viewport, from: nil)
+                    onPushPull(resolved.point, resolved.snapped)
+                }
+                .onEnded { _ in
+                    isPushPulling = false
+                    activeSnap = nil
+                    onEndPushPull()
+                }
+        )
+        .accessibilityLabel("Push or pull wall")
+        .accessibilityHint("Drag across the wall to move it parallel; connected walls follow")
+        if let pushPullOffset {
+            Text("\(pushPullOffset >= 0 ? "+" : "")\(Int(pushPullOffset.rounded())) mm")
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color(uiColor: .systemBackground).opacity(0.92), in: Capsule())
+                .position(x: position.x, y: position.y - 30)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Slide grip on the selected opening: drag along the wall; clear distances to the wall ends show live.
+    @ViewBuilder
+    private func openingHandle(opening: PlanOpsisOpening, wall: PlanOpsisWall, viewport: PlanViewport) -> some View {
+        let center = wall.start + wall.direction * opening.parameters.offsetAlongWall
+        let position = viewport.screen(center)
+        ZStack {
+            Circle().fill(Color.accentColor)
+            Image(systemName: "arrow.left.and.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                .rotationEffect(.radians(-wall.angleRadians))
+        }
+        .frame(width: 30, height: 30)
+        .contentShape(Circle())
+        .position(position)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named("plan-space"))
+                .onChanged { value in onSlideOpening(viewport.plan(value.location)) }
+                .onEnded { _ in onEndInteractiveEdit() }
+        )
+        .accessibilityLabel("Move opening along its wall")
+        if let openingClearances {
+            Text("\(Int(openingClearances.fromStart.rounded())) · \(Int(opening.parameters.width.rounded())) · \(Int(openingClearances.toEnd.rounded())) mm")
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color(uiColor: .systemBackground).opacity(0.92), in: Capsule())
+                .position(x: position.x, y: position.y + 32)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Tool prompt; while drawing walls it also takes typed lengths and finishes the chain.
+    private var creationBar: some View {
+        HStack(spacing: 8) {
+            Label(creationPrompt, systemImage: "cursorarrow.click")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            if creationTool == .wall {
+                TextField(pendingWallStart == nil ? "x,y" : "3450  ·  3450<90  ·  @dx,dy", text: $precisionText)
+                    .font(.caption.monospacedDigit())
+                    .keyboardType(.numbersAndPunctuation)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.next)
+                    .frame(minWidth: 120, maxWidth: 200)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .onSubmit {
+                        if onPrecisionInput(precisionText) { precisionText = "" }
+                    }
+                    .accessibilityLabel("Typed point")
+                    .accessibilityHint("Length, length and angle, relative or absolute coordinates in millimetres")
+            }
+            Button("Done", action: onFinishCreation)
+                .font(.caption.weight(.semibold))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .planOpsisLiquidSurface(cornerRadius: 16)
+    }
+
+    private var underlayMoveBanner: some View {
+        VStack {
+            HStack(spacing: 10) {
+                Label("Drag to move the underlay", systemImage: "hand.draw")
+                    .font(.caption.weight(.semibold))
+                Button("Done", action: onStopMovingUnderlay)
+                    .font(.caption.weight(.semibold))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .planOpsisLiquidSurface(cornerRadius: 16)
+            Spacer()
+        }
+        .padding(.top, 56)
     }
 
     private func editHandle(
