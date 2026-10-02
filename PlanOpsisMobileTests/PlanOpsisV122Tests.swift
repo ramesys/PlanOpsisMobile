@@ -93,4 +93,26 @@ final class PlanOpsisV122Tests: XCTestCase {
         let faces = try XCTUnwrap(RoomFaceBoundary(room: room, centerline: centerline))
         XCTAssertEqual(faces.netArea, 4_000 * 3_000, accuracy: 1e-3)
     }
+
+    // MARK: 4. Irregular walls are imported, so real scans export
+
+    func testRealCaptureImportsEveryWallAndExports() throws {
+        let capture = try RealCaptureFixtures.apartment1()
+        let result = Self.adapt(capture)
+        let room = try XCTUnwrap(result.project.rooms.first)
+        XCTAssertEqual(room.walls.count, capture.rooms[0].surfaces.filter { $0.category == .wall }.count, "the non-rectangular wall is imported")
+        XCTAssertTrue(result.diagnostics.contains { if case .unsupportedComplexWall = $0 { return true }; return false })
+        XCTAssertEqual(room.openings.count, 3)
+        XCTAssertEqual(room.captureFloorElevationMM ?? .nan, -1_617, accuracy: 1)
+        let door = try XCTUnwrap(room.openings.first { $0.kind == .door })
+        let window = try XCTUnwrap(room.openings.first { $0.kind == .window })
+        XCTAssertEqual(door.parameters.sillHeight, 0, accuracy: 1)
+        XCTAssertEqual(window.parameters.sillHeight, 439, accuracy: 1)
+
+        let readiness = ArchitecturalSurveyReadinessEngine().evaluate(project: result.project, captureDiagnostics: result.diagnostics)
+        XCTAssertEqual(readiness.errorCount, 0, readiness.issues.map(\.message).joined(separator: "; "))
+        XCTAssertTrue(readiness.canExportDXF)
+        XCTAssertTrue(DXFExchangeEngine().exportValidated(project: result.project, representation: .semanticObservations).canWrite)
+        XCTAssertTrue(IFC4ExchangeEngine().exportValidated(project: result.project).canWrite)
+    }
 }

@@ -148,7 +148,8 @@ final class PlanOpsisMobileTests: XCTestCase {
         XCTAssertEqual(hostedWallLengths(room: mockRoom), hostedWallLengths(room: equivalentRoom))
     }
 
-    func testCurvedWallIsDiagnosedAndNotSilentlyLinearized() throws {
+    /// v12.2: irregular walls are imported as straight walls with a review warning instead of being dropped.
+    func testCurvedWallIsDiagnosedAndImportedAsStraightWall() throws {
         var snapshot = MockRoomCaptureProvider().snapshot()
         snapshot.surfaces = [snapshot.surfaces[0]]
         snapshot.surfaces[0].shapeHints.hasCurve = true
@@ -156,14 +157,16 @@ final class PlanOpsisMobileTests: XCTestCase {
         let result = RoomPlanAdapter().adapt(snapshot)
         let room = try XCTUnwrap(result.project.rooms.first)
 
-        XCTAssertTrue(room.walls.isEmpty)
+        XCTAssertEqual(room.walls.count, 1)
+        XCTAssertEqual(room.walls[0].sourceRoomPlanID, snapshot.surfaces[0].sourceRoomPlanID)
         XCTAssertTrue(result.diagnostics.contains {
             if case .unsupportedCurvedWall(surfaceSourceID: snapshot.surfaces[0].sourceRoomPlanID) = $0 { return true }
             return false
         })
     }
 
-    func testComplexPolygonWallIsDiagnosedAndNotSilentlyLinearized() throws {
+    /// v12.2: irregular walls are imported as straight walls with a review warning instead of being dropped.
+    func testComplexPolygonWallIsDiagnosedAndImportedAsStraightWall() throws {
         var snapshot = MockRoomCaptureProvider().snapshot()
         snapshot.surfaces = [snapshot.surfaces[0]]
         snapshot.surfaces[0].shapeHints.polygonCornerCount = 6
@@ -171,7 +174,8 @@ final class PlanOpsisMobileTests: XCTestCase {
         let result = RoomPlanAdapter().adapt(snapshot)
         let room = try XCTUnwrap(result.project.rooms.first)
 
-        XCTAssertTrue(room.walls.isEmpty)
+        XCTAssertEqual(room.walls.count, 1)
+        XCTAssertEqual(room.walls[0].length, 4_000, accuracy: 1e-9)
         XCTAssertTrue(result.diagnostics.contains {
             if case .unsupportedComplexWall(surfaceSourceID: snapshot.surfaces[0].sourceRoomPlanID, polygonCornerCount: 6) = $0 { return true }
             return false

@@ -1586,9 +1586,9 @@ final class PlanOpsisMobileStore: ObservableObject {
         case .invalidOpeningDimensions(let sourceID):
             return "Opening \(short(sourceID)) has invalid dimensions and was skipped."
         case .unsupportedCurvedWall(let sourceID):
-            return "Wall \(short(sourceID)) is curved. Curved-wall conversion is outside this MVP and the wall was not linearized."
+            return "Wall \(short(sourceID)) is curved and was imported as a straight wall. Check it against the room."
         case .unsupportedComplexWall(let sourceID, let count):
-            return "Wall \(short(sourceID)) has a non-uniform polygon (\(count) corners). It was skipped rather than flattened."
+            return "Wall \(short(sourceID)) is not rectangular (\(count) corners) and was imported as a full-height straight wall. Check its height."
         case .openingExtendsBeyondHost(let sourceID, _):
             return "Opening \(short(sourceID)) extended beyond its host wall and was clipped to the wall."
         case .openingVerticalExtentOutsideHost(let sourceID, _):

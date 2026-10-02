@@ -28,7 +28,9 @@ public struct RoomPlanAdapter {
         case invalidWallDirection(surfaceSourceID: UUID)
         case invalidWallDimensions(surfaceSourceID: UUID)
         case invalidOpeningDimensions(surfaceSourceID: UUID)
+        /// v12.2: imported as its straight chord; review the drawing.
         case unsupportedCurvedWall(surfaceSourceID: UUID)
+        /// v12.2: a non-rectangular wall (e.g. under a sloped ceiling) imported at its full width and height.
         case unsupportedComplexWall(surfaceSourceID: UUID, polygonCornerCount: Int)
         case openingExtendsBeyondHost(surfaceSourceID: UUID, hostWallID: UUID)
         case openingVerticalExtentOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
@@ -99,16 +101,15 @@ public struct RoomPlanAdapter {
         var roomSideNormalByWallID: [UUID: Point2D] = [:]
 
         for surface in snapshot.surfaces where surface.category == .wall {
+            // v12.2: irregular walls are imported as straight walls rather than dropped. Dropping them opened
+            // the room and blocked export; a diagnosed straight wall keeps the plan usable and reviewable.
             if surface.shapeHints.hasCurve {
                 diagnostics.append(.unsupportedCurvedWall(surfaceSourceID: surface.sourceRoomPlanID))
-                continue
-            }
-            if surface.shapeHints.hasComplexPolygon {
+            } else if surface.shapeHints.hasComplexPolygon {
                 diagnostics.append(.unsupportedComplexWall(
                     surfaceSourceID: surface.sourceRoomPlanID,
                     polygonCornerCount: surface.shapeHints.polygonCornerCount
                 ))
-                continue
             }
             guard surface.dimensions.x > 1e-6, surface.dimensions.y > 1e-6 else {
                 diagnostics.append(.invalidWallDimensions(surfaceSourceID: surface.sourceRoomPlanID))
