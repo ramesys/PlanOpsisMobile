@@ -10,7 +10,9 @@ public struct SurveyDeliveryReader {
             return try Data(contentsOf:file)
         }
         let manifest=try JSONDecoder().decode(SurveyDeliveryManifest.self,from:data("Delivery.json"))
-        guard manifest.schemaVersion==1,Set(manifest.files.map(\.path)).count==manifest.files.count,Set(["Project.planopsis.json","Survey.exchange.json","Survey.pdf","Survey.dxf","Survey.ifc","Evidence.json","Survey-QA.json"]).isSubset(of:Set(manifest.files.map(\.path))) else { throw SurveyError.invalid("Incomplete or unsupported delivery manifest.") }
+        // Survey.pdf is a print artefact, not project state. It is hash-verified when listed but not
+        // required, so packages written where CoreText is unavailable (Linux CI) remain readable.
+        guard manifest.schemaVersion==1,Set(manifest.files.map(\.path)).count==manifest.files.count,Set(["Project.planopsis.json","Survey.exchange.json","Survey.dxf","Survey.ifc","Evidence.json","Survey-QA.json"]).isSubset(of:Set(manifest.files.map(\.path))) else { throw SurveyError.invalid("Incomplete or unsupported delivery manifest.") }
         for entry in manifest.files { guard try SurveyHash.data(data(entry.path))==entry.sha256 else { throw SurveyError.invalid("Delivery hash mismatch: "+entry.path) } }
         let project=try ProjectMigrator().decode(data("Project.planopsis.json"))
         guard project.id==manifest.projectID else { throw SurveyError.invalid("Delivery project identity mismatch.") }

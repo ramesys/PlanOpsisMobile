@@ -40,9 +40,11 @@ public struct SurveyDeliveryWriter {
             "Survey.exchange.json":try encoder.encode(dxf.manifest),
             "Evidence.json":try encoder.encode(project.survey.evidence),
             "Survey-QA.json":try encoder.encode(SurveyQAReport(project:project)),
-            "Survey.pdf":try SurveySheetRenderer().render(project:project,dimensions:dimensions,revisionID:revision),
             "README.txt":Data("Print Survey.pdf at 100% with no fit-to-page scaling. The sheet scale applies to each numbered tile. Project.planopsis.json owns architecture; DXF and IFC are sibling outputs. Load Survey.exchange.json before reviewing a Rhino return on another device. Field-check status describes only recorded checks; it is not survey accuracy certification.\n".utf8)
         ]
+        #if canImport(CoreText)
+        files["Survey.pdf"]=try SurveySheetRenderer().render(project:project,dimensions:dimensions,revisionID:revision)
+        #endif
         for ref in project.survey.evidence { files[ref.relativePath]=try attachmentStore.readVerified(ref,projectID:project.id) }
         let manifest=SurveyDeliveryManifest(projectID:project.id,revisionID:revision,files:files.keys.sorted().map{.init(path:$0,sha256:SurveyHash.data(files[$0]!))})
         files["Delivery.json"]=try encoder.encode(manifest)

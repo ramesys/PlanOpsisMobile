@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(CoreText)
 import CoreGraphics
 import CoreText
 
@@ -67,3 +68,4 @@ public struct SurveySheetRenderer {
         context.closePDF();return data as Data
     }
 }
+#endif
