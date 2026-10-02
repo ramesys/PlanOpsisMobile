@@ -752,41 +752,23 @@ public struct SemanticObjectEditingEngine {
         guard let best else { return nil }
 
         var edited = wall
-        var newOpeningOffsets: [UUID: Double] = [:]
         switch best.endpoint {
-        case .start:
-            let oldStations = Dictionary(uniqueKeysWithValues: room.openings.filter { $0.parameters.hostWallID == wallID }.map { opening in
-                (opening.id, wall.start + wall.direction * opening.parameters.offsetAlongWall)
-            })
-            edited.editStartKeepingEnd(best.point)
-            guard edited.length > 20 else { return nil }
-            for opening in room.openings where opening.parameters.hostWallID == wallID {
-                guard let world = oldStations[opening.id] else { continue }
-                let offset = (world - edited.start).dot(edited.direction)
-                guard openingFits(offset: offset, width: opening.parameters.width, wallLength: edited.length) else { return nil }
-                newOpeningOffsets[opening.id] = offset
-            }
-        case .end:
-            edited.editEnd(best.point)
-            guard edited.length > 20 else { return nil }
-            for opening in room.openings where opening.parameters.hostWallID == wallID {
-                guard openingFits(offset: opening.parameters.offsetAlongWall, width: opening.parameters.width, wallLength: edited.length) else { return nil }
-            }
+        case .start: edited.editStartKeepingEnd(best.point)
+        case .end: edited.editEnd(best.point)
         }
+        guard edited.length > 20 else { return nil }
 
         var next = project
         guard let roomIndex = next.rooms.firstIndex(where: { $0.id == room.id }),
               let wallIndex = next.rooms[roomIndex].walls.firstIndex(where: { $0.id == wallID }) else { return nil }
+        // Shared v12.1 rule: openings keep their distance from the unmoved end, or the edit is refused.
+        guard let openings = try? PlanEditingConstraintEngine.reanchorHostedOpenings(
+            next.rooms[roomIndex].openings,
+            previousWalls: [wallID: wall],
+            editedWalls: [wallID: edited]
+        ) else { return nil }
         next.rooms[roomIndex].walls[wallIndex] = edited
-        if !newOpeningOffsets.isEmpty {
-            for index in next.rooms[roomIndex].openings.indices {
-                let id = next.rooms[roomIndex].openings[index].id
-                guard let offset = newOpeningOffsets[id] else { continue }
-                var parameters = next.rooms[roomIndex].openings[index].parameters
-                parameters.offsetAlongWall = offset
-                next.rooms[roomIndex].openings[index].parameters = parameters
-            }
-        }
+        next.rooms[roomIndex].openings = openings
         return ArchitecturalTransformResult(project: next, affectedIDs: [wallID])
     }
 
@@ -877,11 +859,6 @@ public struct SemanticObjectEditingEngine {
         let point = a0 + r * t
         guard point.x.isFinite, point.y.isFinite else { return nil }
         return point
-    }
-
-    private func openingFits(offset: Double, width: Double, wallLength: Double) -> Bool {
-        let half = width * 0.5
-        return offset.isFinite && offset - half >= -1e-6 && offset + half <= wallLength + 1e-6
     }
 
     private struct ComponentBounds {

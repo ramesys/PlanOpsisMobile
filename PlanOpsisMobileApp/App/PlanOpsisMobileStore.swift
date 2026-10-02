@@ -977,28 +977,35 @@ final class PlanOpsisMobileStore: ObservableObject {
         proposed: Point2D,
         applyDraftingConstraints: Bool
     ) {
-        guard let selectedID, var next = project else { return }
-        guard let roomIndex = next.rooms.firstIndex(where: { room in
+        guard let selectedID, let project else { return }
+        guard let roomID = project.rooms.first(where: { room in
             room.walls.contains(where: { $0.id == selectedID })
-        }) else { return }
+        })?.id else { return }
 
         let settings = PlanEditingSettings(
             orthoEnabled: orthoEnabled,
             gridEnabled: gridEnabled,
             gridSpacing: gridSpacingMM
         )
-        guard let result = editingConstraintEngine.moveEndpoint(
-            wallID: selectedID,
-            endpoint: endpoint,
-            proposed: proposed,
-            in: next.rooms[roomIndex].walls,
-            settings: settings,
-            applyConstraints: applyDraftingConstraints
-        ) else { return }
+        let edit: ProjectEndpointMoveResult
+        do {
+            edit = try editingConstraintEngine.moveEndpoint(
+                wallID: selectedID,
+                endpoint: endpoint,
+                proposed: proposed,
+                in: project,
+                roomID: roomID,
+                settings: settings,
+                applyConstraints: applyDraftingConstraints
+            )
+        } catch {
+            statusMessage = error.localizedDescription
+            return
+        }
+        let result = edit.move
 
-        next.rooms[roomIndex].walls = result.walls
         commitSemanticProject(
-            next,
+            edit.project,
             label: "Edit wall",
             coalescingKey: "wall-\(selectedID.uuidString)-\(endpoint.rawValue)"
         )
