@@ -89,10 +89,10 @@ public struct WallJunctionResolver {
         var clusters: [Cluster] = []
         var assignments: [UUID: EndpointAssignment] = [:]
 
-        func nearestIndex(to point: Point2D, clusters: [Cluster], tolerance: Double) -> Int? {
+        func nearestIndex(to point: Point2D, clusters: [Cluster], tolerance: Double, excluding: Int?) -> Int? {
             var best: Int?
             var bestDistance = tolerance
-            for (index, cluster) in clusters.enumerated() {
+            for (index, cluster) in clusters.enumerated() where index != excluding {
                 let d = (cluster.point - point).length
                 if d <= bestDistance {
                     best = index
@@ -104,8 +104,11 @@ public struct WallJunctionResolver {
 
         for wall in walls {
             var indices: [Int] = []
+            // v12.2: a junction never swallows both ends of one wall, and never reaches farther than half
+            // the wall's length, so short real jogs (piers, reveals) survive joining.
+            let tolerance = GeometryTolerances.joinRadius(configuration.endpointSnapToleranceMM, wallLength: wall.length)
             for point in [wall.start, wall.end] {
-                if let index = nearestIndex(to: point, clusters: clusters, tolerance: configuration.endpointSnapToleranceMM) {
+                if let index = nearestIndex(to: point, clusters: clusters, tolerance: tolerance, excluding: indices.first) {
                     clusters[index].absorb(point)
                     indices.append(index)
                 } else {

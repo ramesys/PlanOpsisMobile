@@ -80,7 +80,7 @@ public struct SurveyDimensionBuilder {
                 let normal=Point2D(x:delta.normalized.y,y:-delta.normalized.x)
                 let x=a+normal*d.offsetMM,y=b+normal*d.offsetMM
                 let kind:String
-                switch d.target { case .wallLength:kind="wall";case .openingWidth:kind="opening";case .wallThickness:kind="thickness";case .distance(let a,let b):
+                switch d.target { case .wallLength:kind="wall";case .wallFaceLength:kind="face";case .openingWidth:kind="opening";case .wallThickness:kind="thickness";case .distance(let a,let b):
                     let hasOpening:Bool
                     if case .openingEdge=a.location { hasOpening=true } else if case .openingEdge=b.location { hasOpening=true } else { hasOpening=false }
                     kind=hasOpening ? "chain":"check"

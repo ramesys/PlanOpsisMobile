@@ -19,6 +19,23 @@ public struct SurveyCorrectionEngine {
                 let moving:WallEndpointKind=anchor == .start ? .end : .start
                 let point=anchor == .start ? w.start+w.direction*o.observedMM : w.end-w.direction*o.observedMM
                 next=try movingEndpoint(wallID:wid,endpoint:moving,to:point,in:next)
+            case .wallFaceLength(let rid,let wid,let side):
+                // Correct the axis so the measured face gets the observed length; the face-to-axis
+                // difference at the corners is kept from the current geometry.
+                guard let r=next.rooms.firstIndex(where:{$0.id==rid}),let anchor else { throw SurveyError.invalid("Choose the fixed wall endpoint.") }
+                // Moving the corner also turns the connected wall and so changes the mitre; repeat the
+                // axis step until the face itself has the observed length.
+                let moving:WallEndpointKind=anchor == .start ? .end : .start
+                for _ in 0..<12 {
+                    guard let w=next.rooms[r].walls.first(where:{$0.id==wid}) else { throw SurveyError.invalid("Wall missing.") }
+                    let (a,b)=try SurveyMeasurementEngine().faceSegment(wallID:wid,side:side,in:next.rooms[r])
+                    let error=o.observedMM-(b-a).length
+                    if abs(error) < 1e-7 { break }
+                    let axisLength=w.length+error
+                    guard axisLength > 1 else { throw SurveyError.invalid("Measured face is too short for this wall.") }
+                    let point=anchor == .start ? w.start+w.direction*axisLength : w.end-w.direction*axisLength
+                    next=try movingEndpoint(wallID:wid,endpoint:moving,to:point,in:next)
+                }
             case .wallThickness(let rid,let wid):
                 guard let r=next.rooms.firstIndex(where:{$0.id==rid}),let w=next.rooms[r].walls.firstIndex(where:{$0.id==wid}) else { throw SurveyError.invalid("Wall missing.") }
                 next.rooms[r].walls[w].thickness=o.observedMM

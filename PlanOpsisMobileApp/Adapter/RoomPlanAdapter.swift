@@ -28,7 +28,9 @@ public struct RoomPlanAdapter {
         case invalidWallDirection(surfaceSourceID: UUID)
         case invalidWallDimensions(surfaceSourceID: UUID)
         case invalidOpeningDimensions(surfaceSourceID: UUID)
+        /// v12.2: imported as its straight chord; review the drawing.
         case unsupportedCurvedWall(surfaceSourceID: UUID)
+        /// v12.2: a non-rectangular wall (e.g. under a sloped ceiling) imported at its full width and height.
         case unsupportedComplexWall(surfaceSourceID: UUID, polygonCornerCount: Int)
         case openingExtendsBeyondHost(surfaceSourceID: UUID, hostWallID: UUID)
         case openingVerticalExtentOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
@@ -96,18 +98,18 @@ public struct RoomPlanAdapter {
         // elevation is measured from this room's floor datum instead.
         let floorElevationMM = coordinates.floorElevationMM(walls: snapshot.surfaces.filter { $0.category == .wall })
         var wallIDBySourceID: [UUID: UUID] = [:]
+        var roomSideNormalByWallID: [UUID: Point2D] = [:]
 
         for surface in snapshot.surfaces where surface.category == .wall {
+            // v12.2: irregular walls are imported as straight walls rather than dropped. Dropping them opened
+            // the room and blocked export; a diagnosed straight wall keeps the plan usable and reviewable.
             if surface.shapeHints.hasCurve {
                 diagnostics.append(.unsupportedCurvedWall(surfaceSourceID: surface.sourceRoomPlanID))
-                continue
-            }
-            if surface.shapeHints.hasComplexPolygon {
+            } else if surface.shapeHints.hasComplexPolygon {
                 diagnostics.append(.unsupportedComplexWall(
                     surfaceSourceID: surface.sourceRoomPlanID,
                     polygonCornerCount: surface.shapeHints.polygonCornerCount
                 ))
-                continue
             }
             guard surface.dimensions.x > 1e-6, surface.dimensions.y > 1e-6 else {
                 diagnostics.append(.invalidWallDimensions(surfaceSourceID: surface.sourceRoomPlanID))
@@ -129,6 +131,8 @@ public struct RoomPlanAdapter {
             let start = center - normalizedDirection * (lengthMM * 0.5)
             let wallID = configuration.uuidProvider()
             wallIDBySourceID[surface.sourceRoomPlanID] = wallID
+            let roomSideNormal = coordinates.planNormal(from: surface.transform)
+            roomSideNormalByWallID[wallID] = roomSideNormal
             walls.append(PlanOpsisWall(
                 id: wallID,
                 sourceRoomPlanID: surface.sourceRoomPlanID,
@@ -137,8 +141,14 @@ public struct RoomPlanAdapter {
                 angleRadians: atan2(normalizedDirection.y, normalizedDirection.x),
                 height: coordinates.millimetres(fromMetres: surface.dimensions.y),
                 thickness: max(0, configuration.defaultWallThicknessMM),
-                confidence: surface.confidence
+                confidence: surface.confidence,
+                // RoomPlan's +Z points into the room; record that side relative to the wall normal.
+                roomSide: Point2D(x: -normalizedDirection.y, y: normalizedDirection.x).dot(roomSideNormal) >= 0 ? 1 : -1
             ))
+        }
+
+        if snapshot.wallReference == .interiorFace {
+            walls = Self.registerInteriorFaces(walls, roomSideNormals: roomSideNormalByWallID)
         }
 
         var openings: [PlanOpsisOpening] = []
@@ -231,5 +241,81 @@ public struct RoomPlanAdapter {
             ),
             diagnostics
         )
+    }
+
+    /// v12.2: RoomPlan wall surfaces are the scanned room-side faces, so the semantic wall axis lies
+    /// half a thickness behind each face (opposite the surface's room-side normal). Corners that met on
+    /// the faces are re-joined on the axes: each corner moves to the point closest to all of its walls'
+    /// offset axes (the exact mitre for a two-wall corner), keeping the observed faces in place.
+    static func registerInteriorFaces(_ walls: [PlanOpsisWall], roomSideNormals: [UUID: Point2D]) -> [PlanOpsisWall] {
+        struct End { var wall: Int; var isStart: Bool; var face: Point2D }
+        let axisLines: [(point: Point2D, direction: Point2D)] = walls.map { wall in
+            let normal = roomSideNormals[wall.id] ?? .zero
+            return (wall.start - normal * (wall.thickness * 0.5), wall.direction)
+        }
+        func offsetEnd(_ end: End) -> Point2D {
+            let wall = walls[end.wall]
+            let normal = roomSideNormals[wall.id] ?? .zero
+            return end.face - normal * (wall.thickness * 0.5)
+        }
+
+        // Cluster face corners deterministically (by source order) within the capture join radius.
+        var clusters: [[End]] = []
+        var centers: [Point2D] = []
+        for (index, wall) in walls.enumerated() {
+            let radius = GeometryTolerances.joinRadius(GeometryTolerances.junctionJoinMM, wallLength: wall.length)
+            var startCluster: Int?
+            for end in [End(wall: index, isStart: true, face: wall.start), End(wall: index, isStart: false, face: wall.end)] {
+                if let k = centers.indices
+                    .filter({ $0 != startCluster && (centers[$0] - end.face).length <= radius })
+                    .min(by: { (centers[$0] - end.face).length < (centers[$1] - end.face).length }) {
+                    if end.isStart { startCluster = k }
+                    clusters[k].append(end)
+                    let n = Double(clusters[k].count)
+                    centers[k] = centers[k] * ((n - 1) / n) + end.face * (1 / n)
+                } else {
+                    clusters.append([end])
+                    centers.append(end.face)
+                    if end.isStart { startCluster = clusters.count - 1 }
+                }
+            }
+        }
+
+        var starts = walls.map(\.start), ends = walls.map(\.end)
+        for (k, members) in clusters.enumerated() {
+            let offsets = members.map(offsetEnd)
+            var point = offsets.reduce(.zero, +) * (1 / Double(offsets.count))
+            if members.count >= 2 {
+                // Least-squares point closest to every member's offset axis.
+                var a11 = 0.0, a12 = 0.0, a22 = 0.0, b1 = 0.0, b2 = 0.0
+                for end in members {
+                    let line = axisLines[end.wall]
+                    let n = Point2D(x: -line.direction.y, y: line.direction.x)
+                    let c = n.dot(line.point)
+                    a11 += n.x * n.x; a12 += n.x * n.y; a22 += n.y * n.y
+                    b1 += n.x * c; b2 += n.y * c
+                }
+                let det = a11 * a22 - a12 * a12
+                let maxThickness = members.map { walls[$0.wall].thickness }.max() ?? 0
+                // Nearly parallel members (straight continuations) keep the averaged offset ends.
+                if det > 0.03 * 0.03 * Double(members.count * members.count) {
+                    let solved = Point2D(x: (b1 * a22 - b2 * a12) / det, y: (a11 * b2 - a12 * b1) / det)
+                    if solved.x.isFinite, solved.y.isFinite, (solved - centers[k]).length <= max(600, maxThickness * 6) {
+                        point = solved
+                    }
+                }
+            }
+            for end in members {
+                if end.isStart { starts[end.wall] = point } else { ends[end.wall] = point }
+            }
+        }
+
+        return walls.indices.map { index in
+            var wall = walls[index]
+            guard (ends[index] - starts[index]).length > GeometryTolerances.coincidenceMM else { return wall }
+            wall.editStart(starts[index])
+            wall.editEnd(ends[index])
+            return wall
+        }
     }
 }

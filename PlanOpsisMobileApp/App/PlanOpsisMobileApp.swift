@@ -108,6 +108,7 @@ struct PlanOpsisRootView: View {
     @State private var showingDXFImporter = false
     @State private var showingExporter = false
     @State private var showingDXFReview = false
+    @State private var showingProjects = false
     @State private var exportDocument = ArchitecturalExchangeTextDocument()
     @State private var exportFormat: ArchitecturalExchangeFormat = .dxf
 
@@ -155,6 +156,12 @@ struct PlanOpsisRootView: View {
                         .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented:$store.showSurveyImportReview) { SurveyExchangeReviewView(store:store) }
+                .sheet(isPresented: $showingProjects) {
+                    ProjectLibraryView(store: store)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
+                .task { store.refreshLibrary() }
                 .fileImporter(isPresented: $showingDXFImporter, allowedContentTypes: [.planOpsisDXF, .plainText]) { result in
                     do {
                         let url = try result.get()
@@ -190,6 +197,8 @@ struct PlanOpsisRootView: View {
                     UIApplication.shared.isIdleTimerDisabled = active
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    // v12.2: never lose the last edits when the app is backgrounded or closed.
+                    if phase != .active { store.flushAutosave() }
                     guard phase != .active, captureService.isStructureCaptureActive else { return }
                     // RoomPlan requires a continuous AR session for multi-room alignment. Rather
                     // than keep camera/Metal resources alive in the background with invalid tracking,
@@ -339,16 +348,16 @@ struct PlanOpsisRootView: View {
                         Divider()
                     }
                     Button("Import DXF") { showingDXFImporter = true }
-                    Button("Export DXF") { prepareDXFExport() }
-                        .disabled(!store.canExportDXF)
+                    // v12.2: never silently disabled. A blocked export opens the readiness review explaining why.
+                    Button(store.canExportDXF ? "Export DXF" : "Export DXF (review issues)") { prepareDXFExport() }
                     Button("Export IFC4") { prepareIFC4Export() }
                     Divider()
-                    Button("Save project", action: store.save)
-                    Button("Close project", action: store.closeProject)
-                    Button("Reopen project", action: store.reopen)
+                    Button("Projects\u{2026}") { showingProjects = true }
+                    Button("Save now") { store.save() }
+                    Button("Close project") { store.closeProject() }
                 } else {
                     Button("Import DXF") { showingDXFImporter = true }
-                    Button("Reopen project", action: store.reopen)
+                    Button("Projects\u{2026}") { showingProjects = true }
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -556,8 +565,8 @@ struct PlanOpsisRootView: View {
                         .frame(width: 36, height: 34)
                 }
                 .planOpsisGlassProminentButton(active: true)
-                .disabled(!store.canExportDXF)
                 .accessibilityLabel("Export DXF")
+                .accessibilityHint(store.canExportDXF ? "" : "Opens the drawing review explaining what blocks export")
             }
 
             Spacer(minLength: 4)
@@ -710,7 +719,7 @@ struct PlanOpsisRootView: View {
         ContentUnavailableView(
             "No project",
             systemImage: "square.dashed",
-            description: Text("Scan a room, reconstruct a PLY, import a DXF, or reopen a saved PlanOpsis project.")
+            description: Text("Scan a room, reconstruct a PLY, import a DXF, or open a saved project from Projects in the \u{2026} menu.")
         )
     }
 }

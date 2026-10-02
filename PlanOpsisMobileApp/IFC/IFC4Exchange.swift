@@ -318,7 +318,7 @@ public struct IFC4ExchangeEngine {
         let person = writer.add("IFCPERSON($,$,'PlanOpsis',$,$,$,$,$)")
         let org = writer.add("IFCORGANIZATION($,'PlanOpsis',$,$,$)")
         let personOrg = writer.add("IFCPERSONANDORGANIZATION(#\(person),#\(org),$)")
-        let app = writer.add("IFCAPPLICATION(#\(org),'12.1.0','PlanOpsis','PLANOPSIS')")
+        let app = writer.add("IFCAPPLICATION(#\(org),'12.2.0','PlanOpsis','PLANOPSIS')")
         return writer.add("IFCOWNERHISTORY(#\(personOrg),#\(app),$,.ADDED.,0,$,$,0)")
     }
 

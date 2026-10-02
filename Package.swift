@@ -50,6 +50,7 @@ let package = Package(
                 "PLY/Core/PLYSectionReconstructor.swift",
                 "PLY/Core/PLYTypes.swift",
                 "PLY/Core/PLYWallCandidateEngine.swift",
+                "Persistence/ProjectLibrary.swift",
                 "Persistence/ProjectMigrator.swift",
                 "Persistence/ProjectStore.swift",
                 "Persistence/SurveyAttachmentStore.swift",

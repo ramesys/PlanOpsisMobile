@@ -167,9 +167,9 @@ public struct ArchitecturalSurveyReadinessEngine {
         for diagnostic in captureDiagnostics {
             switch diagnostic {
             case .unsupportedCurvedWall(let sourceID):
-                issues.append(.init(code: .unsupportedCapturedWall, severity: .error, entityID: sourceID, message: "A curved RoomPlan wall was not converted to a straight parametric wall."))
+                issues.append(.init(code: .unsupportedCapturedWall, severity: .warning, entityID: sourceID, message: "A curved RoomPlan wall was imported as a straight wall. Check it against the room."))
             case .unsupportedComplexWall(let sourceID, _):
-                issues.append(.init(code: .unsupportedCapturedWall, severity: .error, entityID: sourceID, message: "A non-uniform RoomPlan wall was not converted to a straight parametric wall."))
+                issues.append(.init(code: .unsupportedCapturedWall, severity: .warning, entityID: sourceID, message: "A non-rectangular RoomPlan wall (e.g. under a sloped ceiling) was imported as a full-height straight wall. Check its height."))
             case .missingHost(let sourceID, _):
                 issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence had no imported host wall."))
             case .invalidWallDirection(let sourceID), .invalidWallDimensions(let sourceID):

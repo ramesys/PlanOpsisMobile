@@ -225,7 +225,7 @@ enum RoomPlanSnapshotNormalizer {
         surfaces.append(contentsOf: room.doors.map { surface($0, category: .door) })
         surfaces.append(contentsOf: room.windows.map { surface($0, category: .window) })
         surfaces.append(contentsOf: room.openings.map { surface($0, category: .opening) })
-        return RoomCaptureSnapshot(sourceRoomPlanID: room.identifier, surfaces: surfaces)
+        return RoomCaptureSnapshot(sourceRoomPlanID: room.identifier, surfaces: surfaces, wallReference: .interiorFace)
     }
 
     static func snapshot(from structure: CapturedStructure) -> StructureCaptureSnapshot {

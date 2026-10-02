@@ -15,6 +15,9 @@ public struct PlanOpsisWall: Codable, Hashable, Sendable, Identifiable {
     /// Wall thickness in millimetres.
     public var thickness: Double
     public var confidence: CaptureConfidence
+    /// v12.2 which side of the wall (+1/-1 along `normal`) faces its room, when the capture observed it.
+    /// Survives move, rotate and mirror (mirroring also reverses the axis); nil for drawn walls.
+    public var roomSide: Int?
 
     public init(
         id: UUID = UUID(),
@@ -24,7 +27,8 @@ public struct PlanOpsisWall: Codable, Hashable, Sendable, Identifiable {
         angleRadians: Double,
         height: Double,
         thickness: Double,
-        confidence: CaptureConfidence = .unknown
+        confidence: CaptureConfidence = .unknown,
+        roomSide: Int? = nil
     ) {
         self.id = id
         self.sourceRoomPlanID = sourceRoomPlanID
@@ -34,6 +38,7 @@ public struct PlanOpsisWall: Codable, Hashable, Sendable, Identifiable {
         self.height = max(0, height)
         self.thickness = max(0, thickness)
         self.confidence = confidence
+        self.roomSide = roomSide
     }
 
     public var direction: Point2D {

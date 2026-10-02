@@ -1,5 +1,40 @@
 # Changelog
 
+## 12.2 — Accuracy from real scans
+
+Validated against a real RoomPlan capture (kept as a regression fixture).
+
+### Capture → model
+- **Wall faces, not centrelines.** RoomPlan wall surfaces are the scanned room-side faces (their +Z axis
+  points into the room). Walls are now placed half a thickness behind the face, with corners re-joined
+  on the wall axes; rooms were previously one wall thickness too small per axis. Inside faces now match
+  the scan to the millimetre, except next to partitions RoomPlan saw from one side only.
+- **Irregular walls are imported.** Curved and non-rectangular walls (e.g. under a sloped ceiling) come
+  in as straight walls with a review warning instead of being dropped and blocking export.
+- **Short jogs survive.** Corner joining never merges both ends of a wall or reaches beyond half its
+  length, so piers and reveals (here 146–424 mm) are kept.
+- Walls record which side faces their room when the scan observed it.
+
+### Survey
+- **Measure what you can tape.** Field measurements are wall *face* lengths, inside or outside, corner to
+  corner (L-corners, T-junctions and straight continuations handled). Corrections adjust the wall until
+  the face has the measured length. Axis-length records stay valid.
+
+### Projects
+- **Project library with autosave.** Every project is kept in *Projects* (… menu) and saved
+  automatically after each change, before a new scan or import replaces it, and when the app goes to
+  the background. Projects can be named, opened and deleted. The old single saved project is imported
+  once and its file is kept.
+
+### Fixes
+- **DXF export is never silently greyed out.** If something blocks export, the button opens the drawing
+  review explaining what to fix.
+
+### Behaviour changes to note
+- Real scans now produce larger rooms (by one wall thickness per axis) than 12.1 did for the same
+  capture. Re-import an earlier scan from its retained capture to get the corrected geometry.
+- "Save project" / "Reopen project" are replaced by *Projects…* and *Save now*.
+
 ## 12.1 — Stabilise
 
 Makes real captures exportable, keeps edits from silently moving architecture, and makes the
