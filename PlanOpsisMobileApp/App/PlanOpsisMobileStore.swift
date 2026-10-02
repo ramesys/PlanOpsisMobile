@@ -641,9 +641,18 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func importStructureSnapshot(_ snapshot: StructureCaptureSnapshot) {
         let result = adapter.adapt(snapshot)
+        // v12.1: keep what was observed next to what was modelled. Failing to store the evidence must not
+        // lose the capture itself, so it is reported rather than blocking the import.
+        var imported = result.project
+        var evidenceNote = ""
+        do {
+            imported.survey.evidence.append(try CaptureEvidence.retain(snapshot, projectID: imported.id, in: surveyAttachmentStore()))
+        } catch {
+            evidenceNote = " Raw capture was not retained: \(error.localizedDescription)"
+        }
         diagnostics = result.diagnostics
         clearPhysicalEditState(clearUndo: true)
-        project = result.project
+        project = imported
         // RoomPlan is a different evidence source. Preserve the PLY workspace session if the user
         // returns to it, but never overlay stale PLY evidence on this newly captured project.
         plyEvidenceProjectID = nil
@@ -656,9 +665,10 @@ final class PlanOpsisMobileStore: ObservableObject {
         setSelection(first.map { [$0] } ?? [], primary: first)
         regenerate()
         let adjacencyCount = geometry.topology.adjacencies.count
-        statusMessage = diagnostics.isEmpty
+        statusMessage = (diagnostics.isEmpty
             ? "Imported \(result.project.rooms.count) semantic room(s); derived \(adjacencyCount) room adjacency relation(s)."
-            : "Imported \(result.project.rooms.count) room(s) with \(diagnostics.count) capture diagnostic(s). Review Inspector."
+            : "Imported \(result.project.rooms.count) room(s) with \(diagnostics.count) capture diagnostic(s). Review Inspector.")
+            + evidenceNote
     }
 
     func importPLYReconstruction(_ reconstruction: PLYReconstructionResult) {

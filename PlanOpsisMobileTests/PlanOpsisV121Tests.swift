@@ -278,4 +278,40 @@ final class PlanOpsisV121Tests: XCTestCase {
         }
         XCTAssertNil(SemanticObjectEditingEngine().delete(entityID: wallID, from: project))
     }
+
+    // MARK: TASK-007 retained capture evidence
+
+    func testRetainedCaptureReplaysToTheSameModelAfterSaveAndReopen() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("planopsis-v121-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let attachments = SurveyAttachmentStore(root: root)
+        let capture = StructureCaptureSnapshot(room: Self.shifted(MockRoomCaptureProvider().snapshot(), byMetres: -1.4))
+        XCTAssertEqual(try CaptureEvidence.encode(capture), try CaptureEvidence.encode(capture))
+
+        var project = Self.adapter().adapt(capture).project
+        project.survey.evidence.append(try CaptureEvidence.retain(capture, projectID: project.id, in: attachments))
+        let store = ProjectStore(url: root.appendingPathComponent("project-v2.json"))
+        try store.save(project)
+        let reopened = try store.load()
+        XCTAssertEqual(reopened, project)
+
+        XCTAssertEqual(try CaptureEvidence.latestCapture(of: reopened, in: attachments), capture)
+        let replayed = try XCTUnwrap(CaptureEvidence.replay(reopened, in: attachments, adapter: Self.adapter()))
+        XCTAssertEqual(replayed.project.rooms, project.rooms)
+    }
+
+    func testDeliveryPackageCarriesRetainedCapture() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("planopsis-v121-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let attachments = SurveyAttachmentStore(root: root.appendingPathComponent("source"))
+        let capture = StructureCaptureSnapshot(room: MockRoomCaptureProvider().snapshot())
+        var project = Self.adapter().adapt(capture).project
+        let reference = try CaptureEvidence.retain(capture, projectID: project.id, in: attachments)
+        project.survey.evidence.append(reference)
+        let destination = root.appendingPathComponent("delivery")
+        let manifest = try SurveyDeliveryWriter().write(project: project, attachmentStore: attachments, destination: destination)
+        XCTAssertTrue(manifest.files.contains { $0.path == reference.relativePath && $0.sha256 == reference.sha256 })
+        let delivered = try SurveyDeliveryReader().read(root: destination)
+        XCTAssertEqual(try CaptureEvidence.latestCapture(of: delivered, in: SurveyAttachmentStore(root: destination)), capture)
+    }
 }

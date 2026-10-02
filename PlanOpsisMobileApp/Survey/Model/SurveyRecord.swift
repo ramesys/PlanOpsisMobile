@@ -58,7 +58,11 @@ public struct SurveyObservation: Codable, Hashable, Sendable, Identifiable {
     public var verificationFingerprint: String?
     public var locked = false
 }
-public enum SurveyEvidenceKind: String, Codable, Sendable { case photo, plyComparison, sourcePLY }
+public enum SurveyEvidenceKind: String, Codable, Sendable {
+    case photo, plyComparison, sourcePLY
+    /// v12.1: the platform-neutral RoomPlan capture (`StructureCaptureSnapshot`) the project was built from.
+    case roomPlanCapture
+}
 public struct SurveyEvidenceReference: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var projectID: UUID
