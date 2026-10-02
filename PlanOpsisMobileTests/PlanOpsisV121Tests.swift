@@ -85,4 +85,58 @@ final class PlanOpsisV121Tests: XCTestCase {
         let after = try XCTUnwrap(Self.worldCenter(of: doorID, in: corrected))
         XCTAssertEqual((after - before).length, 0, accuracy: 1e-6)
     }
+
+    // MARK: TASK-003 RoomPlan vertical datum
+
+    final class SequentialUUIDs: @unchecked Sendable {
+        private var next = 0
+        func make() -> UUID {
+            next += 1
+            return UUID(uuidString: String(format: "00000000-0000-4000-8000-%012d", next))!
+        }
+    }
+
+    static func adapter() -> RoomPlanAdapter {
+        let ids = SequentialUUIDs()
+        return RoomPlanAdapter(configuration: .init(uuidProvider: ids.make))
+    }
+
+    static func shifted(_ snapshot: RoomCaptureSnapshot, byMetres dy: Double) -> RoomCaptureSnapshot {
+        var shifted = snapshot
+        for index in shifted.surfaces.indices { shifted.surfaces[index].transform.values[13] += dy }
+        return shifted
+    }
+
+    func testCaptureSpaceFloorOffsetDoesNotChangeSemanticElevations() throws {
+        let mock = MockRoomCaptureProvider().snapshot()
+        let reference = Self.adapter().adapt(mock)
+        // ARKit world Y=0 is the device start height, so a real floor sits around -1.4 m.
+        let captured = Self.adapter().adapt(Self.shifted(mock, byMetres: -1.4))
+        let a = try XCTUnwrap(reference.project.rooms.first), b = try XCTUnwrap(captured.project.rooms.first)
+        XCTAssertEqual(b.captureFloorElevationMM ?? .nan, -1_400, accuracy: 1e-6)
+        XCTAssertEqual(a.walls, b.walls)
+        XCTAssertEqual(a.openings.count, b.openings.count)
+        for (x, y) in zip(a.openings, b.openings) {
+            XCTAssertEqual(x.parameters.sillHeight, y.parameters.sillHeight, accuracy: 1e-6)
+            XCTAssertEqual(x.parameters.height, y.parameters.height, accuracy: 1e-9)
+        }
+        XCTAssertEqual(reference.diagnostics, captured.diagnostics)
+        let readiness = ArchitecturalSurveyReadinessEngine().evaluate(project: captured.project, captureDiagnostics: captured.diagnostics)
+        XCTAssertFalse(readiness.issues.contains { $0.code == .openingOutsideHost }, readiness.issues.map(\.message).joined(separator: ";"))
+    }
+
+    func testOpeningSlightlyBelowFloorRestsOnFloorWithoutDiagnostic() throws {
+        var mock = Self.shifted(MockRoomCaptureProvider().snapshot(), byMetres: -1.4)
+        let doorIndex = try XCTUnwrap(mock.surfaces.firstIndex { $0.category == .door })
+        mock.surfaces[doorIndex].transform.values[13] -= 0.010
+        let result = Self.adapter().adapt(mock)
+        let door = try XCTUnwrap(result.project.rooms[0].openings.first { $0.kind == .door })
+        XCTAssertEqual(door.parameters.sillHeight, 0)
+        XCTAssertFalse(result.diagnostics.contains { if case .openingVerticalExtentOutsideHost = $0 { return true }; return false })
+
+        mock.surfaces[doorIndex].transform.values[13] -= 0.070
+        let deeper = Self.adapter().adapt(mock)
+        XCTAssertEqual(try XCTUnwrap(deeper.project.rooms[0].openings.first { $0.kind == .door }).parameters.sillHeight, 0)
+        XCTAssertTrue(deeper.diagnostics.contains { if case .openingVerticalExtentOutsideHost = $0 { return true }; return false })
+    }
 }

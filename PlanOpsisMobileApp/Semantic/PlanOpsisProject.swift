@@ -174,25 +174,30 @@ public struct PlanOpsisRoom: Hashable, Sendable, Identifiable {
     public var openings: [PlanOpsisOpening]
     /// v9.6 independent semantic interior/structural components. These are not RoomPlan evidence.
     public var components: [PlanOpsisComponent]
+    /// v12.1 provenance: elevation of this room's floor in the capture coordinate space (mm).
+    /// Semantic heights and sills are already relative to this floor; nil for drawn/imported rooms.
+    public var captureFloorElevationMM: Double?
 
     public init(
         id: UUID = UUID(),
         sourceRoomPlanID: UUID? = nil,
         walls: [PlanOpsisWall] = [],
         openings: [PlanOpsisOpening] = [],
-        components: [PlanOpsisComponent] = []
+        components: [PlanOpsisComponent] = [],
+        captureFloorElevationMM: Double? = nil
     ) {
         self.id = id
         self.sourceRoomPlanID = sourceRoomPlanID
         self.walls = walls
         self.openings = openings
         self.components = components
+        self.captureFloorElevationMM = captureFloorElevationMM
     }
 }
 
 extension PlanOpsisRoom: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, sourceRoomPlanID, walls, openings, components
+        case id, sourceRoomPlanID, walls, openings, components, captureFloorElevationMM
     }
 
     public init(from decoder: Decoder) throws {
@@ -203,6 +208,7 @@ extension PlanOpsisRoom: Codable {
         openings = try container.decodeIfPresent([PlanOpsisOpening].self, forKey: .openings) ?? []
         // Backward-compatible with every v1 project saved before v9.6.
         components = try container.decodeIfPresent([PlanOpsisComponent].self, forKey: .components) ?? []
+        captureFloorElevationMM = try container.decodeIfPresent(Double.self, forKey: .captureFloorElevationMM)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -212,5 +218,6 @@ extension PlanOpsisRoom: Codable {
         try container.encode(walls, forKey: .walls)
         try container.encode(openings, forKey: .openings)
         try container.encode(components, forKey: .components)
+        try container.encodeIfPresent(captureFloorElevationMM, forKey: .captureFloorElevationMM)
     }
 }

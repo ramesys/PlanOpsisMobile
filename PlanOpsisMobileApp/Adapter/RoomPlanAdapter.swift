@@ -3,10 +3,18 @@ import Foundation
 public struct RoomPlanAdapter {
     public struct Configuration {
         public var defaultWallThicknessMM: Double
+        /// Openings whose bottom lies this far or less below the floor datum are treated as resting on
+        /// the floor (capture noise). Deeper ones are clamped and diagnosed.
+        public var floorNoiseToleranceMM: Double
         public var uuidProvider: () -> UUID
 
-        public init(defaultWallThicknessMM: Double = 120, uuidProvider: @escaping () -> UUID = UUID.init) {
+        public init(
+            defaultWallThicknessMM: Double = 120,
+            floorNoiseToleranceMM: Double = 30,
+            uuidProvider: @escaping () -> UUID = UUID.init
+        ) {
             self.defaultWallThicknessMM = defaultWallThicknessMM
+            self.floorNoiseToleranceMM = floorNoiseToleranceMM
             self.uuidProvider = uuidProvider
         }
     }
@@ -75,6 +83,9 @@ public struct RoomPlanAdapter {
     private func adaptRoom(_ snapshot: RoomCaptureSnapshot) -> (room: PlanOpsisRoom, diagnostics: [Diagnostic]) {
         var diagnostics: [Diagnostic] = []
         var walls: [PlanOpsisWall] = []
+        // v12.1: capture-space Y=0 is the device's start height, not the floor. Every semantic
+        // elevation is measured from this room's floor datum instead.
+        let floorElevationMM = coordinates.floorElevationMM(walls: snapshot.surfaces.filter { $0.category == .wall })
         var wallIDBySourceID: [UUID: UUID] = [:]
 
         for surface in snapshot.surfaces where surface.category == .wall {
@@ -145,7 +156,8 @@ public struct RoomPlanAdapter {
             let offset = relative.dot(hostWall.direction)
             let widthMM = coordinates.millimetres(fromMetres: surface.dimensions.x)
             let heightMM = coordinates.millimetres(fromMetres: surface.dimensions.y)
-            let sillMM = coordinates.bottomElevationMM(surface: surface)
+            let rawSillMM = coordinates.bottomElevationMM(surface: surface) - (floorElevationMM ?? 0)
+            let sillMM = max(0, rawSillMM)
             let halfWidth = widthMM * 0.5
 
             if offset - halfWidth < -1e-6 || offset + halfWidth > hostWall.length + 1e-6 {
@@ -154,7 +166,7 @@ public struct RoomPlanAdapter {
                     hostWallID: hostWallID
                 ))
             }
-            if sillMM < -1e-6 || sillMM + heightMM > hostWall.height + 1e-6 {
+            if rawSillMM < -configuration.floorNoiseToleranceMM || sillMM + heightMM > hostWall.height + 1e-6 {
                 diagnostics.append(.openingVerticalExtentOutsideHost(
                     surfaceSourceID: surface.sourceRoomPlanID,
                     hostWallID: hostWallID
@@ -189,7 +201,8 @@ public struct RoomPlanAdapter {
                 id: configuration.uuidProvider(),
                 sourceRoomPlanID: snapshot.sourceRoomPlanID,
                 walls: walls,
-                openings: openings
+                openings: openings,
+                captureFloorElevationMM: floorElevationMM
             ),
             diagnostics
         )
