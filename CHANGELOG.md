@@ -17,6 +17,18 @@
   perimeter. Snaps: endpoint, midpoint, intersection, centre, quadrant, perpendicular, insertion, node
   and (optional) nearest. Touch and hold for a precision cursor above the finger with a live snap marker.
 
+### DXF layers by IFC class
+- **Every element is on the layer of its IFC class:** IfcWall, IfcDoor (leaf and swing), IfcWindow,
+  IfcOpeningElement, IfcSpace, IfcColumn, IfcBeam, IfcFurnishingElement and IfcSanitaryTerminal, the same
+  classes the IFC4 export writes. Dimensions go to IfcAnnotation-Dimensions, room names and areas to
+  IfcAnnotation, and wall axes to IfcWall-Axis (off and not plotted).
+- **Rhino drawings keep the classification inside blocks.** Door, window and furniture symbol geometry
+  used to sit on layer 0 inside its block; it now carries its IFC class layer, so exploding a block in
+  Rhino keeps it classified, and dimension blocks stay on the dimension layer.
+- The previous CAD discipline layers (A-WALL, A-DOOR, A-DOOR-SWNG, S-COLS, P-FIXT…) remain available
+  under *DXF layers* in the project menu and the survey settings. Files exported with either naming
+  import back.
+
 ### Plan editing
 - **Object snaps while editing.** Wall grips and wall drawing snap to wall axes (endpoint, midpoint,
   intersection, perpendicular), component centres and the DXF underlay, with the snap shown on the plan.

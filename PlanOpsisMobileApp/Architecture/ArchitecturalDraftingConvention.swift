@@ -120,6 +120,85 @@ public enum ArchitecturalDraftingConvention {
     }
 }
 
+/// v12.3 how DXF layers are named. Geometry is always grouped by what it represents; this only
+/// chooses the names CAD programs see.
+public enum DXFLayerNaming: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// One layer per IFC class: IfcWall, IfcDoor, IfcWindow, IfcSpace… (default).
+    case ifcClass
+    /// CAD discipline layers used up to v12.2: A-WALL, A-DOOR, A-DOOR-SWNG, S-COLS, P-FIXT…
+    case discipline
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .ifcClass: return "IFC class layers"
+        case .discipline: return "CAD discipline layers"
+        }
+    }
+}
+
+public extension ArchitecturalDraftingConvention.Layer {
+    /// The layer name written to DXF. With IFC naming every element's geometry, including door
+    /// swings, sits on its IFC class layer; drawing-only content goes to IfcAnnotation layers.
+    func dxfName(_ naming: DXFLayerNaming) -> String {
+        guard naming == .ifcClass else { return rawValue }
+        switch self {
+        case .wall: return "IfcWall"
+        case .wallCenter: return "IfcWall-Axis"
+        case .door, .doorSwing: return "IfcDoor"
+        case .window: return "IfcWindow"
+        case .opening: return "IfcOpeningElement"
+        case .space: return "IfcSpace"
+        case .column: return "IfcColumn"
+        case .beam: return "IfcBeam"
+        case .furnishing: return "IfcFurnishingElement"
+        case .sanitary: return "IfcSanitaryTerminal"
+        case .dimensions: return "IfcAnnotation-Dimensions"
+        case .annotation, .roomAnnotation: return "IfcAnnotation"
+        case .metadata: return "PlanOpsis-Metadata"
+        }
+    }
+
+    /// Reads a layer name in either naming (case-insensitive), so files exported before v12.3 and
+    /// files edited in Rhino or AutoCAD still import. Merged IFC layers resolve to their main layer.
+    init?(dxfName name: String) {
+        let key = name.uppercased()
+        for naming in [DXFLayerNaming.discipline, .ifcClass] {
+            if let layer = Self.allCases.first(where: { $0.dxfName(naming).uppercased() == key }) {
+                self = layer
+                return
+            }
+        }
+        return nil
+    }
+
+    /// The internal layer name for a name read from DXF; unknown layers keep their name.
+    static func normalizedName(_ dxfName: String) -> String {
+        Self(dxfName: dxfName)?.rawValue ?? dxfName
+    }
+}
+
+public extension ArchitecturalDraftingConvention {
+    /// IFC class of a component kind (the same classes the IFC4 export writes).
+    static func ifcClass(for kind: PlanOpsisComponent.Kind) -> IFCClass {
+        switch kind {
+        case .column: return .column
+        case .beam: return .beam
+        case .bed, .table, .chair, .sofa: return .furnishing
+        case .wc, .sink: return .sanitaryTerminal
+        }
+    }
+
+    static func ifcClass(for kind: PlanOpsisOpening.Kind) -> IFCClass {
+        switch kind {
+        case .door: return .door
+        case .window: return .window
+        case .opening: return .opening
+        }
+    }
+}
+
 public extension ArchitecturalDraftingConvention {
     enum TextStyle {
         public static let name = "STANDARD"

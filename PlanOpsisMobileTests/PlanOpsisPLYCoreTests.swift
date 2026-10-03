@@ -132,7 +132,7 @@ extension PlanOpsisPLYCoreTests {
 
         let dxf = DXFExchangeEngine().exportValidated(project: adapted.project, representation: .semanticObservations)
         XCTAssertFalse(dxf.text.isEmpty)
-        XCTAssertTrue(dxf.text.contains("A-WALL"))
+        XCTAssertTrue(dxf.text.contains("IfcWall"))
 
         let ifc = IFC4ExchangeEngine().exportValidated(project: adapted.project)
         XCTAssertTrue(ifc.canWrite)
@@ -534,8 +534,8 @@ extension PlanOpsisPLYCoreTests {
         XCTAssertEqual(beam.baseElevationMM, 2_450, accuracy: 0.001)
 
         let dxf = DXFExchangeEngine().exportValidated(project: adapted.project, representation: .semanticObservations)
-        XCTAssertTrue(dxf.text.contains("S-COLS"))
-        XCTAssertTrue(dxf.text.contains("S-BEAM"))
+        XCTAssertTrue(dxf.text.contains("IfcColumn"))
+        XCTAssertTrue(dxf.text.contains("IfcBeam"))
         let ifc = IFC4ExchangeEngine().exportValidated(project: adapted.project)
         XCTAssertTrue(ifc.text.contains("IFCCOLUMN"))
         XCTAssertTrue(ifc.text.contains("IFCBEAM"))

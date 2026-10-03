@@ -75,7 +75,7 @@ final class SurveyDXFRoundTripTests:XCTestCase {
         let stripped=export.text.replacingOccurrences(of:"PO12:",with:"REMOVED:")
         XCTAssertFalse(engine.preview(drawing:reader.read(stripped),baseline:export.manifest,current:p).canApply)
         var doc=try SurveyDXFDocument(export.text)
-        let i=try XCTUnwrap(doc.indices(in:"ENTITIES").first{doc.records[$0].string(8)=="A-WALL"})
+        let i=try XCTUnwrap(doc.indices(in:"ENTITIES").first{doc.records[$0].string(8)=="IfcWall"})
         doc.records[i].set(10,"123456")
         XCTAssertFalse(engine.preview(drawing:reader.read(doc.text),baseline:export.manifest,current:p).canApply)
     }

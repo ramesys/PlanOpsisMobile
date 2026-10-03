@@ -41,16 +41,18 @@ public struct CADViewerDocument: Identifiable, Sendable {
 
 extension CADDocument {
     /// The PlanOpsis drawing (`ProjectDerivation.drawing`) as a CAD document, with the drafting
-    /// convention's layers, so the project and third-party drawings share one viewer.
+    /// convention's layers named as the DXF export names them, so the project and third-party
+    /// drawings share one viewer.
     /// PlanOpsis object IDs are kept as `PLANOPSIS` extended data for inspection.
-    public init(preview: DXFPreviewSnapshot) {
+    public init(preview: DXFPreviewSnapshot, layerNaming: DXFLayerNaming = .ifcClass) {
+        typealias Layer = ArchitecturalDraftingConvention.Layer
+        func name(_ internalName: String) -> String { Layer(rawValue: internalName)?.dxfName(layerNaming) ?? internalName }
         var layers: [CADLayer] = []
         var seen = Set<String>()
-        for layer in ArchitecturalDraftingConvention.Layer.allCases {
-            seen.insert(layer.rawValue)
+        for layer in Layer.allCases where seen.insert(layer.dxfName(layerNaming)).inserted {
             let index = ArchitecturalDraftingConvention.dxfColorIndex(for: layer)
             layers.append(CADLayer(
-                name: layer.rawValue,
+                name: layer.dxfName(layerNaming),
                 color: .aci(index),
                 colorIndex: index,
                 isOn: ArchitecturalDraftingConvention.isInitiallyVisible(layer),
@@ -60,7 +62,8 @@ extension CADDocument {
         }
         var entities: [CADEntity] = []
         for primitive in preview.primitives {
-            if seen.insert(primitive.layer).inserted { layers.append(CADLayer(name: primitive.layer)) }
+            let layerName = name(primitive.layer)
+            if seen.insert(layerName).inserted { layers.append(CADLayer(name: layerName)) }
             let geometry: CADGeometry
             switch primitive.kind {
             case .line:
@@ -90,7 +93,7 @@ extension CADDocument {
             if !values.isEmpty { xdata[DXFExchangeEngine.applicationID] = values }
             entities.append(CADEntity(
                 type: primitive.kind.rawValue.uppercased(),
-                layer: primitive.layer,
+                layer: layerName,
                 lineWeight: .hundredthsMM(ArchitecturalDraftingConvention.dxfLineWeightHundredthsMM(primitive.lineWeightMM)),
                 geometry: geometry,
                 xdata: xdata
