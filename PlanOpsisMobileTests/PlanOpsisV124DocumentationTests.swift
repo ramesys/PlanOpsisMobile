@@ -136,7 +136,7 @@ final class PlanOpsisV124DocumentationTests: XCTestCase {
         let set = DrawingSetComposer().compose(project: project, date: Date(timeIntervalSince1970: 0))
         let titles = set.sheets.map(\.title)
         XCTAssertEqual(titles.first, "Floor plan")
-        XCTAssertTrue(titles.contains("Schedules"))
+        XCTAssertTrue(titles.contains("Schedules and quantities"))
         XCTAssertTrue(titles.contains("Interior elevations"))
         XCTAssertTrue(titles.contains("Sections"))
         // 12.24 × 8.74 m fits A3 (400 × ~230 mm drawing area) at 1:50.
