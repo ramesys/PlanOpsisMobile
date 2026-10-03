@@ -124,8 +124,10 @@ public struct DXFExchangeEngine {
     public var surveyDrawing:Bool
     /// v12.3 names of the layers written to DXF. Previews keep the internal layer IDs.
     public var layerNaming: DXFLayerNaming
-    public init(includeOpeningDimensions:Bool=false,surveyDrawing:Bool=false,layerNaming:DXFLayerNaming = .ifcClass) {
-        self.includeOpeningDimensions=includeOpeningDimensions;self.surveyDrawing=surveyDrawing;self.layerNaming=layerNaming
+    /// v12.4 door, window and opening marks (D01, W01…) on the tags layer.
+    public var includeTags: Bool
+    public init(includeOpeningDimensions:Bool=false,surveyDrawing:Bool=false,layerNaming:DXFLayerNaming = .ifcClass,includeTags:Bool=false) {
+        self.includeOpeningDimensions=includeOpeningDimensions;self.surveyDrawing=surveyDrawing;self.layerNaming=layerNaming;self.includeTags=includeTags
     }
 
     /// The DXF layer name for an internal layer ID.
@@ -167,7 +169,7 @@ public struct DXFExchangeEngine {
             }
 
             primitives.append(contentsOf: dimensionPrimitives(for: draft))
-            primitives.append(contentsOf: spaceAndRoomAnnotationPrimitives(for: draft, roomIndex: index))
+            primitives.append(contentsOf: spaceAndRoomAnnotationPrimitives(for: draft, roomIndex: index, roomName: project.survey.roomNames[room.id]))
         }
 
         // v9.6 semantic component library: independent objects remain visible in both Observed
@@ -205,6 +207,10 @@ public struct DXFExchangeEngine {
         }
 
         if includeOpeningDimensions { primitives.append(contentsOf: openingDimensions(for: project, semanticGeometry: semanticGeometry)) }
+        if includeTags {
+            let schedules = ProjectSchedules(project: project, semanticGeometry: semanticGeometry, physicalGeometry: physicalGeometry)
+            primitives.append(contentsOf: PlanTagEngine().primitives(project: project, schedules: schedules, topology: semanticGeometry.topology))
+        }
         let wallSegments = representation == .reconciledPhysical && project.rooms.count > 1
             ? physicalGeometry.planWallSegments : semanticGeometry.semanticDisplaySnapshot().planWallSegments
         primitives = ArchitecturalWallDrawing.resolve(primitives, segments: wallSegments, project: project)
@@ -234,7 +240,8 @@ public struct DXFExchangeEngine {
         if let focusedRoomID { scoped.rooms = project.rooms.filter { $0.id == focusedRoomID } }
         return preview(for: scoped, representation: representation).primitives.filter {
             $0.layer == ArchitecturalDraftingConvention.Layer.dimensions.rawValue ||
-            $0.layer == ArchitecturalDraftingConvention.Layer.roomAnnotation.rawValue
+            $0.layer == ArchitecturalDraftingConvention.Layer.roomAnnotation.rawValue ||
+            $0.layer == ArchitecturalDraftingConvention.Layer.tags.rawValue
         }
     }
 
@@ -1210,7 +1217,8 @@ public struct DXFExchangeEngine {
         }
     }
 
-    private func spaceAndRoomAnnotationPrimitives(for draft: RoomDraft, roomIndex: Int) -> [DXFPrimitive] {
+    /// - Parameter roomName: v12.4 the room's survey name, shown instead of "ROOM n" when set.
+    private func spaceAndRoomAnnotationPrimitives(for draft: RoomDraft, roomIndex: Int, roomName: String? = nil) -> [DXFPrimitive] {
         guard let centroid = polygonCentroid(draft.innerBoundary) else { return [] }
         let spaceLayer = ArchitecturalDraftingConvention.Layer.space
         let annotationLayer = ArchitecturalDraftingConvention.Layer.roomAnnotation
@@ -1233,7 +1241,7 @@ public struct DXFExchangeEngine {
                 kind: .text,
                 layer: annotationLayer.rawValue,
                 points: [centroid + Point2D(x: 0, y: labelGap)],
-                text: "ROOM \(roomIndex + 1)",
+                text: roomName.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 } ?? "ROOM \(roomIndex + 1)",
                 textHeight: ArchitecturalDraftingConvention.TextStyle.roomNameHeightMM,
                 rotationDegrees: 0,
                 lineWeightMM: ArchitecturalDraftingConvention.lineWeightMM(for: annotationLayer)

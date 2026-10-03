@@ -11,13 +11,17 @@ public struct ProjectDerivation: Sendable {
         public var focusedRoomID: UUID?
         public var includeOpeningDimensions: Bool
         public var surveyDrawing: Bool
+        /// v12.4 opening marks on the plan and in the drawing.
+        public var includeTags: Bool
 
         public init(
             representation: GeometryRepresentationMode = .semanticObservations,
             focusedRoomID: UUID? = nil,
             includeOpeningDimensions: Bool = false,
-            surveyDrawing: Bool = false
+            surveyDrawing: Bool = false,
+            includeTags: Bool = false
         ) {
+            self.includeTags = includeTags
             self.representation = representation
             self.focusedRoomID = focusedRoomID
             self.includeOpeningDimensions = includeOpeningDimensions
@@ -52,7 +56,7 @@ public struct ProjectDerivation: Sendable {
             semantic = ParametricGeometryEngine().generate(from: project)
             physical = PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semantic)
         }
-        let engine = DXFExchangeEngine(includeOpeningDimensions: settings.includeOpeningDimensions, surveyDrawing: settings.surveyDrawing)
+        let engine = DXFExchangeEngine(includeOpeningDimensions: settings.includeOpeningDimensions, surveyDrawing: settings.surveyDrawing, includeTags: settings.includeTags)
         let drawing = engine.preview(for: project, representation: settings.representation, semanticGeometry: semantic, physicalGeometry: physical)
 
         self.project = project
@@ -71,6 +75,7 @@ public struct ProjectDerivation: Sendable {
 
     static func isPlanAnnotation(_ primitive: DXFPrimitive) -> Bool {
         primitive.layer == ArchitecturalDraftingConvention.Layer.dimensions.rawValue ||
-        primitive.layer == ArchitecturalDraftingConvention.Layer.roomAnnotation.rawValue
+        primitive.layer == ArchitecturalDraftingConvention.Layer.roomAnnotation.rawValue ||
+        primitive.layer == ArchitecturalDraftingConvention.Layer.tags.rawValue
     }
 }

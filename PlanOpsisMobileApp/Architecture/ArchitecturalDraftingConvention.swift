@@ -33,6 +33,8 @@ public enum ArchitecturalDraftingConvention {
         case dimensions = "A-DIMS"
         case annotation = "A-ANNO"
         case roomAnnotation = "A-ANNO-ROOM"
+        /// v12.4 door, window and opening marks (D01, W01…).
+        case tags = "A-ANNO-TAGS"
 
         /// Technical PlanOpsis round-trip layers. These are non-plot/off by default.
         case wallCenter = "A-WALL-CNTR"
@@ -77,7 +79,7 @@ public enum ArchitecturalDraftingConvention {
         case .space: return 0.13
         case .column, .beam: return 0.35
         case .furnishing, .sanitary: return 0.18
-        case .doorSwing, .dimensions, .roomAnnotation: return 0.13
+        case .doorSwing, .dimensions, .roomAnnotation, .tags: return 0.13
         case .wallCenter, .annotation, .metadata: return 0.09
         }
     }
@@ -156,6 +158,7 @@ public extension ArchitecturalDraftingConvention.Layer {
         case .sanitary: return "IfcSanitaryTerminal"
         case .dimensions: return "IfcAnnotation-Dimensions"
         case .annotation, .roomAnnotation: return "IfcAnnotation"
+        case .tags: return "IfcAnnotation-Tags"
         case .metadata: return "PlanOpsis-Metadata"
         }
     }

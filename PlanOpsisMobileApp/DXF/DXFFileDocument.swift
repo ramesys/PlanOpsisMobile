@@ -9,16 +9,46 @@ extension UTType {
 
 enum ArchitecturalExchangeFormat {
     case dxf, ifc
-    var contentType: UTType { self == .dxf ? .planOpsisDXF : .planOpsisIFC }
-    var filename: String { self == .dxf ? "PlanOpsis-Architectural.dxf" : "PlanOpsis-Semantic-IFC4.ifc" }
-    var label: String { self == .dxf ? "DXF" : "IFC4" }
+    /// v12.4 drawing set and schedules.
+    case pdf, csv
+
+    var contentType: UTType {
+        switch self {
+        case .dxf: return .planOpsisDXF
+        case .ifc: return .planOpsisIFC
+        case .pdf: return .pdf
+        case .csv: return .commaSeparatedText
+        }
+    }
+
+    var filename: String {
+        switch self {
+        case .dxf: return "PlanOpsis-Architectural.dxf"
+        case .ifc: return "PlanOpsis-Semantic-IFC4.ifc"
+        case .pdf: return "PlanOpsis-Drawings.pdf"
+        case .csv: return "PlanOpsis-Schedules.csv"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .dxf: return "DXF"
+        case .ifc: return "IFC4"
+        case .pdf: return "PDF drawing set"
+        case .csv: return "Schedules CSV"
+        }
+    }
 }
 
 struct ArchitecturalExchangeTextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.planOpsisDXF, .planOpsisIFC, .plainText] }
+    static var writableContentTypes: [UTType] { [.planOpsisDXF, .planOpsisIFC, .pdf, .commaSeparatedText, .plainText] }
     var text: String
+    /// Binary content (PDF); written instead of `text` when set.
+    var data: Data?
 
     init(text: String = "") { self.text = text }
+    init(data: Data) { self.text = ""; self.data = data }
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents,
@@ -29,6 +59,7 @@ struct ArchitecturalExchangeTextDocument: FileDocument {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        if let data { return FileWrapper(regularFileWithContents: data) }
         // PlanOpsis v9.5 emits an ASCII-safe R2000 DXF. Keeping bytes ASCII-compatible
         // avoids encoding ambiguity in conservative CAD readers.
         let data = text.data(using: .ascii, allowLossyConversion: false) ?? Data(text.utf8)

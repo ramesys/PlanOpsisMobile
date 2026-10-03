@@ -76,6 +76,12 @@ struct FloorPlanView: View {
     let onStopMovingUnderlay: () -> Void
     let onPrecisionInput: (String) -> Bool
     let onFinishCreation: () -> Void
+    // v12.4 drawing set
+    let sections: [SectionLine]
+    let isPlacingSection: Bool
+    let pendingSectionStart: Point2D?
+
+    private var isPlacingPoints: Bool { creationTool != nil || componentCreationTool != nil || isPlacingSection }
 
     var body: some View {
         GeometryReader { proxy in
@@ -139,6 +145,10 @@ struct FloorPlanView: View {
                     }
                     for annotation in annotations { draw(annotation: annotation, viewport: viewport, context: &context) }
 
+                    for section in sections {
+                        drawSection(section, viewport: viewport, context: &context)
+                    }
+
                     if let activeSnap {
                         drawSnap(activeSnap, viewport: viewport, context: &context)
                     }
@@ -153,8 +163,8 @@ struct FloorPlanView: View {
                         .onEnded { value in
                             guard !isPinching, !isPanning, marqueeStart == nil, !isMovingUnderlay else { return }
                             let hit = hitTest(value.location, viewport: viewport)
-                            if creationTool == .wall || componentCreationTool != nil {
-                                let resolved = snappedPoint(value.location, viewport: viewport, from: pendingWallStart)
+                            if creationTool == .wall || componentCreationTool != nil || isPlacingSection {
+                                let resolved = snappedPoint(value.location, viewport: viewport, from: isPlacingSection ? pendingSectionStart : pendingWallStart)
                                 onPlanTap(resolved.point, hit, resolved.snapped)
                             } else if creationTool != nil {
                                 activeSnap = nil
@@ -191,7 +201,7 @@ struct FloorPlanView: View {
                 )
                 .simultaneousGesture(marqueeGesture(viewport: viewport))
 
-                if directEditingEnabled, creationTool == nil, componentCreationTool == nil {
+                if directEditingEnabled, !isPlacingPoints {
                     if let wall = editableWall {
                         wallHandles(wall: wall, viewport: viewport)
                         wallDimensionEditor(wall: wall)
@@ -210,7 +220,7 @@ struct FloorPlanView: View {
                     underlayMoveBanner
                 }
 
-                if creationTool != nil || componentCreationTool != nil {
+                if isPlacingPoints {
                     VStack {
                         HStack(alignment: .top) {
                             creationBar
@@ -224,7 +234,7 @@ struct FloorPlanView: View {
                 zoomControls(size: size, current: viewport.transform)
                 if plyEvidence != nil { evidenceControl }
 
-                if let start = pendingWallStart {
+                if let start = pendingWallStart ?? pendingSectionStart {
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 12, height: 12)
@@ -357,6 +367,7 @@ struct FloorPlanView: View {
     }
 
     private var creationPrompt: String {
+        if isPlacingSection { return pendingSectionStart == nil ? "Section: tap the cut start" : "Section: tap the cut end" }
         if let componentCreationTool { return "Place \(componentCreationTool.displayName)" }
         if let creationTool {
             if creationTool == .wall { return pendingWallStart == nil ? "Tap the first corner" : "Tap the next corner" }
@@ -597,6 +608,35 @@ struct FloorPlanView: View {
         context.draw(label, at: CGPoint(x: box.midX, y: box.midY), anchor: .center)
     }
 
+    /// Section mark on the plan: dash-dot cut line, lettered bubbles beyond both ends and arrows
+    /// showing the direction the section looks.
+    private func drawSection(_ section: SectionLine, viewport: PlanViewport, context: inout GraphicsContext) {
+        let a = viewport.screen(section.start), b = viewport.screen(section.end)
+        var line = Path()
+        line.move(to: a)
+        line.addLine(to: b)
+        context.stroke(line, with: .color(.purple), style: StrokeStyle(lineWidth: 1.2, dash: [10, 3, 2, 3]))
+        let screenDirection = CGPoint(x: b.x - a.x, y: b.y - a.y)
+        let length = max(1, hypot(screenDirection.x, screenDirection.y))
+        let u = CGPoint(x: screenDirection.x / length, y: screenDirection.y / length)
+        // Plan Y is up and screen Y is down, so the model view direction flips its Y on screen.
+        let view = section.viewDirection
+        let v = CGPoint(x: view.x, y: -view.y)
+        for (end, outward) in [(a, CGPoint(x: -u.x, y: -u.y)), (b, u)] {
+            let bubble = CGPoint(x: end.x + outward.x * 16, y: end.y + outward.y * 16)
+            let circle = Path(ellipseIn: CGRect(x: bubble.x - 11, y: bubble.y - 11, width: 22, height: 22))
+            context.fill(circle, with: .color(Color(uiColor: .systemBackground)))
+            context.stroke(circle, with: .color(.purple), lineWidth: 1.5)
+            context.draw(Text(section.label).font(.caption.weight(.bold)).foregroundStyle(.purple), at: bubble, anchor: .center)
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: end.x + v.x * 14, y: end.y + v.y * 14))
+            arrow.addLine(to: CGPoint(x: end.x - v.y * 6, y: end.y + v.x * 6))
+            arrow.addLine(to: CGPoint(x: end.x + v.y * 6, y: end.y - v.x * 6))
+            arrow.closeSubpath()
+            context.fill(arrow, with: .color(.purple))
+        }
+    }
+
     /// The editable dimension whose text is under the tap.
     private func dimensionHit(_ screenPoint: CGPoint, viewport: PlanViewport) -> PlanDimensionEdit? {
         dimensions
@@ -612,7 +652,7 @@ struct FloorPlanView: View {
         LongPressGesture(minimumDuration: 0.35)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("plan-space")))
             .onChanged { value in
-                guard directEditingEnabled, creationTool == nil, componentCreationTool == nil, !isMovingUnderlay, !isPinching,
+                guard directEditingEnabled, !isPlacingPoints, !isMovingUnderlay, !isPinching,
                       case .second(true, let drag?) = value else { return }
                 if marqueeStart == nil { marqueeStart = drag.startLocation }
                 marqueeEnd = drag.location

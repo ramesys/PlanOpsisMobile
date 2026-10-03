@@ -61,7 +61,7 @@ struct InspectorView: View {
                     physicalEditSection
                 }
             } else if let opening = store.selectedOpening {
-                Section("\(opening.kind.rawValue.capitalized) · mm") {
+                Section("\(store.selectedOpeningMark.map { "\($0) · " } ?? "")\(opening.kind.rawValue.capitalized) · mm") {
                     TextField("Offset", value: openingOffsetBinding, format: .number.precision(.fractionLength(0...1)))
                         .keyboardType(.decimalPad)
                     TextField("Width", value: openingWidthBinding, format: .number.precision(.fractionLength(0...1)))
@@ -247,6 +247,17 @@ struct InspectorView: View {
                     Text("Count includes the original selection. Step is the translation between occurrences.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            // v12.4: the room's line from the room schedule, for any selection inside it.
+            if let room = store.selectedRoomSchedule {
+                Section("Room \(room.number) · \(room.name)") {
+                    LabeledContent("Floor area", value: String(format: "%.2f m²", room.area / 1_000_000))
+                    LabeledContent("Perimeter", value: String(format: "%.2f m", room.perimeter / 1_000))
+                    LabeledContent("Height", value: "\(Int(room.height.rounded())) mm")
+                    LabeledContent("Doors · windows", value: "\(room.doorCount) · \(room.windowCount)")
+                    LabeledContent("Glazing", value: String(format: "%.2f m² (%.0f %%)", room.glazingArea / 1_000_000, room.glazingRatio * 100))
                 }
             }
 

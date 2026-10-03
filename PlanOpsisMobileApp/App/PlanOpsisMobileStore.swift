@@ -114,6 +114,12 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published var showDimensions = true
     @Published var showRoomText = true
     @Published var showOpeningWidths = false { didSet { rederive() } }
+    /// v12.4 door, window and opening marks on the plan.
+    @Published var showTags = true { didSet { rederive() } }
+    /// v12.4 placing a section line: the first tap sets the start, the second the end.
+    @Published private(set) var isPlacingSection = false
+    @Published private(set) var pendingSectionStart: Point2D?
+    private var drawingSetCache: (project: PlanOpsisProject, representation: GeometryRepresentationMode, set: DrawingSet)?
     /// Keeps the latest PLY plan-section evidence visible under the semantic drawing for direct
     /// scan-vs-reconstruction comparison. This is editor/session state, not architectural state.
     @Published var showPLYEvidenceOverlay = false
@@ -328,7 +334,8 @@ final class PlanOpsisMobileStore: ObservableObject {
             representation: representationMode,
             focusedRoomID: focusedRoomID,
             includeOpeningDimensions: showOpeningWidths,
-            surveyDrawing: dxfExportProfile == .rhinoEditable || (project.map { $0.survey != .empty } ?? false)
+            surveyDrawing: dxfExportProfile == .rhinoEditable || (project.map { $0.survey != .empty } ?? false),
+            includeTags: showTags
         )
     }
 
@@ -357,6 +364,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         creationTool = kind
         pendingWallStart = nil
         wallChainStart = nil
+        cancelSectionPlacement()
         statusMessage = kind == .wall ? "Draw walls: tap corners (or type lengths); tap Done to finish." : "Add \(kind.rawValue.capitalized): tap a host wall."
     }
 
@@ -385,17 +393,20 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func cancelCreation() {
         let wasDrawingWalls = creationTool == .wall && wallChainStart != nil
+        let wasPlacingSection = isPlacingSection
+        cancelSectionPlacement()
         creationTool = nil
         componentCreationTool = nil
         pendingWallStart = nil
         wallChainStart = nil
-        statusMessage = wasDrawingWalls ? "Finished drawing walls." : "Add-object tool cancelled."
+        statusMessage = wasDrawingWalls ? "Finished drawing walls." : (wasPlacingSection ? "Section cancelled." : "Add-object tool cancelled.")
     }
 
     /// - Parameter snapped: the point is an object snap the view already resolved; drafting constraints
     ///   (grid, ortho, polar) must not move it again.
     func handlePlanTap(point: Point2D, hitID: UUID?, snapped: Bool = false) {
         guard let project else { return }
+        if placeSectionPoint(point) { return }
         let roomID = focusedRoomID ?? selectedRoom?.id ?? project.rooms.first?.id
         guard let roomID else { return }
 
@@ -736,6 +747,127 @@ final class PlanOpsisMobileStore: ObservableObject {
         let r = CADAffine.rotation(degrees * .pi / 180)
         underlayOffset = c + r.apply(underlayOffset - c)
         underlayRotationDegrees = (underlayRotationDegrees + degrees).truncatingRemainder(dividingBy: 360)
+    }
+
+    // MARK: - v12.4 documentation
+
+    var documentationSettings: DocumentationSettings {
+        project?.documentationSettings ?? DocumentationSettings()
+    }
+
+    /// Changes the drawing set settings (title block, paper, scales, sections) as one undoable edit.
+    func updateDocumentation(_ label: String = "Drawing settings", _ mutate: (inout DocumentationSettings) -> Void) {
+        guard var next = project else { return }
+        var settings = next.documentationSettings
+        mutate(&settings)
+        guard settings != next.documentationSettings || next.documentation == nil else { return }
+        next.documentation = settings
+        commitSemanticProject(next, label: label, coalescingKey: "documentation-\(label)")
+    }
+
+    /// The drawing set for the current project, rebuilt only when the project or view mode changes.
+    var drawingSet: DrawingSet? {
+        guard let project else { return nil }
+        if let cache = drawingSetCache, cache.representation == representationMode, cache.project == project { return cache.set }
+        let set = DrawingSetComposer().compose(
+            project: project,
+            representation: representationMode,
+            semanticGeometry: derivation?.project == project ? derivation?.semanticGeometry : nil,
+            physicalGeometry: derivation?.project == project ? derivation?.physicalGeometry : nil
+        )
+        drawingSetCache = (project, representationMode, set)
+        return set
+    }
+
+    var schedules: ProjectSchedules? { drawingSet?.schedules }
+
+    /// The schedule mark of the selected door, window or opening (D01, W01…).
+    var selectedOpeningMark: String? {
+        guard let id = selectedOpening?.id else { return nil }
+        return schedules?.marks[id]
+    }
+
+    var selectedRoomSchedule: ProjectSchedules.RoomRow? {
+        guard let room = selectedRoom else { return nil }
+        return schedules?.rooms.first { $0.roomID == room.id }
+    }
+
+    func exportDrawingSetPDF() -> Data? {
+        guard let set = drawingSet, !set.sheets.isEmpty else {
+            statusMessage = "Open or scan a project to produce drawings."
+            return nil
+        }
+        do {
+            let data = try SheetPDFRenderer().render(set, title: project?.displayName ?? "PlanOpsis drawings")
+            statusMessage = "Drawing set ready: \(set.sheets.count) sheet\(set.sheets.count == 1 ? "" : "s") on \(documentationSettings.paper.title)."
+            return data
+        } catch {
+            statusMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Schedules as CSV with a UTF-8 byte-order mark so spreadsheet apps read m² correctly.
+    func exportSchedulesCSV() -> Data? {
+        guard let schedules, !schedules.tables.isEmpty else {
+            statusMessage = "There is nothing to schedule yet."
+            return nil
+        }
+        return Data(("\u{FEFF}" + schedules.csv()).utf8)
+    }
+
+    var exportBaseName: String {
+        let name = project?.displayName ?? "PlanOpsis"
+        let cleaned = name.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: "-").trimmingCharacters(in: .whitespaces)
+        return cleaned.isEmpty ? "PlanOpsis" : cleaned
+    }
+
+    /// Starts placing a section line on the plan (two taps).
+    func beginSectionPlacement() {
+        guard project != nil else { return }
+        creationTool = nil
+        componentCreationTool = nil
+        pendingWallStart = nil
+        isPlacingSection = true
+        pendingSectionStart = nil
+        statusMessage = "Section: tap where the cut starts, then where it ends. It looks to the left of the line."
+    }
+
+    func cancelSectionPlacement() {
+        isPlacingSection = false
+        pendingSectionStart = nil
+    }
+
+    /// Handles a plan tap while placing a section; returns false when not placing one.
+    @discardableResult
+    func placeSectionPoint(_ point: Point2D) -> Bool {
+        guard isPlacingSection else { return false }
+        guard let start = pendingSectionStart else {
+            pendingSectionStart = point
+            statusMessage = "Section start set. Tap where the cut ends."
+            return true
+        }
+        guard (point - start).length > 300 else {
+            statusMessage = "A section needs to be longer than 300 mm."
+            return true
+        }
+        let label = documentationSettings.nextSectionLabel
+        updateDocumentation("Add section") { $0.sections.append(SectionLine(label: label, start: start, end: point)) }
+        isPlacingSection = false
+        pendingSectionStart = nil
+        statusMessage = "Section \(label)–\(label) added to the drawing set."
+        return true
+    }
+
+    func flipSection(_ id: UUID) {
+        updateDocumentation("Flip section") { settings in
+            guard let index = settings.sections.firstIndex(where: { $0.id == id }) else { return }
+            settings.sections[index].looksLeft.toggle()
+        }
+    }
+
+    func deleteSection(_ id: UUID) {
+        updateDocumentation("Delete section") { $0.sections.removeAll { $0.id == id } }
     }
 
     func duplicateSelectedObject() {
