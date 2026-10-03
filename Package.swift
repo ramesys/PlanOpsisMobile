@@ -39,6 +39,7 @@ let package = Package(
                 "DXF/EditableDXFWriter.swift",
                 "DXF/SurveyDXFDocument.swift",
                 "Documentation/ArchitecturalSectionEngine.swift",
+                "Documentation/DeviationAnalysis.swift",
                 "Documentation/DocumentationModel.swift",
                 "Documentation/DrawingSetComposer.swift",
                 "Documentation/PlanOrdering.swift",

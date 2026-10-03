@@ -326,7 +326,8 @@ struct PlanOpsisRootView: View {
                     pendingSectionStart: store.pendingSectionStart,
                     rasterUnderlay: store.visibleRasterUnderlay,
                     underlayTool: underlayToolState,
-                    onUndoUnderlayPoint: store.undoUnderlayAlignmentPoint
+                    onUndoUnderlayPoint: store.undoUnderlayAlignmentPoint,
+                    deviation: store.showDeviation ? store.deviation : nil
                 )
                 .background { PlanKeyboardShortcuts(store: store) }
                 // On the plan, not the root: one view hosting several file importers shows only one.
@@ -640,6 +641,17 @@ struct PlanOpsisRootView: View {
                             Button("Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
                         }
                         Button { showingPDFUnderlayImporter = true } label: { Label("PDF underlay\u{2026}", systemImage: "doc.richtext") }
+                    }
+                    if store.showUnderlay || store.deviation != nil {
+                        // v12.7 survey against the drawing.
+                        Section("Survey against the drawing") {
+                            Button { store.compareWithDrawing() } label: { Label(store.deviation == nil ? "Compare with drawing" : "Compare again", systemImage: "ruler.fill") }
+                            if store.deviation != nil {
+                                Toggle("Show deviations", isOn: $store.showDeviation)
+                                Button { store.showDeviationReport = true } label: { Label("Deviation report", systemImage: "list.bullet.rectangle") }
+                                Button("Clear comparison", role: .destructive) { store.clearDeviation() }
+                            }
+                        }
                     }
                     if store.openedDrawing != nil || store.rasterUnderlay != nil {
                         Section("Walls from the drawing") {

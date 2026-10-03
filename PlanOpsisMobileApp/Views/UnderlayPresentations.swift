@@ -51,6 +51,11 @@ struct UnderlayPresentations: ViewModifier {
             .onChange(of: store.needsCalibrationLength) { _, needed in
                 if needed { calibrationText = "" }
             }
+            .sheet(isPresented: $store.showDeviationReport) {
+                DeviationReportView(store: store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
     }
 }
 #endif

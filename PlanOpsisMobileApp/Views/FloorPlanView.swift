@@ -86,6 +86,8 @@ struct FloorPlanView: View {
     /// Two-point alignment, calibration or wall tracing in progress.
     let underlayTool: UnderlayToolState?
     let onUndoUnderlayPoint: () -> Void
+    /// v12.7 survey-against-drawing markers, when shown.
+    let deviation: DeviationAnalysis?
 
     private var isPlacingPoints: Bool { creationTool != nil || componentCreationTool != nil || isPlacingSection || underlayTool != nil }
 
@@ -168,6 +170,10 @@ struct FloorPlanView: View {
 
                     for section in sections {
                         drawSection(section, viewport: viewport, context: &context)
+                    }
+
+                    if let deviation {
+                        drawDeviation(deviation, viewport: viewport, context: &context)
                     }
 
                     if let underlayTool {
@@ -869,6 +875,44 @@ struct FloorPlanView: View {
             let c = viewport.screen(point)
             context.fill(Path(ellipseIn: CGRect(x: c.x - 6, y: c.y - 6, width: 12, height: 12)), with: .color(accent))
             context.draw(Text("\(index + 1)′").font(.caption2.bold()).foregroundColor(accent), at: CGPoint(x: c.x + 14, y: c.y - 12))
+        }
+    }
+
+    static func deviationColor(_ status: DeviationAnalysis.Status) -> Color {
+        switch status {
+        case .ok: return .green
+        case .warning: return .orange
+        case .deviation: return .red
+        case .unmatched: return .purple
+        }
+    }
+
+    /// Each surveyed wall's middle joined to the drawing's axis, coloured by how far off it is and
+    /// labelled with the offset; drawing walls nobody surveyed dashed in purple.
+    private func drawDeviation(_ deviation: DeviationAnalysis, viewport: PlanViewport, context: inout GraphicsContext) {
+        for wall in deviation.missingWalls {
+            var path = Path()
+            path.move(to: viewport.screen(wall.start))
+            path.addLine(to: viewport.screen(wall.end))
+            context.stroke(path, with: .color(.purple.opacity(0.8)), style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
+        }
+        for row in deviation.walls {
+            let color = Self.deviationColor(row.status)
+            let survey = viewport.screen(row.surveyPoint)
+            if let reference = row.referencePoint {
+                var link = Path()
+                link.move(to: viewport.screen(reference))
+                link.addLine(to: survey)
+                context.stroke(link, with: .color(color), lineWidth: 2)
+            }
+            context.fill(Path(ellipseIn: CGRect(x: survey.x - 5, y: survey.y - 5, width: 10, height: 10)), with: .color(color))
+            let label = row.status == .unmatched ? "?" : "\(Int((row.endDeviation ?? 0).rounded()))"
+            context.draw(Text(label).font(.caption2.monospacedDigit().bold()).foregroundColor(color), at: CGPoint(x: survey.x + 8, y: survey.y - 9), anchor: .leading)
+        }
+        for row in deviation.openings {
+            let color = Self.deviationColor(row.status)
+            let survey = viewport.screen(row.surveyPoint)
+            context.stroke(Path(CGRect(x: survey.x - 5, y: survey.y - 5, width: 10, height: 10)), with: .color(color), lineWidth: 2)
         }
     }
 

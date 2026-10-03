@@ -79,6 +79,11 @@ final class PlanOpsisMobileStore: ObservableObject {
     private var openedDrawingData: (data: Data, name: String)?
     private var underlayAssetCache: (projectID: UUID, name: String, size: Int, reference: SurveyEvidenceReference)?
     private var isRestoringUnderlay = false
+    /// v12.7 the survey compared with the aligned drawing; refreshed after model edits.
+    @Published private(set) var deviation: DeviationAnalysis?
+    @Published var showDeviation = false
+    @Published var showDeviationReport = false
+    private var deviationReferenceCache: (key: String, reference: UnderlayTraceResult)?
     /// v12.7 renders a PDF page; injected by the app because PDFKit is not part of the core.
     var pdfPageLoader: ((Data, String, Int) throws -> PDFUnderlayPage)? {
         didSet { if project?.underlay?.format == .pdf, rasterUnderlay == nil { restoreUnderlay() } }
@@ -1033,6 +1038,74 @@ final class PlanOpsisMobileStore: ObservableObject {
         statusMessage = openedDrawing == nil ? "PDF underlay removed." : "PDF underlay removed; the DXF is the underlay again."
     }
 
+    // MARK: v12.7 survey against the drawing
+
+    /// Compares the surveyed walls and openings with the aligned underlay and shows the result.
+    func compareWithDrawing() {
+        guard let project else { return }
+        guard showUnderlay, let reference = deviationReference() else {
+            statusMessage = "Show and align a DXF, IFC or vector PDF underlay first; its walls are the reference."
+            return
+        }
+        guard !reference.walls.isEmpty else {
+            statusMessage = "No walls found in the drawing to compare with (double lines 50–700 mm apart, or IFC walls)."
+            return
+        }
+        let analysis = DeviationAnalysis(project: project, reference: reference)
+        deviation = analysis
+        showDeviation = true
+        showDeviationReport = true
+        let counts = analysis.summary
+        statusMessage = "Compared with \(reference.walls.count) drawing wall(s): \(counts[.ok] ?? 0) within tolerance, "
+            + "\(counts[.warning] ?? 0) to check, \(counts[.deviation] ?? 0) off, \(counts[.unmatched] ?? 0) unmatched."
+    }
+
+    func clearDeviation() {
+        deviation = nil
+        showDeviation = false
+        showDeviationReport = false
+    }
+
+    func exportDeviationCSV() -> Data? {
+        guard let deviation else { return nil }
+        return Data(("\u{FEFF}" + ProjectSchedules.csv(deviation.tables)).utf8)
+    }
+
+    /// Walls and openings of the shown underlay in plan millimetres: an IFC's model, a DXF's wall
+    /// layers (all its visible lines when it has none), or a vector PDF's lines.
+    private func deviationReference() -> UnderlayTraceResult? {
+        if let rasterUnderlay {
+            guard let scene = underlayScene else { return nil }
+            let p = rasterPlacement
+            let key = "pdf|\(rasterUnderlay.id)|\(rasterUnderlay.paperScale)|\(p)"
+            if let cache = deviationReferenceCache, cache.key == key { return cache.reference }
+            let reference = UnderlayWallTracer(scene: scene).traceAll()
+            deviationReferenceCache = (key, reference)
+            return reference
+        }
+        guard let drawing = openedDrawing, let scene = underlayScene else { return nil }
+        let hidden = hiddenLayers(for: drawing)
+        let key = "\(drawing.id)|\(underlayPlacement)|\(hidden.sorted())"
+        if let cache = deviationReferenceCache, cache.key == key { return cache.reference }
+        let reference: UnderlayTraceResult
+        if let source = openedDrawingData, ProjectUnderlay.format(forFileName: source.name) == .ifc,
+           let model = try? IFCModelReader().read(data: source.data) {
+            let moved = model.transformed(by: underlayPlacement.transform(unitScale: Self.millimetresPerUnit(drawing)))
+            reference = UnderlayTraceResult(walls: moved.walls, openings: moved.openings)
+        } else {
+            let wallLayers = Set(drawingWallLayers)
+            reference = UnderlayWallTracer(scene: scene, hiddenLayers: hidden, layers: wallLayers.isEmpty ? nil : { wallLayers.contains($0) }).traceAll()
+        }
+        deviationReferenceCache = (key, reference)
+        return reference
+    }
+
+    /// After a model edit the comparison follows the model; the drawing's walls are reused.
+    private func refreshDeviation() {
+        guard deviation != nil, let project, let reference = deviationReferenceCache?.reference else { return }
+        deviation = DeviationAnalysis(project: project, reference: reference)
+    }
+
     // MARK: v12.7 the underlay kept with the project
 
     /// Writes the shown underlay's source and placement into the project, without an undo step.
@@ -1076,6 +1149,8 @@ final class PlanOpsisMobileStore: ObservableObject {
     private func restoreUnderlay() {
         isRestoringUnderlay = true
         defer { isRestoringUnderlay = false }
+        clearDeviation()
+        deviationReferenceCache = nil
         underlayAlignment = nil
         isTracingWalls = false
         isMovingUnderlay = false
@@ -2813,6 +2888,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         geometry = next.semanticGeometry
         physicalGeometry = next.physicalGeometry
         derivation = next
+        refreshDeviation()
         if project != lastSavedProject { scheduleAutosave() }
     }
 

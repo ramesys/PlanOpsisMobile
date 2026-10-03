@@ -1,5 +1,51 @@
 # Changelog
 
+## 12.7 — From an architect's drawing to rooms, and the survey checked against it
+
+### Rooms from walls
+- **Closed loops of walls become rooms.**
+  - Walls are cut where another wall meets or crosses them, and ends within 30 mm join.
+  - Each enclosed area is a room with its own walls (a shared partition belongs to both rooms), plus
+    its doors, windows and furniture. Doors that swing in for one room swing out for the other.
+  - Stems belong to the room they reach into. Walls that enclose nothing stay together.
+- **Import all walls** now arrives as separate rooms, named from the text in each room (words win
+  over area labels) or from the IFC's space names.
+- **Detect rooms from walls** in the room menu splits a room you traced into rooms. The room menu
+  now shows for a single room too.
+
+### Doors from drawings
+- The swing arc gives the door's hinge side and which way it opens. Two half leaves make a double
+  door.
+- Door and window blocks (DOOR…, FENSTER…, IfcDoor…) mark gaps even without an arc.
+
+### The underlay stays with the project
+- The drawing (DXF, IFC or PDF) is saved with the project. Its placement, scale, PDF page, hidden
+  layers and visibility come back when the project opens. Moving the underlay adds no undo steps,
+  and undoing a model edit leaves the underlay where it is.
+
+### PDF and IFC drawings
+- **Vector PDFs:** the page's line work is read from the PDF itself, so PDFs exported from CAD snap,
+  align and trace like DXFs. Scanned pages still work as images.
+- **Multi-page PDFs:** choose the page shown; it keeps its place and scale.
+- **IFC models:** open an architect's IFC in the DXF tab or as an underlay.
+  - It shows as walls, openings and named spaces.
+  - Import all walls takes the model directly: wall axes, thickness and height, doors and windows
+    with sill, height and operation type, and room names.
+  - Units can be metres, millimetres, feet or inches.
+
+### Survey against the drawing
+- **Compare with drawing** (Drafting aids, with the drawing aligned) matches each surveyed wall to
+  the drawing's walls. The drawing's walls come from the IFC model, the DXF's wall layers or the
+  PDF's lines.
+  - For each wall: the offset and which way, the largest deviation at its ends (so a turned wall
+    shows), the angle, and the thickness and length difference.
+  - Doors and windows are compared by position and width.
+  - Anything that is only in the survey, or only in the drawing, is listed.
+- **On the plan:** each wall is marked green (≤ 20 mm), orange (≤ 50 mm) or red, and drawing walls
+  nobody surveyed are dashed purple.
+- **Report:** a sheet with totals and every row (tap a wall to select it), plus a CSV export.
+- The comparison follows model edits.
+
 ## 12.6 — Plan-ordered numbering and architects' files
 
 ### Numbering follows the plan, not capture order
