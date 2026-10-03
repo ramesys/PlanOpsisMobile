@@ -1263,7 +1263,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// drawing shows.
     func importWallsFromDrawing() {
         guard let drawing = openedDrawing else {
-            statusMessage = "Open a DXF in the DXF tab first."
+            statusMessage = "Open a DXF or IFC in the DXF tab first."
             return
         }
         let wallLayers = Set(drawingWallLayers)
@@ -1272,18 +1272,32 @@ final class PlanOpsisMobileStore: ObservableObject {
             return
         }
         let placement = project == nil ? UnderlayPlacement(scale: underlayPlacement.scale) : underlayPlacement
-        let scene = CADScene(document: drawing.document, transform: placement.transform(unitScale: Self.millimetresPerUnit(drawing)))
-        let tracer = UnderlayWallTracer(scene: scene, hiddenLayers: hiddenLayers(for: drawing), layers: { wallLayers.contains($0) })
-        let traced = tracer.traceAll()
+        let transform = placement.transform(unitScale: Self.millimetresPerUnit(drawing))
+        let traced: UnderlayTraceResult
+        let room: PlanOpsisRoom
+        let split: RoomLoopDetector.Result
+        let names: [String?]
+        if let source = openedDrawingData, ProjectUnderlay.format(forFileName: source.name) == .ifc,
+           let model = try? IFCModelReader().read(data: source.data).transformed(by: transform) {
+            // v12.7 an IFC gives its walls, openings, heights and room names directly.
+            traced = UnderlayTraceResult(walls: model.walls, openings: model.openings)
+            room = model.makeRoom()
+            split = RoomLoopDetector().split(room)
+            names = model.spaceNames(for: split.rooms.map(\.loop))
+        } else {
+            let scene = CADScene(document: drawing.document, transform: transform)
+            let tracer = UnderlayWallTracer(scene: scene, hiddenLayers: hiddenLayers(for: drawing), layers: { wallLayers.contains($0) })
+            traced = tracer.traceAll()
+            room = traced.makeRoom()
+            // v12.7 closed loops of walls become rooms, named from the drawing's text inside them.
+            split = RoomLoopDetector().split(room)
+            names = RoomLoopDetector.names(for: split.rooms.map(\.loop), texts: scene.texts(hiddenLayers: hiddenLayers(for: drawing)))
+        }
         guard !traced.walls.isEmpty else {
             statusMessage = "No double-line walls (50–700 mm) found on \(wallLayers.sorted().joined(separator: ", "))."
             return
         }
-        let room = traced.makeRoom()
-        // v12.7 closed loops of walls become rooms, named from the drawing's text inside them.
-        let split = RoomLoopDetector().split(room)
         let rooms = split.allRooms.isEmpty ? [room] : split.allRooms
-        let names = RoomLoopDetector.names(for: split.rooms.map(\.loop), texts: scene.texts(hiddenLayers: hiddenLayers(for: drawing)))
         let doors = traced.openings.filter { $0.kind == .door }.count
         let summary = "\(traced.walls.count) wall(s), \(doors) door(s) and \(traced.openings.count - doors) window(s) in \(split.rooms.count) room(s) from \(drawing.title)"
         func name(_ project: inout PlanOpsisProject) {

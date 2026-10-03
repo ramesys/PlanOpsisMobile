@@ -30,7 +30,11 @@ public struct CADViewerDocument: Identifiable, Sendable {
 
     /// Reads a DXF file for viewing.
     public static func open(data: Data, fileName: String) throws -> CADViewerDocument {
-        CADViewerDocument(source: .file(name: fileName), document: try CADDocumentReader().read(data: data))
+        // v12.7 an architect's IFC opens as its plan: walls, openings and named spaces.
+        if fileName.lowercased().hasSuffix(".ifc") || data.prefix(16).starts(with: Array("ISO-10303-21".utf8)) {
+            return CADViewerDocument(source: .file(name: fileName), document: try IFCModelReader().read(data: data).drawing())
+        }
+        return CADViewerDocument(source: .file(name: fileName), document: try CADDocumentReader().read(data: data))
     }
 
     /// The model-space entity a scene item was drawn from.

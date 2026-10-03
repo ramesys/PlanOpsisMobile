@@ -62,6 +62,7 @@ let package = Package(
                 "Geometry/RoomLoopDetector.swift",
                 "Geometry/WallJunctionResolver.swift",
                 "IFC/IFC4Exchange.swift",
+                "IFC/IFCModelReader.swift",
                 "Interaction/PlanDirectEditing.swift",
                 "Interaction/PlanEditingConstraintEngine.swift",
                 "Interaction/SemanticObjectEditingEngine.swift",

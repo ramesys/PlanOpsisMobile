@@ -55,7 +55,7 @@ struct DXFWorkspaceView: View {
                 } description: {
                     Text("Scan a room or open a project to see its drawing, or open any DXF to view and measure it.")
                 } actions: {
-                    Button("Open DXF\u{2026}") { showingOpener = true }
+                    Button("Open DXF or IFC\u{2026}") { showingOpener = true }
                         .planOpsisGlassProminentButton(active: true)
                 }
             }
@@ -96,7 +96,7 @@ struct DXFWorkspaceView: View {
                     }
                 }
                 Divider()
-                Button("Open DXF\u{2026}") { showingOpener = true }
+                Button("Open DXF or IFC\u{2026}") { showingOpener = true }
                 if let opened = store.openedDrawing {
                     // v12.6 the drawing's wall layers as model walls.
                     if !store.drawingWallLayers.isEmpty {

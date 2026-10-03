@@ -46,6 +46,11 @@ public struct TracedOpening: Hashable, Sendable {
 public struct UnderlayTraceResult: Hashable, Sendable {
     public var walls: [TracedWall] = []
     public var openings: [TracedOpening] = []
+
+    public init(walls: [TracedWall] = [], openings: [TracedOpening] = []) {
+        self.walls = walls
+        self.openings = openings
+    }
 }
 
 /// v12.6 turns the double lines of an architect's drawing into walls.
