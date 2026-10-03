@@ -53,6 +53,8 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
     public var survey: SurveyRecord
     /// v12.2 user-facing project name; nil for projects that were never named.
     public var name: String?
+    /// v12.4 drawing set settings (title block, paper, scales, section lines); nil until first edited.
+    public var documentation: DocumentationSettings?
 
     public init(
         schemaVersion: Int = Self.currentSchemaVersion,
@@ -60,8 +62,10 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
         sourceStructureRoomPlanID: UUID? = nil,
         rooms: [PlanOpsisRoom],
         survey: SurveyRecord = .empty,
-        name: String? = nil
+        name: String? = nil,
+        documentation: DocumentationSettings? = nil
     ) {
+        self.documentation = documentation
         self.schemaVersion = schemaVersion
         self.id = id
         self.sourceStructureRoomPlanID = sourceStructureRoomPlanID
@@ -81,7 +85,7 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
 }
 
 extension PlanOpsisProject {
-    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey, name }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey, name, documentation }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
@@ -91,6 +95,7 @@ extension PlanOpsisProject {
         if schemaVersion == 1 { survey = .empty }
         else { survey = try c.decode(SurveyRecord.self, forKey: .survey) }
         name = try c.decodeIfPresent(String.self, forKey: .name)
+        documentation = try c.decodeIfPresent(DocumentationSettings.self, forKey: .documentation)
     }
 }
 

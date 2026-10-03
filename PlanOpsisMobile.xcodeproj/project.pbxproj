@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */; };
+		467B7F4F0F8148987F49EB73 /* SheetPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */; };
+		31EEDFDA5FFD593601D9480A /* DrawingSetComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA4F468369ECD88131EEDFDA /* DrawingSetComposer.swift */; };
+		A2BAF32656126F918C5DC6CD /* ArchitecturalSectionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E625F2E2BB237669A2BAF326 /* ArchitecturalSectionEngine.swift */; };
+		580236D601265F90CE7FA157 /* DocumentationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF19A97CF17927E580236D6 /* DocumentationModel.swift */; };
+		C2369B516A35B5423196E522 /* PlanTagEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99546227DC16B5BC2369B51 /* PlanTagEngine.swift */; };
+		52AC4F3ED06835AC21539765 /* ProjectSchedules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5287EB21A108089B52AC4F3E /* ProjectSchedules.swift */; };
 		C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */; };
 		EF80BD26D0DBB98C3FDA9E52 /* PlanEditingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */; };
 		958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */; };
@@ -135,6 +142,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV124DocumentationTests.swift"; sourceTree = SOURCE_ROOT; };
+		C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/SheetPDFRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		DA4F468369ECD88131EEDFDA /* DrawingSetComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/DrawingSetComposer.swift"; sourceTree = SOURCE_ROOT; };
+		E625F2E2BB237669A2BAF326 /* ArchitecturalSectionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/ArchitecturalSectionEngine.swift"; sourceTree = SOURCE_ROOT; };
+		ABF19A97CF17927E580236D6 /* DocumentationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/DocumentationModel.swift"; sourceTree = SOURCE_ROOT; };
+		B99546227DC16B5BC2369B51 /* PlanTagEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/PlanTagEngine.swift"; sourceTree = SOURCE_ROOT; };
+		5287EB21A108089B52AC4F3E /* ProjectSchedules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/ProjectSchedules.swift"; sourceTree = SOURCE_ROOT; };
 		F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123LayerTests.swift"; sourceTree = SOURCE_ROOT; };
 		A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PlanEditingViews.swift"; sourceTree = SOURCE_ROOT; };
 		C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123EditingTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -295,6 +309,7 @@
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
+				DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
 				A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */,
 				FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */,
@@ -427,6 +442,12 @@
 				3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */,
 				0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */,
 				23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */,
+				5287EB21A108089B52AC4F3E /* ProjectSchedules.swift */,
+				B99546227DC16B5BC2369B51 /* PlanTagEngine.swift */,
+				ABF19A97CF17927E580236D6 /* DocumentationModel.swift */,
+				E625F2E2BB237669A2BAF326 /* ArchitecturalSectionEngine.swift */,
+				DA4F468369ECD88131EEDFDA /* DrawingSetComposer.swift */,
+				C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */,
 				A84000000000000000000004 /* DXFExchange.swift */,
 				87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */,
 				A84000000000000000000008 /* DXFFileDocument.swift */,
@@ -688,6 +709,7 @@
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
+				DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
 				B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */,
 				A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift */,
@@ -765,6 +787,12 @@
 				25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */,
 				AD32316DD5DDA5015C528575 /* CADSpatialIndex.swift in Sources */,
 				B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */,
+				52AC4F3ED06835AC21539765 /* ProjectSchedules.swift in Sources */,
+				C2369B516A35B5423196E522 /* PlanTagEngine.swift in Sources */,
+				580236D601265F90CE7FA157 /* DocumentationModel.swift in Sources */,
+				A2BAF32656126F918C5DC6CD /* ArchitecturalSectionEngine.swift in Sources */,
+				31EEDFDA5FFD593601D9480A /* DrawingSetComposer.swift in Sources */,
+				467B7F4F0F8148987F49EB73 /* SheetPDFRenderer.swift in Sources */,
 				A84000000000000000000003 /* DXFExchange.swift in Sources */,
 				36E67C9FC1B81E90AC2DE1E7 /* DXFDrawingValidator.swift in Sources */,
 				A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */,
