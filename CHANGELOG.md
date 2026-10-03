@@ -1,5 +1,28 @@
 # Changelog
 
+## 12.5 — Quantities, area plan and reflected ceiling plan
+
+### Quantities and finishes
+- **Quantity takeoff** from the model, shown with the schedules (Sheets ▸ Schedules), on the drawing
+  set and in the CSV export:
+  - **Room quantities:** floor and ceiling area, perimeter, wall faces gross, openings and net, skirting
+    length (perimeter less door widths) and volume, with totals across rooms.
+  - **Opening quantities:** area, lintel length (150 mm bearing each side) and reveal area per mark.
+  - **Wall quantities** by thickness: length, net side area and net volume.
+- **Finishes per room** (floor, walls, ceiling, skirting) in the inspector, with common choices one tap
+  away. The *Finishes* table lists them by room and *Finish totals* sums the areas and lengths per
+  material — ready for ordering paint, flooring or skirting.
+- **IFC base quantities:** Qto_SpaceBaseQuantities (net floor, ceiling and wall areas, perimeter,
+  height, volume), Qto_WallBaseQuantities, Qto_DoorBaseQuantities and Qto_WindowBaseQuantities, so
+  cost and BIM tools read the same numbers.
+
+### New sheets
+- **Area plan:** rooms filled in light colours with name and clear area, and a legend with the total
+  net floor area.
+- **Reflected ceiling plan:** walls with opening heads dashed, boxed ceiling heights (CH +2.80) and the
+  ceiling finish per room.
+- Both can be switched off, as can the quantity tables, in the drawing set settings.
+
 ## 12.4 — Drawing set: sheets, schedules, elevations and sections
 
 ### Sheets tab

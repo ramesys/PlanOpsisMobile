@@ -16,6 +16,10 @@ public struct DrawingSheet: Sendable, Identifiable {
 public struct DrawingSet: Sendable {
     public var sheets: [DrawingSheet]
     public var schedules: ProjectSchedules
+    /// v12.5 quantity takeoff and finishes.
+    public var quantities: ProjectQuantities
+    /// Schedules followed by the quantity tables: what the Schedules view and the CSV show.
+    public var tables: [ProjectSchedules.Table] { schedules.tables + quantities.tables }
     /// Scale used for the floor plan, the elevations and the sections.
     public var planScale: Int
     public var elevationScale: Int?
@@ -65,10 +69,40 @@ public struct DrawingSetComposer: Sendable {
         planSheet += Self.scaleBar(origin: Point2D(x: Self.margin + 6, y: Self.margin + 8), scale: planScale)
         pages.append(("Floor plan", "1:\(planScale)", planSheet))
 
-        // Schedules.
-        if settings.includeSchedules, !schedules.tables.isEmpty {
-            for (index, sheet) in Self.scheduleSheets(schedules.tables, in: area).enumerated() {
-                pages.append((index == 0 ? "Schedules" : "Schedules (\(index + 1))", "—", sheet))
+        let quantities = ProjectQuantities(project: project, schedules: schedules)
+        let roomOutlines = Self.roomOutlines(project, topology: semantic.topology)
+
+        // Area plan: colour-filled rooms with a legend in a right-hand column.
+        if settings.includeAreaPlan, !roomOutlines.isEmpty {
+            let legendWidth = 78.0
+            let planArea = CADRect(minX: area.minX, minY: area.minY, maxX: area.maxX - legendWidth - 6, maxY: area.maxY)
+            let scale = settings.planScale.flatMap { s in planBounds.width / Double(s) <= planArea.width ? s : nil }
+                ?? Self.fittingScale(for: planBounds, in: planArea, reserve: Self.viewTitleHeight) ?? Self.minimumScale(for: planBounds, in: planArea)
+            let view = DrawingView(id: "area-plan", title: "Area plan", scale: scale,
+                                   primitives: Self.areaPlanView(planPrimitives, outlines: roomOutlines, schedules: schedules, scale: scale))
+            var sheet = place([view], in: planArea, scale: scale)
+            sheet += Self.areaLegend(roomOutlines: roomOutlines, schedules: schedules, at: Point2D(x: area.maxX - legendWidth, y: area.maxY), width: legendWidth)
+            sheet += Self.northArrow(at: Point2D(x: planArea.maxX - 12, y: planArea.maxY - 16))
+            sheet += Self.scaleBar(origin: Point2D(x: Self.margin + 6, y: Self.margin + 8), scale: scale)
+            pages.append(("Area plan", "1:\(scale)", sheet))
+        }
+
+        // Reflected ceiling plan: walls and opening heads, ceiling heights and finishes.
+        if settings.includeCeilingPlan, !roomOutlines.isEmpty {
+            let view = DrawingView(id: "ceiling-plan", title: "Reflected ceiling plan", scale: planScale,
+                                   primitives: Self.ceilingPlanView(planPrimitives, outlines: roomOutlines, schedules: schedules, finishes: settings.finishes, scale: planScale))
+            var sheet = place([view], in: area, scale: planScale)
+            sheet += Self.northArrow(at: Point2D(x: area.maxX - 12, y: area.maxY - 16))
+            sheet += Self.scaleBar(origin: Point2D(x: Self.margin + 6, y: Self.margin + 8), scale: planScale)
+            pages.append(("Reflected ceiling plan", "1:\(planScale)", sheet))
+        }
+
+        // Schedules and quantities.
+        let tables = (settings.includeSchedules ? schedules.tables : []) + (settings.includeQuantities ? quantities.tables : [])
+        if !tables.isEmpty {
+            for (index, sheet) in Self.scheduleSheets(tables, in: area).enumerated() {
+                let title = settings.includeQuantities && !quantities.tables.isEmpty ? "Schedules and quantities" : "Schedules"
+                pages.append((index == 0 ? title : "\(title) (\(index + 1))", "—", sheet))
             }
         }
 
@@ -121,7 +155,7 @@ public struct DrawingSetComposer: Sendable {
                 )
             )
         }
-        return DrawingSet(sheets: sheets, schedules: schedules, planScale: planScale, elevationScale: elevationScale, sectionScale: sectionScale, notes: notes)
+        return DrawingSet(sheets: sheets, schedules: schedules, quantities: quantities, planScale: planScale, elevationScale: elevationScale, sectionScale: sectionScale, notes: notes)
     }
 
     // MARK: Layout
@@ -294,6 +328,101 @@ public struct DrawingSetComposer: Sendable {
             let tip = end + view * (5 * s)
             let side = Point2D(x: -view.y, y: view.x) * (2 * s)
             out.append(SheetPrimitive(.polygon([tip, end + side, end - side]), weight: 0.13, fill: 0))
+        }
+        return out
+    }
+
+    // MARK: Area and ceiling plans
+
+    /// Clear interior outline of every closed room, by room ID.
+    static func roomOutlines(_ project: PlanOpsisProject, topology: StructureTopologySnapshot) -> [(room: PlanOpsisRoom, outline: [Point2D])] {
+        project.rooms.compactMap { room in
+            let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: topology)
+            guard let inner = RoomFaceBoundary(room: room, centerline: centerline)?.inner, inner.count >= 3 else { return nil }
+            return (room, inner)
+        }
+    }
+
+    static func color(for index: Int) -> SheetColor { SheetColor.roomPalette[index % SheetColor.roomPalette.count] }
+
+    /// Walls and openings only (no furniture, swings, dimensions or labels), optionally dashed.
+    static func outlineOnly(_ primitives: [DXFPrimitive], dashedOpenings: Bool) -> [SheetPrimitive] {
+        typealias Layer = ArchitecturalDraftingConvention.Layer
+        let openingLayers: Set<String> = [Layer.door.rawValue, Layer.window.rawValue, Layer.opening.rawValue]
+        var out: [SheetPrimitive] = []
+        for p in primitives where p.layer == Layer.wall.rawValue || openingLayers.contains(p.layer) {
+            let isOpening = openingLayers.contains(p.layer)
+            let weight = isOpening ? 0.18 : max(0.35, p.lineWeightMM)
+            let dash: [Double] = isOpening && dashedOpenings ? [2, 1.2] : []
+            switch p.kind {
+            case .line where p.points.count >= 2:
+                out.append(SheetPrimitive(.line(p.points[0], p.points[1]), weight: weight, dash: dash))
+            case .polyline where p.points.count >= 2:
+                out.append(SheetPrimitive(.polyline(p.points, closed: p.closed), weight: weight, dash: dash))
+            case .arc:
+                // Door leaves' swing arcs live on the swing layer; arcs here are window or opening symbols.
+                guard let c = p.center, let r = p.radius, let a = p.startAngleDegrees, let b = p.endAngleDegrees else { continue }
+                out.append(SheetPrimitive(.arc(center: c, radius: r, start: a * .pi / 180, end: b * .pi / 180), weight: weight, dash: dash))
+            default:
+                continue
+            }
+        }
+        return out
+    }
+
+    static func centeredLabel(_ text: String, at p: Point2D, height: Double, bold: Bool, scale: Int, offset: Double = 0) -> SheetPrimitive {
+        // `offset` is in paper millimetres above (positive) or below the point.
+        SheetPrimitive(.text(text, at: Point2D(x: p.x, y: p.y + (offset - height / 2) * Double(scale)), height: height, rotation: 0, anchor: .center, bold: bold))
+    }
+
+    static func areaPlanView(_ primitives: [DXFPrimitive], outlines: [(room: PlanOpsisRoom, outline: [Point2D])], schedules: ProjectSchedules, scale: Int) -> [SheetPrimitive] {
+        var out: [SheetPrimitive] = []
+        for (index, entry) in outlines.enumerated() {
+            out.append(SheetPrimitive(.polygon(entry.outline), weight: 0, fillColor: color(for: index)))
+        }
+        out += outlineOnly(primitives, dashedOpenings: false)
+        for entry in outlines {
+            guard let row = schedules.rooms.first(where: { $0.roomID == entry.room.id }), let c = PlanPolygon.centroid(entry.outline) else { continue }
+            out.append(centeredLabel(row.name, at: c, height: 3.5, bold: true, scale: scale, offset: 2.6))
+            out.append(centeredLabel(String(format: "%.2f m²", row.area / 1_000_000), at: c, height: 3.0, bold: false, scale: scale, offset: -2.6))
+        }
+        return out
+    }
+
+    /// Room colours, names and areas, then the total, top-down from `top`.
+    static func areaLegend(roomOutlines: [(room: PlanOpsisRoom, outline: [Point2D])], schedules: ProjectSchedules, at top: Point2D, width: Double) -> [SheetPrimitive] {
+        var out = [SheetPrimitive(.text("Areas", at: Point2D(x: top.x, y: top.y - 6), height: 3.5, rotation: 0, anchor: .left, bold: true))]
+        var y = top.y - 15
+        var total = 0.0
+        for (index, entry) in roomOutlines.enumerated() {
+            guard let row = schedules.rooms.first(where: { $0.roomID == entry.room.id }) else { continue }
+            total += row.area
+            out.append(SheetPrimitive(.polygon([Point2D(x: top.x, y: y - 1), Point2D(x: top.x + 6, y: y - 1), Point2D(x: top.x + 6, y: y + 3.5), Point2D(x: top.x, y: y + 3.5)]),
+                                      weight: 0.13, fillColor: color(for: index)))
+            out.append(SheetPrimitive(.text("\(row.number)  \(row.name)", at: Point2D(x: top.x + 9, y: y), height: 2.5, rotation: 0, anchor: .left, bold: false)))
+            out.append(SheetPrimitive(.text(String(format: "%.2f m²", row.area / 1_000_000), at: Point2D(x: top.x + width, y: y), height: 2.5, rotation: 0, anchor: .right, bold: false)))
+            y -= 7
+        }
+        out.append(SheetPrimitive(.line(Point2D(x: top.x, y: y + 4.5), Point2D(x: top.x + width, y: y + 4.5)), weight: 0.35))
+        out.append(SheetPrimitive(.text("Total net floor area", at: Point2D(x: top.x, y: y - 0.5), height: 2.5, rotation: 0, anchor: .left, bold: true)))
+        out.append(SheetPrimitive(.text(String(format: "%.2f m²", total / 1_000_000), at: Point2D(x: top.x + width, y: y - 0.5), height: 2.5, rotation: 0, anchor: .right, bold: true)))
+        return out
+    }
+
+    static func ceilingPlanView(_ primitives: [DXFPrimitive], outlines: [(room: PlanOpsisRoom, outline: [Point2D])], schedules: ProjectSchedules, finishes: [UUID: RoomFinishes], scale: Int) -> [SheetPrimitive] {
+        let s = Double(scale)
+        var out = outlineOnly(primitives, dashedOpenings: true)
+        for entry in outlines {
+            guard let row = schedules.rooms.first(where: { $0.roomID == entry.room.id }), let c = PlanPolygon.centroid(entry.outline) else { continue }
+            out.append(centeredLabel(row.name, at: c, height: 3.0, bold: true, scale: scale, offset: 8))
+            // Ceiling height tag: boxed "CH +2.80", the RCP convention.
+            let label = String(format: "CH +%.2f", row.height / 1_000)
+            let w = (Double(label.count) * 1.75 + 4) * s, h = 6 * s
+            out.append(SheetPrimitive(.polygon([Point2D(x: c.x - w / 2, y: c.y - h / 2), Point2D(x: c.x + w / 2, y: c.y - h / 2), Point2D(x: c.x + w / 2, y: c.y + h / 2), Point2D(x: c.x - w / 2, y: c.y + h / 2)]),
+                                      weight: 0.35, fill: 1))
+            out.append(centeredLabel(label, at: c, height: 2.8, bold: true, scale: scale))
+            let ceiling = finishes[entry.room.id]?.ceiling.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !ceiling.isEmpty { out.append(centeredLabel(ceiling, at: c, height: 2.4, bold: false, scale: scale, offset: -7)) }
         }
         return out
     }

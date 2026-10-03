@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */; };
+		485836818478859A08B0B5DB /* ProjectQuantities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E7F20A43F12B64948583681 /* ProjectQuantities.swift */; };
 		22954109429BDE2C8817E618 /* SheetsWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */; };
 		DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */; };
 		467B7F4F0F8148987F49EB73 /* SheetPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */; };
@@ -143,6 +145,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV125QuantityTests.swift"; sourceTree = SOURCE_ROOT; };
+		8E7F20A43F12B64948583681 /* ProjectQuantities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/ProjectQuantities.swift"; sourceTree = SOURCE_ROOT; };
 		4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/SheetsWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
 		DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV124DocumentationTests.swift"; sourceTree = SOURCE_ROOT; };
 		C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/SheetPDFRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -311,6 +315,7 @@
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
+				3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */,
 				DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
 				A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */,
@@ -451,6 +456,7 @@
 				E625F2E2BB237669A2BAF326 /* ArchitecturalSectionEngine.swift */,
 				DA4F468369ECD88131EEDFDA /* DrawingSetComposer.swift */,
 				C9D3BDF41CF5C7F3467B7F4F /* SheetPDFRenderer.swift */,
+				8E7F20A43F12B64948583681 /* ProjectQuantities.swift */,
 				A84000000000000000000004 /* DXFExchange.swift */,
 				87DCD731BD3C3BA4AEDC9193 /* DXFDrawingValidator.swift */,
 				A84000000000000000000008 /* DXFFileDocument.swift */,
@@ -712,6 +718,7 @@
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
+				52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */,
 				DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
 				B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */,
@@ -796,6 +803,7 @@
 				A2BAF32656126F918C5DC6CD /* ArchitecturalSectionEngine.swift in Sources */,
 				31EEDFDA5FFD593601D9480A /* DrawingSetComposer.swift in Sources */,
 				467B7F4F0F8148987F49EB73 /* SheetPDFRenderer.swift in Sources */,
+				485836818478859A08B0B5DB /* ProjectQuantities.swift in Sources */,
 				A84000000000000000000003 /* DXFExchange.swift in Sources */,
 				36E67C9FC1B81E90AC2DE1E7 /* DXFDrawingValidator.swift in Sources */,
 				A84000000000000000000005 /* SemanticObjectEditingEngine.swift in Sources */,
