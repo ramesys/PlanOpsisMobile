@@ -1024,7 +1024,7 @@ struct FloorPlanView: View {
     }
 }
 
-private /// v12.6 what the plan shows and how taps behave while aligning, calibrating or tracing on an underlay.
+/// v12.6 what the plan shows and how taps behave while aligning, calibrating or tracing on an underlay.
 struct UnderlayToolState {
     var prompt: String
     /// The next tap belongs on the underlay (snap to its lines, not the model).
@@ -1050,7 +1050,7 @@ final class RasterUnderlayImageCache {
     }
 }
 
-struct PlanViewport {
+private struct PlanViewport {
     let transform: PlanViewTransform
     let size: CGSize
 
