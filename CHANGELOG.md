@@ -32,6 +32,15 @@
   - Import all walls takes the model directly: wall axes, thickness and height, doors and windows
     with sill, height and operation type, and room names.
   - Units can be metres, millimetres, feet or inches.
+  - **Walls that are not straight boxes:** an L- or U-shaped wall element is split into its straight
+    runs, joined at the corners. Each door or window goes on the run it cuts.
+  - **Door swings both ways:** the IFC convention is followed — a door opens towards its local +y,
+    and LEFT or RIGHT is the hinge side seen looking that way.
+    - Export now turns each door to face the way it opens. Doors were previously always written
+      opening to the wall's left.
+    - Import reads the hand and side from a door's placement and operation type.
+  - **Sliding and pocket doors:** sliding doors are exported as SLIDING_TO_LEFT/RIGHT and pocket
+    doors as USERDEFINED "POCKET". Both read back.
 
 ### Survey against the drawing
 - **Compare with drawing** (Drafting aids, with the drawing aligned) matches each surveyed wall to
