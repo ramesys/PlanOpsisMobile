@@ -43,6 +43,29 @@ public struct SectionLine: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+/// v12.5 finishes of one room, by surface. Empty means not specified.
+public struct RoomFinishes: Codable, Hashable, Sendable {
+    public var floor: String
+    public var walls: String
+    public var ceiling: String
+    public var skirting: String
+
+    public init(floor: String = "", walls: String = "", ceiling: String = "", skirting: String = "") {
+        self.floor = floor
+        self.walls = walls
+        self.ceiling = ceiling
+        self.skirting = skirting
+    }
+
+    public var isEmpty: Bool { [floor, walls, ceiling, skirting].allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty } }
+
+    /// Common choices offered in the editor; any text is accepted.
+    public static let floorSuggestions = ["Oak parquet", "Laminate", "Porcelain tiles", "Ceramic tiles", "Carpet", "Vinyl", "Polished concrete", "Screed"]
+    public static let wallSuggestions = ["Emulsion paint", "Ceramic tiles", "Wallpaper", "Plaster, unpainted", "Exposed brick"]
+    public static let ceilingSuggestions = ["Emulsion paint", "Plasterboard", "Acoustic tiles", "Exposed concrete"]
+    public static let skirtingSuggestions = ["Painted MDF", "Timber", "Tile", "None"]
+}
+
 /// v12.4 what the drawing set contains and its title block. Saved with the project.
 public struct DocumentationSettings: Codable, Hashable, Sendable {
     public var paper: PaperSize
@@ -58,6 +81,14 @@ public struct DocumentationSettings: Codable, Hashable, Sendable {
     public var includeElevations: Bool
     public var includeSections: Bool
     public var sections: [SectionLine]
+    /// v12.5 quantity tables (areas, lengths, finishes) with the schedules.
+    public var includeQuantities: Bool
+    /// v12.5 colour-filled area plan with a room legend.
+    public var includeAreaPlan: Bool
+    /// v12.5 reflected ceiling plan with ceiling heights.
+    public var includeCeilingPlan: Bool
+    /// v12.5 finishes by room.
+    public var finishes: [UUID: RoomFinishes]
 
     public init(
         paper: PaperSize = .a3,
@@ -70,8 +101,16 @@ public struct DocumentationSettings: Codable, Hashable, Sendable {
         includeSchedules: Bool = true,
         includeElevations: Bool = true,
         includeSections: Bool = true,
-        sections: [SectionLine] = []
+        sections: [SectionLine] = [],
+        includeQuantities: Bool = true,
+        includeAreaPlan: Bool = true,
+        includeCeilingPlan: Bool = true,
+        finishes: [UUID: RoomFinishes] = [:]
     ) {
+        self.includeQuantities = includeQuantities
+        self.includeAreaPlan = includeAreaPlan
+        self.includeCeilingPlan = includeCeilingPlan
+        self.finishes = finishes
         self.paper = paper
         self.planScale = planScale
         self.elevationScale = elevationScale
@@ -83,6 +122,33 @@ public struct DocumentationSettings: Codable, Hashable, Sendable {
         self.includeElevations = includeElevations
         self.includeSections = includeSections
         self.sections = sections
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case paper, planScale, elevationScale, author, company, siteAddress, revision
+        case includeSchedules, includeElevations, includeSections, sections
+        case includeQuantities, includeAreaPlan, includeCeilingPlan, finishes
+    }
+
+    /// Every field is optional on read, so settings saved by earlier versions keep loading.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = DocumentationSettings()
+        paper = try c.decodeIfPresent(PaperSize.self, forKey: .paper) ?? d.paper
+        planScale = try c.decodeIfPresent(Int.self, forKey: .planScale)
+        elevationScale = try c.decodeIfPresent(Int.self, forKey: .elevationScale)
+        author = try c.decodeIfPresent(String.self, forKey: .author) ?? d.author
+        company = try c.decodeIfPresent(String.self, forKey: .company) ?? d.company
+        siteAddress = try c.decodeIfPresent(String.self, forKey: .siteAddress) ?? d.siteAddress
+        revision = try c.decodeIfPresent(String.self, forKey: .revision) ?? d.revision
+        includeSchedules = try c.decodeIfPresent(Bool.self, forKey: .includeSchedules) ?? d.includeSchedules
+        includeElevations = try c.decodeIfPresent(Bool.self, forKey: .includeElevations) ?? d.includeElevations
+        includeSections = try c.decodeIfPresent(Bool.self, forKey: .includeSections) ?? d.includeSections
+        sections = try c.decodeIfPresent([SectionLine].self, forKey: .sections) ?? []
+        includeQuantities = try c.decodeIfPresent(Bool.self, forKey: .includeQuantities) ?? d.includeQuantities
+        includeAreaPlan = try c.decodeIfPresent(Bool.self, forKey: .includeAreaPlan) ?? d.includeAreaPlan
+        includeCeilingPlan = try c.decodeIfPresent(Bool.self, forKey: .includeCeilingPlan) ?? d.includeCeilingPlan
+        finishes = try c.decodeIfPresent([UUID: RoomFinishes].self, forKey: .finishes) ?? [:]
     }
 
     /// Standard architectural scales, largest drawing first.
@@ -100,6 +166,31 @@ public struct DocumentationSettings: Codable, Hashable, Sendable {
         }
         return "S\(sections.count + 1)"
     }
+}
+
+/// An RGB colour, components 0…1.
+public struct SheetColor: Hashable, Sendable {
+    public var red: Double
+    public var green: Double
+    public var blue: Double
+
+    public init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+
+    /// Light, print-friendly room colours that stay distinct next to each other.
+    public static let roomPalette: [SheetColor] = [
+        SheetColor(red: 0.80, green: 0.89, blue: 0.97),
+        SheetColor(red: 0.86, green: 0.94, blue: 0.82),
+        SheetColor(red: 0.99, green: 0.91, blue: 0.78),
+        SheetColor(red: 0.93, green: 0.85, blue: 0.95),
+        SheetColor(red: 0.98, green: 0.84, blue: 0.84),
+        SheetColor(red: 0.82, green: 0.94, blue: 0.93),
+        SheetColor(red: 0.96, green: 0.95, blue: 0.80),
+        SheetColor(red: 0.88, green: 0.88, blue: 0.92),
+    ]
 }
 
 public enum SheetTextAnchor: String, Hashable, Sendable {
@@ -129,10 +220,13 @@ public struct SheetPrimitive: Hashable, Sendable {
     public var gray: Double
     /// Fill grey for polygons and circles; nil = not filled.
     public var fill: Double?
+    /// v12.5 colour fill, used instead of `fill` when set (area plans).
+    public var fillColor: SheetColor?
     /// Dash pattern in paper millimetres; empty = continuous.
     public var dash: [Double]
 
-    public init(_ shape: Shape, weight: Double = 0.18, gray: Double = 0, fill: Double? = nil, dash: [Double] = []) {
+    public init(_ shape: Shape, weight: Double = 0.18, gray: Double = 0, fill: Double? = nil, dash: [Double] = [], fillColor: SheetColor? = nil) {
+        self.fillColor = fillColor
         self.shape = shape
         self.weight = weight
         self.gray = gray

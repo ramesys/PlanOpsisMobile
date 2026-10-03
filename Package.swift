@@ -39,6 +39,7 @@ let package = Package(
                 "Documentation/DocumentationModel.swift",
                 "Documentation/DrawingSetComposer.swift",
                 "Documentation/PlanTagEngine.swift",
+                "Documentation/ProjectQuantities.swift",
                 "Documentation/ProjectSchedules.swift",
                 "Documentation/SheetPDFRenderer.swift",
                 "Exchange/ExchangeGeometryValidation.swift",

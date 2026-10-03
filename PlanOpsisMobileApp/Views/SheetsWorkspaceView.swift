@@ -33,7 +33,7 @@ struct SheetsWorkspaceView: View {
                     }
                     switch content {
                     case .sheets: sheetList(set)
-                    case .schedules: ScheduleTablesView(tables: set.schedules.tables)
+                    case .schedules: ScheduleTablesView(tables: set.tables)
                     }
                 }
                 .fullScreenCover(item: $openSheet) { sheet in
@@ -146,7 +146,8 @@ struct SheetCanvas: View {
         let ink = Color(white: primitive.gray)
         let style = StrokeStyle(lineWidth: max(0.35, CGFloat(primitive.weight) * k), lineCap: .round, lineJoin: .round, dash: primitive.dash.map { CGFloat($0) * k })
         func finish(_ path: Path, closed: Bool) {
-            if let fill = primitive.fill, closed { context.fill(path, with: .color(Color(white: fill))) }
+            if closed, let color = primitive.fillColor { context.fill(path, with: .color(Color(red: color.red, green: color.green, blue: color.blue))) }
+            else if let fill = primitive.fill, closed { context.fill(path, with: .color(Color(white: fill))) }
             if primitive.weight > 0 { context.stroke(path, with: .color(ink), style: style) }
         }
         switch primitive.shape {
@@ -354,7 +355,10 @@ struct DocumentationSettingsView: View {
                 }
                 Section("Contents") {
                     Toggle("Door and window tags on the plan", isOn: $store.showTags)
+                    Toggle("Area plan", isOn: binding(\.includeAreaPlan))
+                    Toggle("Reflected ceiling plan", isOn: binding(\.includeCeilingPlan))
                     Toggle("Schedules", isOn: binding(\.includeSchedules))
+                    Toggle("Quantities and finishes", isOn: binding(\.includeQuantities))
                     Toggle("Interior elevations", isOn: binding(\.includeElevations))
                     Toggle("Sections", isOn: binding(\.includeSections))
                 }

@@ -809,11 +809,33 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     /// Schedules as CSV with a UTF-8 byte-order mark so spreadsheet apps read m² correctly.
     func exportSchedulesCSV() -> Data? {
-        guard let schedules, !schedules.tables.isEmpty else {
+        guard let tables = drawingSet?.tables, !tables.isEmpty else {
             statusMessage = "There is nothing to schedule yet."
             return nil
         }
-        return Data(("\u{FEFF}" + schedules.csv()).utf8)
+        return Data(("\u{FEFF}" + ProjectSchedules.csv(tables)).utf8)
+    }
+
+    // MARK: - v12.5 quantities and finishes
+
+    var quantities: ProjectQuantities? { drawingSet?.quantities }
+
+    var selectedRoomQuantities: ProjectQuantities.RoomRow? {
+        guard let room = selectedRoom else { return nil }
+        return quantities?.rooms.first { $0.roomID == room.id }
+    }
+
+    func finishes(for roomID: UUID) -> RoomFinishes {
+        documentationSettings.finishes[roomID] ?? RoomFinishes()
+    }
+
+    /// Sets a room's finishes (one undoable edit per field while typing).
+    func setFinishes(_ roomID: UUID, field: String, _ mutate: (inout RoomFinishes) -> Void) {
+        updateDocumentation("Finishes \(field)") { settings in
+            var finishes = settings.finishes[roomID] ?? RoomFinishes()
+            mutate(&finishes)
+            settings.finishes[roomID] = finishes.isEmpty ? nil : finishes
+        }
     }
 
     var exportBaseName: String {

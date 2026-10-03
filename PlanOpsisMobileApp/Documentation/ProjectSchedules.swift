@@ -221,7 +221,10 @@ public struct ProjectSchedules: Sendable {
     }
 
     /// All schedules in one CSV (RFC 4180), tables separated by a blank line and headed by their title.
-    public func csv() -> String {
+    public func csv() -> String { Self.csv(tables) }
+
+    /// Any tables as one CSV (RFC 4180), separated by a blank line and headed by their title.
+    public static func csv(_ tables: [Table]) -> String {
         func field(_ value: String) -> String {
             value.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" })
                 ? "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""

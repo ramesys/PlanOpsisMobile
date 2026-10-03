@@ -37,7 +37,10 @@ public struct SheetPDFRenderer: Sendable {
         context.setLineDash(phase: 0, lengths: primitive.dash.map { CGFloat($0) })
         func cg(_ p: Point2D) -> CGPoint { CGPoint(x: p.x, y: p.y) }
         func finish(closed: Bool) {
-            if let fill = primitive.fill, closed {
+            if closed, let color = primitive.fillColor {
+                context.setFillColor(CGColor(red: CGFloat(color.red), green: CGFloat(color.green), blue: CGFloat(color.blue), alpha: 1))
+                context.drawPath(using: primitive.weight > 0 ? .fillStroke : .fill)
+            } else if let fill = primitive.fill, closed {
                 context.setFillColor(CGColor(gray: CGFloat(fill), alpha: 1))
                 context.drawPath(using: primitive.weight > 0 ? .fillStroke : .fill)
             } else if primitive.weight > 0 {

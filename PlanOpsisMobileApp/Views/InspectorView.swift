@@ -258,6 +258,16 @@ struct InspectorView: View {
                     LabeledContent("Height", value: "\(Int(room.height.rounded())) mm")
                     LabeledContent("Doors · windows", value: "\(room.doorCount) · \(room.windowCount)")
                     LabeledContent("Glazing", value: String(format: "%.2f m² (%.0f %%)", room.glazingArea / 1_000_000, room.glazingRatio * 100))
+                    if let q = store.selectedRoomQuantities {
+                        LabeledContent("Walls net", value: String(format: "%.2f m²", q.netWallArea / 1_000_000))
+                        LabeledContent("Skirting", value: String(format: "%.2f m", q.skirtingLength / 1_000))
+                    }
+                }
+                Section("Finishes · \(room.name)") {
+                    finishField("Floor", room.roomID, \.floor, RoomFinishes.floorSuggestions)
+                    finishField("Walls", room.roomID, \.walls, RoomFinishes.wallSuggestions)
+                    finishField("Ceiling", room.roomID, \.ceiling, RoomFinishes.ceilingSuggestions)
+                    finishField("Skirting", room.roomID, \.skirting, RoomFinishes.skirtingSuggestions)
                 }
             }
 
@@ -337,6 +347,24 @@ struct InspectorView: View {
                 Label("This partition is unresolved and cannot be edited as one physical wall.", systemImage: "exclamationmark.triangle")
                     .font(.footnote)
             }
+        }
+    }
+
+    /// A finish as free text with common choices one tap away.
+    private func finishField(_ title: String, _ roomID: UUID, _ keyPath: WritableKeyPath<RoomFinishes, String>, _ suggestions: [String]) -> some View {
+        HStack {
+            TextField(title, text: Binding(
+                get: { store.finishes(for: roomID)[keyPath: keyPath] },
+                set: { value in store.setFinishes(roomID, field: title) { $0[keyPath: keyPath] = value } }
+            ))
+            Menu {
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Button(suggestion) { store.setFinishes(roomID, field: title) { $0[keyPath: keyPath] = suggestion } }
+                }
+            } label: {
+                Image(systemName: "list.bullet").frame(width: 28, height: 28)
+            }
+            .accessibilityLabel("\(title) finish suggestions")
         }
     }
 

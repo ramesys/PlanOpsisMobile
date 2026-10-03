@@ -78,6 +78,22 @@ public struct IFC4ExchangeEngine {
         var storeyContainedRefs: [Int] = []
         var wallRefs: [UUID: Int] = [:]
         var openingRefs: [UUID: Int] = [:]
+        // v12.5 base quantities (Qto_*) for spaces, walls, doors and windows, from the same takeoff as the
+        // drawing set. Lengths are in millimetres, areas in m², volumes in m³ (the file's units).
+        let schedules = ProjectSchedules(project: project, semanticGeometry: semanticGeometry)
+        let takeoff = ProjectQuantities(project: project, schedules: schedules)
+        func addQuantities(_ writer: inout STEPWriter, for id: UUID, entity: Int, set name: String, _ items: [(String, String, Double)]) {
+            let refs = items.map { item -> String in
+                let (kind, label, value) = item
+                switch kind {
+                case "length": return "#\(writer.add("IFCQUANTITYLENGTH('\(label)',$,$,\(number(value)),$)"))"
+                case "volume": return "#\(writer.add("IFCQUANTITYVOLUME('\(label)',$,$,\(number(value / 1_000_000_000)),$)"))"
+                default: return "#\(writer.add("IFCQUANTITYAREA('\(label)',$,$,\(number(value / 1_000_000)),$)"))"
+                }
+            }
+            let quantities = writer.add("IFCELEMENTQUANTITY('\(relGUID(id, "qto.\(name)"))',#\(owner),'\(name)',$,$,(\(refs.joined(separator: ","))))")
+            _ = writer.add("IFCRELDEFINESBYPROPERTIES('\(relGUID(id, "rel.qto.\(name)"))',#\(owner),$,$,(#\(entity)),#\(quantities))")
+        }
 
         for (roomIndex, room) in project.rooms.enumerated() {
             let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
@@ -100,9 +116,12 @@ public struct IFC4ExchangeEngine {
             let longName = surveyName.isEmpty ? "$" : "'\(stepString(surveyName))'"
             let roomRef = writer.add("IFCSPACE('\(roomGUID)',#\(owner),'Room \(roomIndex + 1)',$,$,#\(roomPlacement),\(roomRepresentation),\(longName),.ELEMENT.,.SPACE.,0.)")
             if let faces {
-                let area = writer.add("IFCQUANTITYAREA('NetFloorArea',$,$,\(number(faces.netArea / 1_000_000)),$)")
-                let quantities = writer.add("IFCELEMENTQUANTITY('\(relGUID(room.id, "qto.space.base"))',#\(owner),'Qto_SpaceBaseQuantities',$,$,(#\(area)))")
-                _ = writer.add("IFCRELDEFINESBYPROPERTIES('\(relGUID(room.id, "rel.qto.space.base"))',#\(owner),$,$,(#\(roomRef)),#\(quantities))")
+                var items: [(String, String, Double)] = [("area", "NetFloorArea", faces.netArea)]
+                if let q = takeoff.rooms.first(where: { $0.roomID == room.id }) {
+                    items += [("length", "Height", q.height), ("length", "NetPerimeter", q.perimeter), ("area", "NetCeilingArea", q.ceilingArea),
+                              ("area", "GrossWallArea", q.grossWallArea), ("area", "NetWallArea", q.netWallArea), ("volume", "NetVolume", q.volume)]
+                }
+                addQuantities(&writer, for: room.id, entity: roomRef, set: "Qto_SpaceBaseQuantities", items)
             }
             spaceRefs[room.id] = roomRef
             roomContainedRefs[room.id] = []
@@ -132,6 +151,13 @@ public struct IFC4ExchangeEngine {
                 let wallRef = writer.add("IFCWALL('\(guid)',#\(owner),'Wall',$,$,#\(placement),#\(representation),$,.NOTDEFINED.)")
                 wallRefs[wall.id] = wallRef
                 storeyContainedRefs.append(wallRef)
+                if let q = takeoff.walls.first(where: { $0.wallID == wall.id }) {
+                    addQuantities(&writer, for: wall.id, entity: wallRef, set: "Qto_WallBaseQuantities", [
+                        ("length", "Length", q.length), ("length", "Width", q.thickness), ("length", "Height", q.height),
+                        ("area", "GrossSideArea", q.grossSideArea), ("area", "NetSideArea", q.netSideArea),
+                        ("volume", "GrossVolume", q.grossVolume), ("volume", "NetVolume", q.netVolume),
+                    ])
+                }
                 addIdentityProperties(&writer, owner: owner, semanticID: wall.id, entityRef: wallRef, ifcClass: "IfcWall", semanticType: "wall", roomID: room.id, hostID: nil)
             }
 
@@ -243,6 +269,8 @@ public struct IFC4ExchangeEngine {
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: doorRef, ifcClass: "IfcDoor", semanticType: PlanOpsisExchangeIdentity.semanticType(for: opening), roomID: room.id, hostID: wall.id,
                                           sourceDimensions: ["SillHeight": p.sillHeight], sourceLabels: ["Swing": door.swing.rawValue,"Operation": door.operation.rawValue])
                     _ = writer.add("IFCRELFILLSELEMENT('\(relGUID(opening.id, "rel.fills.door"))',#\(owner),$,$,#\(openingRef),#\(doorRef))")
+                    addQuantities(&writer, for: opening.id, entity: doorRef, set: "Qto_DoorBaseQuantities",
+                                  [("length", "Width", p.width), ("length", "Height", p.height), ("area", "Area", p.width * p.height)])
                 case .window:
                     let semanticGUID = PlanOpsisExchangeIdentity.ifcGlobalID(for: opening.id)
                     objectGlobalIDs[opening.id] = semanticGUID
@@ -253,6 +281,8 @@ public struct IFC4ExchangeEngine {
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: windowRef, ifcClass: "IfcWindow", semanticType: PlanOpsisExchangeIdentity.semanticType(for: opening), roomID: room.id, hostID: wall.id,
                                           sourceDimensions: ["SillHeight": p.sillHeight], sourceLabels: ["Operation": (opening.windowOperation ?? .fixed).rawValue])
                     _ = writer.add("IFCRELFILLSELEMENT('\(relGUID(opening.id, "rel.fills.window"))',#\(owner),$,$,#\(openingRef),#\(windowRef))")
+                    addQuantities(&writer, for: opening.id, entity: windowRef, set: "Qto_WindowBaseQuantities",
+                                  [("length", "Width", p.width), ("length", "Height", p.height), ("area", "Area", p.width * p.height)])
                 }
             }
         }

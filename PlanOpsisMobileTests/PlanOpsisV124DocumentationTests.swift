@@ -220,6 +220,7 @@ final class PlanOpsisV124SheetPreviewDump: XCTestCase {
         project.name = "Golden flat"
         project.documentationSettings.sections = [SectionLine(label: "A", start: Point2D(x: -6_000, y: 0), end: Point2D(x: 8_000, y: 0))]
         project.documentationSettings.author = "RS"
+        project.documentationSettings.finishes[project.rooms[0].id] = RoomFinishes(floor: "Oak parquet", walls: "Emulsion paint", ceiling: "Emulsion paint", skirting: "Painted MDF")
         let set = DrawingSetComposer().compose(project: project)
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         for sheet in set.sheets {
@@ -227,7 +228,8 @@ final class PlanOpsisV124SheetPreviewDump: XCTestCase {
             func pts(_ p: [Point2D]) -> String { p.map { "\($0.x),\($0.y)" }.joined(separator: " ") }
             for p in sheet.primitives {
                 let ink = "rgb(\(Int(p.gray * 255)),\(Int(p.gray * 255)),\(Int(p.gray * 255)))"
-                let fill = p.fill.map { "rgb(\(Int($0 * 255)),\(Int($0 * 255)),\(Int($0 * 255)))" } ?? "none"
+                let fill = p.fillColor.map { "rgb(\(Int($0.red * 255)),\(Int($0.green * 255)),\(Int($0.blue * 255)))" }
+                    ?? p.fill.map { "rgb(\(Int($0 * 255)),\(Int($0 * 255)),\(Int($0 * 255)))" } ?? "none"
                 let stroke = p.weight > 0 ? "stroke='\(ink)' stroke-width='\(p.weight)'" : "stroke='none'"
                 switch p.shape {
                 case let .line(a, b): svg += "<line x1='\(a.x)' y1='\(a.y)' x2='\(b.x)' y2='\(b.y)' \(stroke)/>"
