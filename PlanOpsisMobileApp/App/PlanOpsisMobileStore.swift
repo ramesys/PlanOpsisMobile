@@ -1030,6 +1030,42 @@ final class PlanOpsisMobileStore: ObservableObject {
         }
     }
 
+    /// v12.7 splits a room's walls into rooms, one per closed loop, keeping openings, door swings and
+    /// furniture with the room they belong to. Rooms are named from underlay text inside them.
+    func detectRooms() {
+        guard representationMode == .semanticObservations, var next = project else {
+            statusMessage = "Detect rooms in Observed mode."
+            return
+        }
+        guard let room = focusedRoom ?? selectedRoom ?? (next.rooms.count == 1 ? next.rooms.first : nil) else {
+            statusMessage = "Focus or select the room whose walls should be split into rooms."
+            return
+        }
+        let boundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: StructureTopologyEngine().generate(from: next))
+        let split = RoomLoopDetector().split(room, previousBoundary: boundary)
+        guard !split.rooms.isEmpty else {
+            statusMessage = "No closed wall loops found. Close the gaps (Close junctions) and try again."
+            return
+        }
+        guard split.rooms.count > 1 || split.unenclosed != nil else {
+            statusMessage = "The walls already form one room."
+            return
+        }
+        guard let index = next.rooms.firstIndex(where: { $0.id == room.id }) else { return }
+        next.rooms.replaceSubrange(index...index, with: split.allRooms)
+        if let scene = underlayScene {
+            let names = RoomLoopDetector.names(for: split.rooms.map(\.loop), texts: scene.texts(hiddenLayers: underlayHiddenLayers))
+            for (entry, name) in zip(split.rooms, names) where next.survey.roomNames[entry.room.id]?.isEmpty ?? true {
+                if let name { next.survey.roomNames[entry.room.id] = name }
+            }
+        }
+        if commitSemanticProject(next, label: "Detect rooms") {
+            focusedRoomID = nil
+            let leftover = split.unenclosed.map { " \($0.walls.count) wall(s) outside any loop kept together." } ?? ""
+            statusMessage = "Found \(split.rooms.count) room(s)." + leftover
+        }
+    }
+
     /// Layers of the opened DXF that hold walls (IfcWall, A-WALL, WALL…).
     var drawingWallLayers: [String] {
         openedDrawing?.scene.layers.map(\.id).filter(UnderlayWallTracer.isWallLayer) ?? []
@@ -1057,32 +1093,32 @@ final class PlanOpsisMobileStore: ObservableObject {
             statusMessage = "No double-line walls (50–700 mm) found on \(wallLayers.sorted().joined(separator: ", "))."
             return
         }
-        let defaults = ArchitecturalDraftingConvention.Defaults()
-        var room = PlanOpsisRoom()
-        room.walls = traced.walls.map { w in
-            let v = w.end - w.start
-            return PlanOpsisWall(start: w.start, length: v.length, angleRadians: atan2(v.y, v.x), height: defaults.wallHeight, thickness: w.thickness, confidence: .unknown)
-        }
-        for opening in traced.openings {
-            let host = room.walls[opening.wallIndex]
-            let height = opening.kind == .door ? 2_100.0 : 1_200
-            let sill = opening.kind == .door ? 0.0 : 900
-            let p = HostedOpeningParameters(hostWallID: host.id, offsetAlongWall: opening.offset, width: opening.width,
-                                            height: min(height, host.height - sill), sillHeight: sill, confidence: .unknown)
-            room.openings.append(opening.kind == .door ? .door(PlanOpsisDoor(parameters: p)) : .window(PlanOpsisWindow(parameters: p)))
-        }
+        let room = traced.makeRoom()
+        // v12.7 closed loops of walls become rooms, named from the drawing's text inside them.
+        let split = RoomLoopDetector().split(room)
+        let rooms = split.allRooms.isEmpty ? [room] : split.allRooms
+        let names = RoomLoopDetector.names(for: split.rooms.map(\.loop), texts: scene.texts(hiddenLayers: hiddenLayers(for: drawing)))
         let doors = traced.openings.filter { $0.kind == .door }.count
-        let summary = "\(traced.walls.count) wall(s), \(doors) door(s) and \(traced.openings.count - doors) window(s) from \(drawing.title)"
+        let summary = "\(traced.walls.count) wall(s), \(doors) door(s) and \(traced.openings.count - doors) window(s) in \(split.rooms.count) room(s) from \(drawing.title)"
+        func name(_ project: inout PlanOpsisProject) {
+            for (entry, name) in zip(split.rooms, names) {
+                if let name { project.survey.roomNames[entry.room.id] = name }
+            }
+        }
         if var next = project {
-            next.rooms.append(room)
-            if commitSemanticProject(next, label: "Import walls", selectionAfter: Set(room.walls.map(\.id)), primaryAfter: room.walls.first?.id) {
+            next.rooms += rooms
+            name(&next)
+            let wallIDs = Set(rooms.flatMap { $0.walls.map(\.id) })
+            if commitSemanticProject(next, label: "Import walls", selectionAfter: wallIDs, primaryAfter: rooms.first?.walls.first?.id) {
                 focusedRoomID = nil
-                statusMessage = "Imported \(summary) as a new room. Openings without a symbol stay as gaps."
+                statusMessage = "Imported \(summary). Openings without a symbol stay as gaps."
             }
         } else {
             flushAutosave()
             clearPhysicalEditState(clearUndo: true)
-            project = PlanOpsisProject(rooms: [room], name: drawing.title)
+            var created = PlanOpsisProject(rooms: rooms, name: drawing.title)
+            name(&created)
+            project = created
             plyEvidenceProjectID = nil
             committedPLYEvidence = nil
             showPLYEvidenceOverlay = false

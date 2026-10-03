@@ -58,6 +58,7 @@ let package = Package(
                 "Geometry/PhysicalDisplayGeometryEngine.swift",
                 "Geometry/PlanViewTransform.swift",
                 "Geometry/RoomFaceBoundary.swift",
+                "Geometry/RoomLoopDetector.swift",
                 "Geometry/WallJunctionResolver.swift",
                 "IFC/IFC4Exchange.swift",
                 "Interaction/PlanDirectEditing.swift",

@@ -668,7 +668,7 @@ struct PlanOpsisRootView: View {
 
             Spacer(minLength: 4)
 
-            if store.rooms.count > 1, mode != .dxf {
+            if !store.rooms.isEmpty, mode != .dxf {
                 roomMenu
             }
             }
@@ -755,6 +755,9 @@ struct PlanOpsisRootView: View {
                     else { Text(store.roomLabel(room.id)) }
                 }
             }
+            Divider()
+            // v12.7 closed wall loops become rooms.
+            Button { store.detectRooms() } label: { Label("Detect rooms from walls", systemImage: "square.split.bottomrightquarter") }
         } label: {
             Image(systemName: "rectangle.3.group")
                 .frame(width: 36, height: 34)

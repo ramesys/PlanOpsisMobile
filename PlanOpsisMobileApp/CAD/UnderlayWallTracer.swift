@@ -24,6 +24,23 @@ public struct TracedOpening: Hashable, Sendable {
     /// Centre of the opening along the wall from its start, mm.
     public var offset: Double
     public var width: Double
+    /// v12.7 doors with a drawn swing: the hinge is at the wall's end-side jamb (else its start side).
+    public var hingeAtEnd: Bool?
+    /// The leaf opens to the left of the wall's direction (its normal side).
+    public var opensToLeft: Bool?
+    /// Two leaves, one hinged on each jamb.
+    public var isDouble = false
+
+    /// The door's swing, reading "in" as the left of the wall's direction.
+    public var swing: PlanOpsisDoor.Swing {
+        guard let hingeAtEnd, let opensToLeft else { return .unspecified }
+        switch (hingeAtEnd, opensToLeft) {
+        case (false, true): return .leftIn
+        case (false, false): return .leftOut
+        case (true, true): return .rightIn
+        case (true, false): return .rightOut
+        }
+    }
 }
 
 public struct UnderlayTraceResult: Hashable, Sendable {
@@ -48,14 +65,16 @@ public struct UnderlayWallTracer: Sendable {
 
     /// A short drawn item near a wall gap that tells doors from windows.
     public struct Symbol: Hashable, Sendable {
-        public enum Kind: Hashable, Sendable { case doorSwing, window }
+        /// `door` is part of a door block without a swing arc.
+        public enum Kind: Hashable, Sendable { case doorSwing, door, window }
         public var kind: Kind
         public var bounds: CADRect
-        /// Door swing arcs: centre and radius.
+        /// Door swing arcs: centre (the hinge), radius (the leaf), and the arc's middle point.
         public var center: Point2D?
         public var radius: Double?
-        public init(kind: Kind, bounds: CADRect, center: Point2D? = nil, radius: Double? = nil) {
-            self.kind = kind; self.bounds = bounds; self.center = center; self.radius = radius
+        public var arcMiddle: Point2D?
+        public init(kind: Kind, bounds: CADRect, center: Point2D? = nil, radius: Double? = nil, arcMiddle: Point2D? = nil) {
+            self.kind = kind; self.bounds = bounds; self.center = center; self.radius = radius; self.arcMiddle = arcMiddle
         }
     }
 
@@ -80,12 +99,20 @@ public struct UnderlayWallTracer: Sendable {
         var symbols: [Symbol] = []
         let items = region.map { scene.items(in: $0, hiddenLayers: hiddenLayers) } ?? scene.items.filter { scene.isVisible($0, hiddenLayers: hiddenLayers) }
         for item in items where item.isSnappable {
-            if let arc = item.arc, !arc.isFullCircle, Self.isDoorLayer(item.layer) || Self.isDoorSwing(arc) {
-                symbols.append(Symbol(kind: .doorSwing, bounds: item.bounds, center: arc.center, radius: arc.radius))
+            let block = item.blockName ?? ""
+            if let arc = item.arc, !arc.isFullCircle, Self.isDoorLayer(item.layer) || Self.isDoorLayer(block) || Self.isDoorSwing(arc) {
+                let middle = arc.start + arc.sweep / 2
+                symbols.append(Symbol(kind: .doorSwing, bounds: item.bounds, center: arc.center, radius: arc.radius,
+                                      arcMiddle: arc.center + Point2D(x: cos(middle), y: sin(middle)) * arc.radius))
                 continue
             }
-            if Self.isWindowLayer(item.layer) {
+            // v12.7 door and window blocks (INSERTs named DOOR…, FENSTER…) mark gaps even without arcs.
+            if Self.isWindowLayer(item.layer) || Self.isWindowLayer(block) {
                 symbols.append(Symbol(kind: .window, bounds: item.bounds))
+                continue
+            }
+            if Self.isDoorLayer(block) || Self.isDoorLayer(item.layer) {
+                symbols.append(Symbol(kind: .door, bounds: item.bounds))
                 continue
             }
             if let layers, !layers(item.layer) { continue }
@@ -306,7 +333,7 @@ public struct UnderlayWallTracer: Sendable {
     /// symbol, and records the opening.
     func bridgingOpenings(_ input: [TracedWall]) -> UnderlayTraceResult {
         var walls = input
-        var openings: [(kind: PlanOpsisOpening.Kind, wall: Int, low: Double, high: Double)] = []
+        var openings: [(detail: OpeningDetail, wall: Int, low: Double, high: Double)] = []
         var merged = true
         while merged {
             merged = false
@@ -321,42 +348,91 @@ public struct UnderlayWallTracer: Sendable {
                     let width = gapHigh - gapLow
                     guard width >= 400, width <= 3_500 else { continue }
                     let jambA = a.start + u * gapLow, jambB = a.start + u * gapHigh
-                    guard let kind = openingKind(between: jambA, and: jambB, thickness: a.thickness) else { continue }
+                    guard let detail = opening(between: jambA, and: jambB, thickness: a.thickness) else { continue }
                     let joined = TracedWall(start: a.start, end: a.start + u * max(b0, b1), thickness: max(a.thickness, b.thickness))
                     // Openings already on either wall move onto the joined wall.
                     openings = openings.map { o in
-                        if o.wall == i { return (o.kind, i, o.low, o.high) }
+                        if o.wall == i { return (o.detail, i, o.low, o.high) }
                         if o.wall == j {
                             let base = (walls[j].start - a.start).dot(u)
                             let flip = walls[j].direction.dot(u) < 0
                             let lo = flip ? base - o.high : base + o.low, hi = flip ? base - o.low : base + o.high
-                            return (o.kind, i, lo, hi)
+                            return (flip ? o.detail.reversed : o.detail, i, lo, hi)
                         }
                         return o
                     }
-                    openings.append((kind, i, gapLow, gapHigh))
+                    openings.append((detail, i, gapLow, gapHigh))
                     walls[i] = joined
                     walls.remove(at: j)
-                    openings = openings.map { o in (o.kind, o.wall > j ? o.wall - 1 : o.wall, o.low, o.high) }
+                    openings = openings.map { o in (o.detail, o.wall > j ? o.wall - 1 : o.wall, o.low, o.high) }
                     merged = true
                     break search
                 }
             }
         }
         return UnderlayTraceResult(walls: walls, openings: openings.map {
-            TracedOpening(kind: $0.kind, wallIndex: $0.wall, offset: ($0.low + $0.high) / 2, width: $0.high - $0.low)
+            TracedOpening(kind: $0.detail.kind, wallIndex: $0.wall, offset: ($0.low + $0.high) / 2, width: $0.high - $0.low,
+                          hingeAtEnd: $0.detail.hingeAtEnd, opensToLeft: $0.detail.opensToLeft, isDouble: $0.detail.isDouble)
         })
     }
 
-    func openingKind(between a: Point2D, and b: Point2D, thickness: Double) -> PlanOpsisOpening.Kind? {
-        let width = (b - a).length
-        let gap = CADRect(points: [a, b])!.expanded(by: thickness / 2 + 20)
-        for symbol in symbols where symbol.kind == .doorSwing {
-            guard let center = symbol.center, let radius = symbol.radius,
-                  radius >= width * 0.35, radius <= width * 1.15 else { continue }
-            if min((center - a).length, (center - b).length) <= thickness + 60 || gap.contains(center) { return .door }
+    /// What a gap's symbols say about its opening, relative to the direction from jamb `a` to jamb `b`.
+    struct OpeningDetail {
+        var kind: PlanOpsisOpening.Kind
+        var hingeAtEnd: Bool?
+        var opensToLeft: Bool?
+        var isDouble = false
+        /// The same opening seen from a wall running the other way.
+        var reversed: OpeningDetail {
+            OpeningDetail(kind: kind, hingeAtEnd: hingeAtEnd.map { !$0 }, opensToLeft: opensToLeft.map { !$0 }, isDouble: isDouble)
         }
-        if symbols.contains(where: { $0.kind == .window && $0.bounds.intersects(gap) }) { return .window }
+    }
+
+    func opening(between a: Point2D, and b: Point2D, thickness: Double) -> OpeningDetail? {
+        let width = (b - a).length
+        guard width > 1 else { return nil }
+        let u = (b - a).normalized, n = Point2D(x: -u.y, y: u.x)
+        let gap = CADRect(points: [a, b])!.expanded(by: thickness / 2 + 20)
+        // Swing arcs hinged at a jamb: a full leaf, or two half leaves for a double door.
+        let swings = symbols.filter { symbol in
+            guard symbol.kind == .doorSwing, let center = symbol.center, let radius = symbol.radius,
+                  radius >= width * 0.35, radius <= width * 1.15 else { return false }
+            return min((center - a).length, (center - b).length) <= thickness + 60 || gap.contains(center)
+        }
+        if let leaf = swings.max(by: { $0.radius! < $1.radius! }) {
+            let center = leaf.center!
+            let hingeAtEnd = (center - b).length < (center - a).length
+            let opensToLeft = leaf.arcMiddle.map { ($0 - (a + b) * 0.5).dot(n) > 0 }
+            let halfLeaves = swings.filter { $0.radius! <= width * 0.65 }
+            let isDouble = leaf.radius! <= width * 0.65 && halfLeaves.contains { ($0.center! - a).length < width / 2 }
+                && halfLeaves.contains { ($0.center! - b).length < width / 2 }
+            return OpeningDetail(kind: .door, hingeAtEnd: isDouble ? nil : hingeAtEnd, opensToLeft: opensToLeft, isDouble: isDouble)
+        }
+        if symbols.contains(where: { $0.kind == .window && $0.bounds.intersects(gap) }) { return OpeningDetail(kind: .window) }
+        if symbols.contains(where: { $0.kind == .door && $0.bounds.intersects(gap) }) { return OpeningDetail(kind: .door) }
         return nil
+    }
+}
+
+extension UnderlayTraceResult {
+    /// v12.7 the traced walls and openings as one room: doors keep their drawn hand and side, with "in"
+    /// as the left of each wall until `RoomLoopDetector` splits the room and re-reads it per room.
+    public func makeRoom(wallHeight: Double = ArchitecturalDraftingConvention.Defaults().wallHeight) -> PlanOpsisRoom {
+        var room = PlanOpsisRoom()
+        room.walls = walls.map { w in
+            let v = w.end - w.start
+            return PlanOpsisWall(start: w.start, length: v.length, angleRadians: atan2(v.y, v.x), height: wallHeight, thickness: w.thickness, confidence: .unknown)
+        }
+        for opening in openings where room.walls.indices.contains(opening.wallIndex) {
+            let host = room.walls[opening.wallIndex]
+            let isDoor = opening.kind == .door
+            let sill = isDoor ? 0.0 : 900
+            let p = HostedOpeningParameters(hostWallID: host.id, offsetAlongWall: opening.offset, width: opening.width,
+                                            height: min(isDoor ? 2_100 : 1_200, host.height - sill), sillHeight: sill, confidence: .unknown)
+            room.openings.append(isDoor
+                ? .door(PlanOpsisDoor(parameters: p, swing: opening.swing, operation: opening.isDouble ? .doubleHinged : .singleHinged))
+                : .window(PlanOpsisWindow(parameters: p)))
+        }
+        return room
     }
 }
