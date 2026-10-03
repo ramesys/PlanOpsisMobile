@@ -380,8 +380,8 @@ struct PlanOpsisRootView: View {
                 if store.project != nil {
                     Button("Show all rooms") { store.focusRoom(nil) }
                     if store.rooms.count > 1 {
-                        ForEach(Array(store.rooms.enumerated()), id: \.element.id) { index, room in
-                            Button("Room \(index + 1)") { store.focusRoom(room.id) }
+                        ForEach(store.orderedRooms, id: \.id) { room in
+                            Button(store.roomLabel(room.id)) { store.focusRoom(room.id) }
                         }
                         Divider()
                     }
@@ -724,10 +724,10 @@ struct PlanOpsisRootView: View {
                 if store.focusedRoomID == nil { Label("All rooms", systemImage: "checkmark") }
                 else { Text("All rooms") }
             }
-            ForEach(Array(store.rooms.enumerated()), id: \.element.id) { index, room in
+            ForEach(store.orderedRooms, id: \.id) { room in
                 Button { store.focusRoom(room.id) } label: {
-                    if store.focusedRoomID == room.id { Label("Room \(index + 1)", systemImage: "checkmark") }
-                    else { Text("Room \(index + 1)") }
+                    if store.focusedRoomID == room.id { Label(store.roomLabel(room.id), systemImage: "checkmark") }
+                    else { Text(store.roomLabel(room.id)) }
                 }
             }
         } label: {

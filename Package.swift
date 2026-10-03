@@ -38,6 +38,7 @@ let package = Package(
                 "Documentation/ArchitecturalSectionEngine.swift",
                 "Documentation/DocumentationModel.swift",
                 "Documentation/DrawingSetComposer.swift",
+                "Documentation/PlanOrdering.swift",
                 "Documentation/PlanTagEngine.swift",
                 "Documentation/ProjectQuantities.swift",
                 "Documentation/ProjectSchedules.swift",

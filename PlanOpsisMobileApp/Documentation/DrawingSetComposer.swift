@@ -111,7 +111,7 @@ public struct DrawingSetComposer: Sendable {
         if settings.includeElevations {
             let engine = ArchitecturalSectionEngine()
             func elevations(_ scale: Int) -> [DrawingView] {
-                project.rooms.flatMap { room in
+                PlanOrdering(project: project).rooms.flatMap { room in
                     engine.interiorElevations(room: room, roomName: roomNames[room.id] ?? "Room", project: project, physical: physical, schedules: schedules, scale: scale)
                 }
             }
@@ -336,7 +336,7 @@ public struct DrawingSetComposer: Sendable {
 
     /// Clear interior outline of every closed room, by room ID.
     static func roomOutlines(_ project: PlanOpsisProject, topology: StructureTopologySnapshot) -> [(room: PlanOpsisRoom, outline: [Point2D])] {
-        project.rooms.compactMap { room in
+        PlanOrdering(project: project).rooms.compactMap { room in
             let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: topology)
             guard let inner = RoomFaceBoundary(room: room, centerline: centerline)?.inner, inner.count >= 3 else { return nil }
             return (room, inner)

@@ -156,7 +156,10 @@ public struct DXFExchangeEngine {
         //   partitions but use room-boundary drafting for dimensions/spaces.
         var draftedRoomIDs = Set<UUID>()
         var draftedWallIDs = Set<UUID>()
-        for (index, room) in project.rooms.enumerated() {
+        // v12.6: room labels number rooms in plan order, matching IFC and the schedules.
+        let ordering = PlanOrdering(project: project)
+        for room in project.rooms {
+            let index = (ordering.roomNumbers[room.id] ?? 1) - 1
             let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
             guard let draft = roomDraft(room: room, centerline: centerline) else { continue }
 

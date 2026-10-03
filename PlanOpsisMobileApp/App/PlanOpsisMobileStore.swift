@@ -1335,11 +1335,22 @@ final class PlanOpsisMobileStore: ObservableObject {
         }
     }
 
+    /// v12.6: rooms are numbered in plan order (north-west first), the same as IFC, DXF and schedules.
     func roomLabel(_ roomID: UUID) -> String {
-        guard let project, let index = project.rooms.firstIndex(where: { $0.id == roomID }) else {
-            return "Room"
-        }
-        return "Room \(index + 1)"
+        guard let project else { return "Room" }
+        return PlanOrdering(project: project).roomLabel(roomID) ?? "Room"
+    }
+
+    /// "Wall 07": the wall number used by IFC, clockwise from the north-west.
+    func wallLabel(_ wallID: UUID) -> String {
+        guard let project else { return "Wall" }
+        return PlanOrdering(project: project).wallName(wallID) ?? "Wall"
+    }
+
+    /// Rooms in plan order, for room pickers.
+    var orderedRooms: [PlanOpsisRoom] {
+        guard let project else { return [] }
+        return PlanOrdering(project: project).rooms
     }
 
     func focusRoom(_ roomID: UUID?) {

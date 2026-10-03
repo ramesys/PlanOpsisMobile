@@ -1,5 +1,17 @@
 # Changelog
 
+## 12.6 — Plan-ordered numbering and architects' files
+
+### Numbering follows the plan, not capture order
+- Rooms are numbered in reading order: north to south, west to east within a row. Walls are numbered
+  clockwise around each room, starting at the north-west, with the room outline before any partitions
+  inside it. Openings follow their wall and run clockwise along it. Plan +Y is north.
+- **IFC:** spaces, walls, doors, windows and openings are written in this order. Spaces are named
+  *Room 1…*, walls *Wall 01…*, and doors, windows and openings carry their schedule mark (D01, W01, O01)
+  as Name and Tag, so the model tree in any IFC viewer reads in sequence.
+- Schedule marks, room numbers, DXF room labels, interior elevation numbers, the room menus and the
+  inspector (*Wall 07 · mm*) all use the same numbers. Numbers change only when the geometry does.
+
 ## 12.5 — Quantities, area plan and reflected ceiling plan
 
 ### Quantities and finishes

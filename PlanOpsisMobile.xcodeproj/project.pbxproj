@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EE63D5659C4ED00639B2C46D /* PlanOpsisV126OrderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */; };
+		B0B8A47F7430B521F1254B0A /* PlanOrdering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */; };
 		52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */; };
 		485836818478859A08B0B5DB /* ProjectQuantities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E7F20A43F12B64948583681 /* ProjectQuantities.swift */; };
 		22954109429BDE2C8817E618 /* SheetsWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */; };
@@ -145,6 +147,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV126OrderingTests.swift"; sourceTree = SOURCE_ROOT; };
+		B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/PlanOrdering.swift"; sourceTree = SOURCE_ROOT; };
 		3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV125QuantityTests.swift"; sourceTree = SOURCE_ROOT; };
 		8E7F20A43F12B64948583681 /* ProjectQuantities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/ProjectQuantities.swift"; sourceTree = SOURCE_ROOT; };
 		4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/SheetsWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
@@ -315,6 +319,7 @@
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
+				2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */,
 				3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */,
 				DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
@@ -450,6 +455,7 @@
 				3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */,
 				0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */,
 				23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */,
+				B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */,
 				5287EB21A108089B52AC4F3E /* ProjectSchedules.swift */,
 				B99546227DC16B5BC2369B51 /* PlanTagEngine.swift */,
 				ABF19A97CF17927E580236D6 /* DocumentationModel.swift */,
@@ -718,6 +724,7 @@
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
+				EE63D5659C4ED00639B2C46D /* PlanOpsisV126OrderingTests.swift in Sources */,
 				52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */,
 				DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
@@ -797,6 +804,7 @@
 				25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */,
 				AD32316DD5DDA5015C528575 /* CADSpatialIndex.swift in Sources */,
 				B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */,
+				B0B8A47F7430B521F1254B0A /* PlanOrdering.swift in Sources */,
 				52AC4F3ED06835AC21539765 /* ProjectSchedules.swift in Sources */,
 				C2369B516A35B5423196E522 /* PlanTagEngine.swift in Sources */,
 				580236D601265F90CE7FA157 /* DocumentationModel.swift in Sources */,
