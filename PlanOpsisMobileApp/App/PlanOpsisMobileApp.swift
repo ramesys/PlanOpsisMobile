@@ -173,7 +173,11 @@ struct PlanOpsisRootView: View {
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                 }
-                .task { store.refreshLibrary() }
+                .task {
+                    // v12.7 PDF pages render with PDFKit, which the core does not link.
+                    store.pdfPageLoader = { data, name, page in try PDFUnderlayLoader.load(data: data, name: name, page: page) }
+                    store.refreshLibrary()
+                }
                 .fileImporter(isPresented: $showingDXFImporter, allowedContentTypes: [.planOpsisDXF, .plainText]) { result in
                     do {
                         let url = try result.get()
@@ -322,7 +326,8 @@ struct PlanOpsisRootView: View {
                     pendingSectionStart: store.pendingSectionStart,
                     rasterUnderlay: store.visibleRasterUnderlay,
                     underlayTool: underlayToolState,
-                    onUndoUnderlayPoint: store.undoUnderlayAlignmentPoint
+                    onUndoUnderlayPoint: store.undoUnderlayAlignmentPoint,
+                    deviation: store.showDeviation ? store.deviation : nil
                 )
                 .background { PlanKeyboardShortcuts(store: store) }
                 // On the plan, not the root: one view hosting several file importers shows only one.
@@ -628,15 +633,31 @@ struct PlanOpsisRootView: View {
                             Picker("PDF drawing scale", selection: Binding(get: { store.rasterUnderlay?.paperScale ?? 100 }, set: { store.setRasterPaperScale($0) })) {
                                 ForEach([20.0, 50, 100, 200, 500], id: \.self) { Text("1:\(Int($0))").tag($0) }
                             }
+                            if store.rasterPageCount > 1 {
+                                Picker("PDF page", selection: Binding(get: { store.rasterPageIndex }, set: { store.setRasterPage($0) })) {
+                                    ForEach(0..<store.rasterPageCount, id: \.self) { Text("Page \($0 + 1)").tag($0) }
+                                }
+                            }
                             Button("Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
                         }
                         Button { showingPDFUnderlayImporter = true } label: { Label("PDF underlay\u{2026}", systemImage: "doc.richtext") }
                     }
-                    if store.openedDrawing != nil, store.rasterUnderlay == nil {
+                    if store.showUnderlay || store.deviation != nil {
+                        // v12.7 survey against the drawing.
+                        Section("Survey against the drawing") {
+                            Button { store.compareWithDrawing() } label: { Label(store.deviation == nil ? "Compare with drawing" : "Compare again", systemImage: "ruler.fill") }
+                            if store.deviation != nil {
+                                Toggle("Show deviations", isOn: $store.showDeviation)
+                                Button { store.showDeviationReport = true } label: { Label("Deviation report", systemImage: "list.bullet.rectangle") }
+                                Button("Clear comparison", role: .destructive) { store.clearDeviation() }
+                            }
+                        }
+                    }
+                    if store.openedDrawing != nil || store.rasterUnderlay != nil {
                         Section("Walls from the drawing") {
                             Button { store.beginTracingWalls() } label: { Label("Trace walls", systemImage: "hand.tap") }
                             Button { store.importWallsFromDrawing() } label: { Label("Import all walls", systemImage: "square.stack.3d.down.right") }
-                                .disabled(store.drawingWallLayers.isEmpty)
+                                .disabled(store.drawingWallLayers.isEmpty || store.rasterUnderlay != nil)
                         }
                     }
                 } label: {
@@ -668,7 +689,7 @@ struct PlanOpsisRootView: View {
 
             Spacer(minLength: 4)
 
-            if store.rooms.count > 1, mode != .dxf {
+            if !store.rooms.isEmpty, mode != .dxf {
                 roomMenu
             }
             }
@@ -755,6 +776,9 @@ struct PlanOpsisRootView: View {
                     else { Text(store.roomLabel(room.id)) }
                 }
             }
+            Divider()
+            // v12.7 closed wall loops become rooms.
+            Button { store.detectRooms() } label: { Label("Detect rooms from walls", systemImage: "square.split.bottomrightquarter") }
         } label: {
             Image(systemName: "rectangle.3.group")
                 .frame(width: 36, height: 34)

@@ -66,6 +66,8 @@ public enum SurveyEvidenceKind: String, Codable, Sendable {
     case photo, plyComparison, sourcePLY
     /// v12.1: the platform-neutral RoomPlan capture (`StructureCaptureSnapshot`) the project was built from.
     case roomPlanCapture
+    /// v12.7: the architect's drawing (DXF, PDF or IFC) kept under the plan.
+    case underlay
 }
 public struct SurveyEvidenceReference: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID

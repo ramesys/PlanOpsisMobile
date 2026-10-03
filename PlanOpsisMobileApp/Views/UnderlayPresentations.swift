@@ -17,16 +17,9 @@ struct UnderlayPresentations: ViewModifier {
                     let accessed = url.startAccessingSecurityScopedResource()
                     defer { if accessed { url.stopAccessingSecurityScopedResource() } }
                     let data = try Data(contentsOf: url)
-                    let name = url.deletingPathExtension().lastPathComponent
-                    store.statusMessage = "Rendering \(name)\u{2026}"
                     Task {
-                        let loaded = await Task.detached(priority: .userInitiated) { Result { try PDFUnderlayLoader.load(data: data, name: name) } }.value
-                        switch loaded {
-                        case let .success(underlay):
-                            store.setRasterUnderlay(underlay)
-                            if store.project != nil { mode = .plan }
-                        case let .failure(error):
-                            store.statusMessage = "PDF underlay failed: \(error.localizedDescription)"
+                        if await store.openPDFUnderlay(data: data, name: url.deletingPathExtension().lastPathComponent), store.project != nil {
+                            mode = .plan
                         }
                     }
                 } catch {
@@ -57,6 +50,11 @@ struct UnderlayPresentations: ViewModifier {
             }
             .onChange(of: store.needsCalibrationLength) { _, needed in
                 if needed { calibrationText = "" }
+            }
+            .sheet(isPresented: $store.showDeviationReport) {
+                DeviationReportView(store: store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
     }
 }
