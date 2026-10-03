@@ -1,5 +1,32 @@
 # Changelog
 
+## 12.4 — Drawing set: sheets, schedules, elevations and sections
+
+### Sheets tab
+- **A printable drawing set from the model.** A new *Sheets* tab lays out the floor plan, the
+  schedules, an interior elevation of every wall and any sections on A4–A1 sheets, each with a frame
+  and a title block (project, site/client, drawing, scale, date, author, revision, sheet n / N).
+  Tap a sheet to zoom and page through the set; export it as a vector PDF at true paper size.
+- **Plan sheet:** the largest standard scale that fits the paper (or the one you choose), door and
+  window tags, section marks, north arrow and scale bar.
+- **Interior elevations:** each wall seen from inside its room, adjacent walls cut at the corners,
+  doors and windows as openings with their marks, chain and overall dimensions, sill/head/ceiling
+  heights and level marks, titled with the direction the wall faces.
+- **Sections:** draw a cut on the plan (*Add ▸ Documentation ▸ Section line*, two taps). Walls on the
+  cut are filled, walls beyond are drawn behind, with clear widths, overall length and height.
+- **Settings:** title block fields, paper, plan and elevation scales, which parts to include, and the
+  section list (flip the viewing direction or delete) — saved with the project.
+
+### Schedules and marks
+- **Door, window and opening schedules and a room schedule** (clear floor area, perimeter, height,
+  door and window counts, glazing area and ratio). Doors are marked D01…, windows W01…, openings O01…;
+  a door captured from both rooms is one entry with one mark.
+- Marks are tagged on the plan (doors circled, windows boxed; *Door & window tags* in the
+  Documentation menu), shown in the inspector, on elevations, in the drawing and in the DXF
+  (IfcAnnotation-Tags). The inspector also shows the room's schedule line.
+- Schedules as native tables in the Sheets tab and as CSV for Numbers or Excel.
+- Room labels on drawings use the room's name when it has one.
+
 ## 12.3 — Professional editing and DXF viewer
 
 ### DXF tab

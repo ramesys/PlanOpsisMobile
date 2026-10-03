@@ -83,6 +83,7 @@ enum PlanOpsisViewMode: String, CaseIterable, Identifiable {
     case plan = "Plan"
     case model = "3D"
     case dxf = "DXF"
+    case sheets = "Sheets"
     case survey = "Survey"
 
     var id: String { rawValue }
@@ -94,6 +95,7 @@ enum PlanOpsisViewMode: String, CaseIterable, Identifiable {
         case .plan: return "square.split.2x2"
         case .model: return "cube.transparent"
         case .dxf: return "doc.text"
+        case .sheets: return "doc.richtext"
         case .survey: return "ruler"
         }
     }
@@ -111,6 +113,8 @@ struct PlanOpsisRootView: View {
     @State private var showingProjects = false
     @State private var exportDocument = ArchitecturalExchangeTextDocument()
     @State private var exportFormat: ArchitecturalExchangeFormat = .dxf
+    /// v12.4 file name for the next export; nil uses the format's default name.
+    @State private var exportFilename: String?
 
     var body: some View {
         NavigationStack {
@@ -186,14 +190,17 @@ struct PlanOpsisRootView: View {
                     isPresented: $showingExporter,
                     document: exportDocument,
                     contentType: exportFormat.contentType,
-                    defaultFilename: exportFormat.filename
+                    defaultFilename: exportFilename ?? exportFormat.filename
                 ) { result in
                     if case .failure(let error) = result {
                         store.statusMessage = "\(exportFormat.label) export failed: \(error.localizedDescription)"
                     } else {
-                        store.statusMessage = exportFormat == .dxf
-                            ? "Architectural DXF exported in millimetres."
-                            : "IFC4 semantic model exported with stable PlanOpsis references."
+                        switch exportFormat {
+                        case .dxf: store.statusMessage = "Architectural DXF exported in millimetres."
+                        case .ifc: store.statusMessage = "IFC4 semantic model exported with stable PlanOpsis references."
+                        case .pdf: store.statusMessage = "Drawing set exported as PDF at true paper size."
+                        case .csv: store.statusMessage = "Schedules exported as CSV."
+                        }
                     }
                 }
                 .onReceive(captureService.$structureSnapshot.compactMap { $0 }) { snapshot in
@@ -308,7 +315,10 @@ struct PlanOpsisRootView: View {
                     onMoveUnderlay: store.moveUnderlay(by:),
                     onStopMovingUnderlay: { store.isMovingUnderlay = false },
                     onPrecisionInput: { store.enterPrecisionPoint($0) },
-                    onFinishCreation: store.cancelCreation
+                    onFinishCreation: store.cancelCreation,
+                    sections: store.documentationSettings.includeSections ? store.documentationSettings.sections : [],
+                    isPlacingSection: store.isPlacingSection,
+                    pendingSectionStart: store.pendingSectionStart
                 )
                 .background { PlanKeyboardShortcuts(store: store) }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -330,6 +340,16 @@ struct PlanOpsisRootView: View {
             }
         case .dxf:
             DXFWorkspaceView(store: store)
+        case .sheets:
+            SheetsWorkspaceView(
+                store: store,
+                onExportPDF: prepareDrawingSetExport,
+                onExportCSV: prepareSchedulesExport,
+                onDrawSection: {
+                    mode = .plan
+                    store.beginSectionPlacement()
+                }
+            )
         }
     }
 
@@ -374,6 +394,8 @@ struct PlanOpsisRootView: View {
                         }
                     }
                     Button("Export IFC4") { prepareIFC4Export() }
+                    Button("Export drawing set (PDF)") { prepareDrawingSetExport() }
+                    Button("Export schedules (CSV)") { prepareSchedulesExport() }
                     Divider()
                     Button("Projects\u{2026}") { showingProjects = true }
                     Button("Save now") { store.save() }
@@ -461,10 +483,13 @@ struct PlanOpsisRootView: View {
                         Toggle("Dimensions", isOn: $store.showDimensions)
                         Toggle("Opening widths", isOn: $store.showOpeningWidths)
                         Toggle("Room text", isOn: $store.showRoomText)
+                        Toggle("Door & window tags", isOn: $store.showTags)
+                        Button("Section line") { store.beginSectionPlacement() }
+                        Button("Drawing sheets") { mode = .sheets }
                         Button("Drawing preview") { mode = .dxf }
                     }
 
-                    if store.creationTool != nil || store.componentCreationTool != nil {
+                    if store.creationTool != nil || store.componentCreationTool != nil || store.isPlacingSection {
                         Divider()
                         Button("Cancel add tool", role: .cancel, action: store.cancelCreation)
                     }
@@ -751,6 +776,7 @@ struct PlanOpsisRootView: View {
             return
         }
         exportFormat = .dxf
+        exportFilename = nil
         exportDocument = ArchitecturalExchangeTextDocument(text: text)
         showingExporter = true
     }
@@ -758,7 +784,24 @@ struct PlanOpsisRootView: View {
     private func prepareIFC4Export() {
         guard let text = store.exportIFC4Text(), !text.isEmpty else { return }
         exportFormat = .ifc
+        exportFilename = nil
         exportDocument = ArchitecturalExchangeTextDocument(text: text)
+        showingExporter = true
+    }
+
+    private func prepareDrawingSetExport() {
+        guard let data = store.exportDrawingSetPDF() else { return }
+        exportFormat = .pdf
+        exportFilename = "\(store.exportBaseName) - Drawings.pdf"
+        exportDocument = ArchitecturalExchangeTextDocument(data: data)
+        showingExporter = true
+    }
+
+    private func prepareSchedulesExport() {
+        guard let data = store.exportSchedulesCSV() else { return }
+        exportFormat = .csv
+        exportFilename = "\(store.exportBaseName) - Schedules.csv"
+        exportDocument = ArchitecturalExchangeTextDocument(data: data)
         showingExporter = true
     }
 
