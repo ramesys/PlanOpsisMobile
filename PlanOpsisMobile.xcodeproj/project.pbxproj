@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */; };
 		EF80BD26D0DBB98C3FDA9E52 /* PlanEditingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */; };
 		958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */; };
 		85F1AA147ABBA8153333D341 /* PlanDirectEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */; };
@@ -134,6 +135,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123LayerTests.swift"; sourceTree = SOURCE_ROOT; };
 		A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PlanEditingViews.swift"; sourceTree = SOURCE_ROOT; };
 		C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV123EditingTests.swift"; sourceTree = SOURCE_ROOT; };
 		28DCB34C1D7B943F85F1AA14 /* PlanDirectEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Interaction/PlanDirectEditing.swift"; sourceTree = SOURCE_ROOT; };
@@ -292,6 +294,7 @@
 				4B5EE543ED1871D3986975B6 /* PlanOpsisV121Tests.swift */,
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
+				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
 				A7A290D15058E365B56599E2 /* PlanOpsisV122Tests.swift */,
 				FD18F7952FD206BECFF1D32B /* SurveyCorrectionTests.swift */,
@@ -684,6 +687,7 @@
 				986975B6A2E7EB89058A70FA /* PlanOpsisV121Tests.swift in Sources */,
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
+				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
 				B56599E2434994363C2042A9 /* PlanOpsisV122Tests.swift in Sources */,
 				A8ED77958E8011DA24B25AC5 /* SurveyCorrectionTests.swift */,

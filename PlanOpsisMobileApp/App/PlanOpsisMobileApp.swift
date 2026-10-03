@@ -368,6 +368,11 @@ struct PlanOpsisRootView: View {
                     Button("Import DXF") { showingDXFImporter = true }
                     // v12.2: never silently disabled. A blocked export opens the readiness review explaining why.
                     Button(store.canExportDXF ? "Export DXF" : "Export DXF (review issues)") { prepareDXFExport() }
+                    Picker("DXF layers", selection: $store.dxfLayerNaming) {
+                        ForEach(DXFLayerNaming.allCases) { naming in
+                            Text(naming == .ifcClass ? "IFC classes (IfcWall, IfcDoor…)" : "CAD discipline (A-WALL, A-DOOR…)").tag(naming)
+                        }
+                    }
                     Button("Export IFC4") { prepareIFC4Export() }
                     Divider()
                     Button("Projects\u{2026}") { showingProjects = true }

@@ -46,7 +46,7 @@ public struct EditableDXFReader {
                 for t in r.tags where (10...59).contains(t.code) {
                     guard let n=Double(t.value),n.isFinite else { throw SurveyError.invalid("Nonfinite DXF geometry.") }
                 }
-                if r.string(8)=="A-WALL" { outlines.append(signature(r)) }
+                if ArchitecturalDraftingConvention.Layer(dxfName:r.string(8) ?? "") == .wall { outlines.append(signature(r)) }
                 let metadata=r.tags.filter{$0.code>=1000}.map(\.value).joined(separator:" ")
                 let matches=regex.matches(in:metadata,range:NSRange(metadata.startIndex...,in:metadata))
                 guard let match=matches.first else { continue }

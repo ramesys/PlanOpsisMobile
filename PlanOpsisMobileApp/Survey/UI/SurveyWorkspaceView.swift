@@ -87,6 +87,9 @@ struct SurveyWorkspaceView: View {
                         Text("Compatible drawing").tag(DXFExportProfile.compatible)
                         Text("Editable Rhino drawing").tag(DXFExportProfile.rhinoEditable)
                     }
+                    Picker("DXF layers",selection:$store.dxfLayerNaming) {
+                        ForEach(DXFLayerNaming.allCases) { Text($0.title).tag($0) }
+                    }
                     Text("Use Export DXF from the app menu after selecting the profile. Rhino edits require the originating project and export baseline.").font(.caption)
                     Button("Review returned Rhino DXF") { importReturn=true }
                     Button("Load exchange manifest") { importManifest=true }

@@ -249,7 +249,7 @@ final class PlanOpsisV123CADTests: XCTestCase {
         XCTAssertTrue(compatible.canWrite)
         let compatibleScene = CADScene(document: try CADDocumentReader().read(text: compatible.text))
         XCTAssertFalse(compatibleScene.items.isEmpty)
-        XCTAssertTrue(compatibleScene.layers.contains { $0.id == ArchitecturalDraftingConvention.Layer.wall.rawValue })
+        XCTAssertTrue(compatibleScene.layers.contains { $0.id == "IfcWall" })
     }
 
     func testProjectDrawingAdapterKeepsLayersAndIdentity() throws {
@@ -259,9 +259,9 @@ final class PlanOpsisV123CADTests: XCTestCase {
         XCTAssertEqual(drawing.title, "Project drawing")
         XCTAssertEqual(drawing.document.units, .millimetres)
         XCTAssertEqual(drawing.document.entities.count, preview.primitives.filter { $0.kind != .text || $0.text != nil }.count)
-        let wallLayer = ArchitecturalDraftingConvention.Layer.wall.rawValue
+        let wallLayer = "IfcWall"
         XCTAssertEqual(drawing.document.layer(named: wallLayer).lineWeight, .hundredthsMM(50))
-        XCTAssertTrue(drawing.scene.initiallyHiddenLayers.contains(ArchitecturalDraftingConvention.Layer.wallCenter.rawValue))
+        XCTAssertTrue(drawing.scene.initiallyHiddenLayers.contains("IfcWall-Axis"))
         let wall = try XCTUnwrap(drawing.scene.items.first { $0.layer == wallLayer })
         let entity = try XCTUnwrap(drawing.entity(for: wall))
         let wallIDs = Set(project.rooms.flatMap(\.walls).map(\.id.uuidString))

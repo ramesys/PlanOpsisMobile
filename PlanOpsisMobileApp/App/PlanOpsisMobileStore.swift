@@ -87,6 +87,13 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published var surveyImportProposal:SurveyDXFChangeProposal?
     @Published var showSurveyImportReview=false
     @Published var dxfExportProfile=DXFExportProfile.compatible { didSet { rederive() } }
+    /// v12.3 DXF layer names: one layer per IFC class (default) or the CAD discipline layers.
+    @Published var dxfLayerNaming = DXFLayerNaming(rawValue: UserDefaults.standard.string(forKey: "PlanOpsis.dxfLayerNaming") ?? "") ?? .ifcClass {
+        didSet {
+            UserDefaults.standard.set(dxfLayerNaming.rawValue, forKey: "PlanOpsis.dxfLayerNaming")
+            projectDrawingCache = nil
+        }
+    }
     @Published private(set) var physicalEditDraft: PhysicalPartitionEditDraft?
     @Published private(set) var physicalEditPlan: PhysicalPartitionEditPlan?
     @Published private(set) var physicalEditPreviewGeometry: DisplayGeometrySnapshot?
@@ -102,7 +109,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     private let physicalEditEngine = PhysicalPartitionEditTransactionEngine()
     private let editingConstraintEngine = PlanEditingConstraintEngine()
     private let semanticEditingEngine = SemanticObjectEditingEngine()
-    private var dxfExchangeEngine: DXFExchangeEngine { DXFExchangeEngine(includeOpeningDimensions:showOpeningWidths,surveyDrawing:dxfExportProfile == .rhinoEditable || (project.map{$0.survey != .empty} ?? false)) }
+    private var dxfExchangeEngine: DXFExchangeEngine { DXFExchangeEngine(includeOpeningDimensions:showOpeningWidths,surveyDrawing:dxfExportProfile == .rhinoEditable || (project.map{$0.survey != .empty} ?? false),layerNaming:dxfLayerNaming) }
     private let ifc4ExchangeEngine = IFC4ExchangeEngine()
     @Published var showDimensions = true
     @Published var showRoomText = true
@@ -244,7 +251,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         let preview = dxfPreview
         guard !preview.primitives.isEmpty else { return nil }
         if let cache = projectDrawingCache, cache.preview == preview { return cache.drawing }
-        let drawing = CADViewerDocument(source: .project, document: CADDocument(preview: preview))
+        let drawing = CADViewerDocument(source: .project, document: CADDocument(preview: preview, layerNaming: dxfLayerNaming))
         projectDrawingCache = (preview, drawing)
         return drawing
     }
@@ -938,7 +945,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         }
         if dxfExportProfile == .rhinoEditable {
             do {
-                let export=EditableDXFWriter().export(project:project,dimensions:SurveyDimensionBuilder().build(project:project),revisionID:UUID())
+                let export=EditableDXFWriter().export(project:project,dimensions:SurveyDimensionBuilder().build(project:project),revisionID:UUID(),layerNaming:dxfLayerNaming)
                 guard export.canWrite else { throw SurveyError.invalid(export.issues.joined(separator:"\n")) }
                 try surveyExchangeStore().save(export.manifest)
                 statusMessage="Rhino drawing ready; its baseline is retained for reviewed return."

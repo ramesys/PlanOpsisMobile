@@ -122,7 +122,16 @@ public struct DXFExchangeEngine {
     public var includeOpeningDimensions: Bool
 
     public var surveyDrawing:Bool
-    public init(includeOpeningDimensions:Bool=false,surveyDrawing:Bool=false) { self.includeOpeningDimensions=includeOpeningDimensions;self.surveyDrawing=surveyDrawing }
+    /// v12.3 names of the layers written to DXF. Previews keep the internal layer IDs.
+    public var layerNaming: DXFLayerNaming
+    public init(includeOpeningDimensions:Bool=false,surveyDrawing:Bool=false,layerNaming:DXFLayerNaming = .ifcClass) {
+        self.includeOpeningDimensions=includeOpeningDimensions;self.surveyDrawing=surveyDrawing;self.layerNaming=layerNaming
+    }
+
+    /// The DXF layer name for an internal layer ID.
+    private func dxfLayer(_ internalName: String) -> String {
+        ArchitecturalDraftingConvention.Layer(rawValue: internalName)?.dxfName(layerNaming) ?? internalName
+    }
 
     // MARK: - Export
 
@@ -311,7 +320,7 @@ public struct DXFExchangeEngine {
         pair(9, "$LUNITS"); pair(70, "2") // decimal
         pair(9, "$LUPREC"); pair(70, "0") // whole-mm display default
         pair(9, "$TEXTSTYLE"); pair(7, ArchitecturalDraftingConvention.TextStyle.name)
-        pair(9, "$CLAYER"); pair(8, ArchitecturalDraftingConvention.Layer.wall.rawValue)
+        pair(9, "$CLAYER"); pair(8, ArchitecturalDraftingConvention.Layer.wall.dxfName(layerNaming))
         pair(9, "$EXTMIN"); pair(10, number(bounds.min.x)); pair(20, number(bounds.min.y)); pair(30, "0")
         pair(9, "$EXTMAX"); pair(10, number(bounds.max.x)); pair(20, number(bounds.max.y)); pair(30, "0")
         pair(0, "ENDSEC")
@@ -325,13 +334,15 @@ public struct DXFExchangeEngine {
         pair(2, "CONTINUOUS"); pair(70, "0"); pair(3, "Solid line"); pair(72, "65"); pair(73, "0"); pair(40, "0")
         pair(0, "ENDTAB")
 
-        // Layer 0 plus PlanOpsis architectural/drawing layers.
-        let allLayers = ArchitecturalDraftingConvention.Layer.allCases
+        // Layer 0 plus PlanOpsis architectural/drawing layers. With IFC naming several internal layers
+        // share one DXF layer (a door and its swing are both IfcDoor); the first one sets its properties.
+        var seenLayerNames = Set<String>()
+        let allLayers = ArchitecturalDraftingConvention.Layer.allCases.filter { seenLayerNames.insert($0.dxfName(layerNaming)).inserted }
         pair(0, "TABLE"); pair(2, "LAYER"); pair(5, layerTableHandle); pair(330, "0"); pair(100, "AcDbSymbolTable"); pair(70, String(allLayers.count + 1))
         appendLayerRecord(name: "0", color: 7, lineWeight: -3, plot: true, visible: true, owner: layerTableHandle, handle: nextHandle(), pair: pair)
         for layer in allLayers {
             appendLayerRecord(
-                name: layer.rawValue,
+                name: layer.dxfName(layerNaming),
                 color: ArchitecturalDraftingConvention.dxfColorIndex(for: layer),
                 lineWeight: ArchitecturalDraftingConvention.dxfLineWeightHundredthsMM(for: layer),
                 plot: ArchitecturalDraftingConvention.isPlotLayer(layer),
@@ -376,7 +387,7 @@ public struct DXFExchangeEngine {
                     points: [wall.start, wall.end],
                     closed: false,
                     constantWidth: wall.thickness,
-                    layer: ArchitecturalDraftingConvention.Layer.wallCenter.rawValue,
+                    layer: ArchitecturalDraftingConvention.Layer.wallCenter.dxfName(layerNaming),
                     lineWeight: ArchitecturalDraftingConvention.dxfLineWeightHundredthsMM(for: .wallCenter),
                     handle: nextHandle(),
                     owner: modelSpaceRecordHandle,
@@ -404,7 +415,7 @@ public struct DXFExchangeEngine {
                 appendLineEntity(
                     a: a,
                     b: b,
-                    layer: ArchitecturalDraftingConvention.Layer.metadata.rawValue,
+                    layer: ArchitecturalDraftingConvention.Layer.metadata.dxfName(layerNaming),
                     lineWeight: ArchitecturalDraftingConvention.dxfLineWeightHundredthsMM(for: .metadata),
                     handle: nextHandle(),
                     owner: modelSpaceRecordHandle,
@@ -428,7 +439,7 @@ public struct DXFExchangeEngine {
                 appendLineEntity(
                     a: component.position,
                     b: component.position + component.direction * max(1, component.width * 0.5),
-                    layer: ArchitecturalDraftingConvention.Layer.metadata.rawValue,
+                    layer: ArchitecturalDraftingConvention.Layer.metadata.dxfName(layerNaming),
                     lineWeight: ArchitecturalDraftingConvention.dxfLineWeightHundredthsMM(for: .metadata),
                     handle: nextHandle(),
                     owner: modelSpaceRecordHandle,
@@ -446,7 +457,7 @@ public struct DXFExchangeEngine {
 
         // CRLF maximizes compatibility with conservative/legacy ASCII DXF readers.
         let text = out.joined(separator: "\r\n") + "\r\n"
-        issues.append(contentsOf: validateExportedDXF(text, declaredLayers: Set(allLayers.map(\.rawValue) + ["0"])))
+        issues.append(contentsOf: validateExportedDXF(text, declaredLayers: Set(allLayers.map { $0.dxfName(layerNaming) } + ["0"])))
         return DXFExportResult(text: issues.contains(where: { $0.severity == .error }) ? "" : text, issues: issues)
     }
 
@@ -642,7 +653,7 @@ public struct DXFExchangeEngine {
             }
             guard inEntities, var c = current else { i += 1; continue }
             switch code {
-            case 8: c.layer = value
+            case 8: c.layer = ArchitecturalDraftingConvention.Layer.normalizedName(value)
             case 10:
                 currentX = Double(value)
             case 20:
@@ -833,16 +844,16 @@ public struct DXFExchangeEngine {
         switch primitive.kind {
         case .line:
             guard primitive.points.count >= 2 else { return }
-            appendLineEntity(a: primitive.points[0], b: primitive.points[1], layer: primitive.layer, lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
+            appendLineEntity(a: primitive.points[0], b: primitive.points[1], layer: dxfLayer(primitive.layer), lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
         case .polyline:
             guard !primitive.points.isEmpty else { return }
-            appendPolylineEntity(points: primitive.points, closed: primitive.closed, layer: primitive.layer, lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
+            appendPolylineEntity(points: primitive.points, closed: primitive.closed, layer: dxfLayer(primitive.layer), lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
         case .arc:
             guard let c = primitive.center, let r = primitive.radius, let a = primitive.startAngleDegrees, let b = primitive.endAngleDegrees else { return }
-            appendArcEntity(center: c, radius: r, startAngle: a, endAngle: b, layer: primitive.layer, lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
+            appendArcEntity(center: c, radius: r, startAngle: a, endAngle: b, layer: dxfLayer(primitive.layer), lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
         case .text:
             guard let p = primitive.points.first, let text = primitive.text else { return }
-            appendTextEntity(point: p, text: text, height: primitive.textHeight ?? 180, rotationDegrees: primitive.rotationDegrees ?? 0, layer: primitive.layer, lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
+            appendTextEntity(point: p, text: text, height: primitive.textHeight ?? 180, rotationDegrees: primitive.rotationDegrees ?? 0, layer: dxfLayer(primitive.layer), lineWeight: lineWeight, handle: handle, owner: owner, pair: pair, number: number)
         }
         appendPrimitiveMetadata(primitive, pair: pair)
     }
@@ -933,9 +944,16 @@ public struct DXFExchangeEngine {
         for required in ["HEADER", "TABLES", "BLOCKS", "ENTITIES"] where !sections.contains(required) {
             issues.append(.init(.error, "DXF is missing required \(required) section."))
         }
-        let parsed = parseRecords(text)
-        for record in parsed where !declaredLayers.contains(record.layer) {
-            issues.append(.init(.error, "Entity \(record.type) references undeclared layer \(record.layer)."))
+        // Layer names as written (not normalized), so every entity's layer must exist in the LAYER table.
+        var entityType = ""
+        var inEntities = false
+        for (index, pair) in pairs.enumerated() {
+            if pair.0 == 0 {
+                if pair.1 == "SECTION", index + 1 < pairs.count { inEntities = pairs[index + 1].1 == "ENTITIES" }
+                entityType = pair.1
+            } else if inEntities, pair.0 == 8, !declaredLayers.contains(pair.1) {
+                issues.append(.init(.error, "Entity \(entityType) references undeclared layer \(pair.1)."))
+            }
         }
         if !text.contains("\r\n") {
             issues.append(.init(.warning, "DXF does not use CRLF line endings."))
