@@ -98,6 +98,10 @@ struct DXFWorkspaceView: View {
                 Divider()
                 Button("Open DXF\u{2026}") { showingOpener = true }
                 if let opened = store.openedDrawing {
+                    // v12.6 the drawing's wall layers as model walls.
+                    if !store.drawingWallLayers.isEmpty {
+                        Button("Import walls into the plan") { store.importWallsFromDrawing() }
+                    }
                     Button("Close \(opened.title)", role: .destructive) { store.closeOpenedDrawing() }
                 }
             } label: {
