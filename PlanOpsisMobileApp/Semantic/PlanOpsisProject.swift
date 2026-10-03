@@ -55,6 +55,8 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
     public var name: String?
     /// v12.4 drawing set settings (title block, paper, scales, section lines); nil until first edited.
     public var documentation: DocumentationSettings?
+    /// v12.7 the drawing kept under the plan and where it sits; nil when the project has none.
+    public var underlay: ProjectUnderlay?
 
     public init(
         schemaVersion: Int = Self.currentSchemaVersion,
@@ -85,7 +87,7 @@ public struct PlanOpsisProject: Codable, Hashable, Sendable, Identifiable {
 }
 
 extension PlanOpsisProject {
-    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey, name, documentation }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, id, sourceStructureRoomPlanID, rooms, survey, name, documentation, underlay }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
@@ -96,6 +98,7 @@ extension PlanOpsisProject {
         else { survey = try c.decode(SurveyRecord.self, forKey: .survey) }
         name = try c.decodeIfPresent(String.self, forKey: .name)
         documentation = try c.decodeIfPresent(DocumentationSettings.self, forKey: .documentation)
+        underlay = try? c.decodeIfPresent(ProjectUnderlay.self, forKey: .underlay)
     }
 }
 

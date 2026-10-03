@@ -27,6 +27,7 @@ let package = Package(
                 "CAD/CADSnapEngine.swift",
                 "CAD/CADSpatialIndex.swift",
                 "CAD/CADViewerDocument.swift",
+                "CAD/PDFVectorExtractor.swift",
                 "CAD/UnderlayAlignment.swift",
                 "CAD/UnderlayWallTracer.swift",
                 "Capture/CaptureEvidence.swift",

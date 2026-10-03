@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FBFE20F6A93F33CEA4AC88F1 /* PlanOpsisV127UnderlayFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */; };
+		C244C339F70E427B6EA4CDA1 /* PDFVectorExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD3F78CAF5A285DC244C339 /* PDFVectorExtractor.swift */; };
 		F1B92542123F052F714F84A1 /* PlanOpsisV127RoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72159F68B6E8663F1B92542 /* PlanOpsisV127RoomTests.swift */; };
 		43E8804E75BD08B7B5DB357B /* RoomLoopDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1AF0681406773E143E8804E /* RoomLoopDetector.swift */; };
 		C20B394E1ABC772631EC2794 /* PlanOpsisV126UnderlayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */; };
@@ -154,6 +156,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127UnderlayFileTests.swift"; sourceTree = SOURCE_ROOT; };
+		6AD3F78CAF5A285DC244C339 /* PDFVectorExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/PDFVectorExtractor.swift"; sourceTree = SOURCE_ROOT; };
 		A72159F68B6E8663F1B92542 /* PlanOpsisV127RoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127RoomTests.swift"; sourceTree = SOURCE_ROOT; };
 		E1AF0681406773E143E8804E /* RoomLoopDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Geometry/RoomLoopDetector.swift"; sourceTree = SOURCE_ROOT; };
 		70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV126UnderlayTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -333,6 +337,7 @@
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
+				B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */,
 				A72159F68B6E8663F1B92542 /* PlanOpsisV127RoomTests.swift */,
 				70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */,
 				2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */,
@@ -470,6 +475,7 @@
 				F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */,
 				D0D589FA234E905733113569 /* CADMeasurement.swift */,
 				FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */,
+				6AD3F78CAF5A285DC244C339 /* PDFVectorExtractor.swift */,
 				0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */,
 				72B80ADFFD9DCD6D94C25B56 /* UnderlayWallTracer.swift */,
 				3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */,
@@ -745,6 +751,7 @@
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
+				FBFE20F6A93F33CEA4AC88F1 /* PlanOpsisV127UnderlayFileTests.swift in Sources */,
 				F1B92542123F052F714F84A1 /* PlanOpsisV127RoomTests.swift in Sources */,
 				C20B394E1ABC772631EC2794 /* PlanOpsisV126UnderlayTests.swift in Sources */,
 				EE63D5659C4ED00639B2C46D /* PlanOpsisV126OrderingTests.swift in Sources */,
@@ -825,6 +832,7 @@
 				8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */,
 				331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */,
 				01AFB708D544BB83BF84537D /* CADScene.swift in Sources */,
+				C244C339F70E427B6EA4CDA1 /* PDFVectorExtractor.swift in Sources */,
 				9ABACDB3672C0CEDD9FC79F9 /* UnderlayAlignment.swift in Sources */,
 				94C25B56F51372E6523477A9 /* UnderlayWallTracer.swift in Sources */,
 				25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */,

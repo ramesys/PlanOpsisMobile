@@ -62,13 +62,27 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// v12.3 object snaps (endpoint, midpoint, intersection, perpendicular…) while drawing and dragging.
     @Published var objectSnapsEnabled = true
     /// v12.3 the DXF opened in the viewer, drawn faded under the plan.
-    @Published var showUnderlay = false
+    @Published var showUnderlay = false { didSet { syncProjectUnderlay() } }
     /// Where the DXF underlay sits on the plan.
-    @Published private(set) var underlayPlacement = UnderlayPlacement()
+    @Published private(set) var underlayPlacement = UnderlayPlacement() { didSet { syncProjectUnderlay() } }
     @Published var isMovingUnderlay = false
     /// v12.6 a PDF page under the plan; while loaded it is the underlay shown instead of the DXF.
     @Published private(set) var rasterUnderlay: RasterUnderlay?
-    @Published private(set) var rasterPlacement = UnderlayPlacement()
+    @Published private(set) var rasterPlacement = UnderlayPlacement() { didSet { syncProjectUnderlay() } }
+    /// v12.7 the PDF's pages and the page shown (0-based).
+    @Published private(set) var rasterPageCount = 1
+    @Published private(set) var rasterPageIndex = 0
+    /// v12.7 the PDF page's lines in paper millimetres, for snapping and tracing; nil for scanned sheets.
+    private var rasterVectors: CADDocument?
+    /// Source bytes of the underlays, for another PDF page and for saving with the project.
+    private var rasterSource: (data: Data, name: String)?
+    private var openedDrawingData: (data: Data, name: String)?
+    private var underlayAssetCache: (projectID: UUID, name: String, size: Int, reference: SurveyEvidenceReference)?
+    private var isRestoringUnderlay = false
+    /// v12.7 renders a PDF page; injected by the app because PDFKit is not part of the core.
+    var pdfPageLoader: ((Data, String, Int) throws -> PDFUnderlayPage)? {
+        didSet { if project?.underlay?.format == .pdf, rasterUnderlay == nil { restoreUnderlay() } }
+    }
     /// v12.6 two-point alignment or scale calibration in progress.
     @Published private(set) var underlayAlignment: UnderlayAlignmentSession?
     /// v12.6 alignment whose scale differs from the drawing's units, waiting for the user's choice.
@@ -239,7 +253,10 @@ final class PlanOpsisMobileStore: ObservableObject {
     func undo() {
         guard let current = currentHistorySnapshot(), let previous = editHistory.undo(current: current) else { return }
         historyCoalescingKey = nil
-        project = previous.project
+        // The underlay's placement is not a model edit: undo leaves it where it is.
+        var restored = previous.project
+        restored.underlay = project?.underlay
+        project = restored
         setSelection(previous.selectionIDs, primary: previous.primarySelectionID)
         clearPhysicalEditState(clearUndo: true)
         regenerate()
@@ -249,7 +266,9 @@ final class PlanOpsisMobileStore: ObservableObject {
     func redo() {
         guard let current = currentHistorySnapshot(), let next = editHistory.redo(current: current) else { return }
         historyCoalescingKey = nil
-        project = next.project
+        var restored = next.project
+        restored.underlay = project?.underlay
+        project = restored
         setSelection(next.selectionIDs, primary: next.primarySelectionID)
         clearPhysicalEditState(clearUndo: true)
         regenerate()
@@ -283,6 +302,7 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func setHiddenLayers(_ layers: Set<String>, for drawing: CADViewerDocument) {
         viewerHiddenLayers[drawing.source] = layers
+        if drawing.id == openedDrawing?.id { syncProjectUnderlay() }
     }
 
     /// Opens a DXF for viewing. Parsing runs off the main thread; large drawings take a moment.
@@ -307,6 +327,7 @@ final class PlanOpsisMobileStore: ObservableObject {
             switch result {
             case let .success(drawing):
                 self.openedDrawing = drawing
+                self.openedDrawingData = (data, name)
                 self.viewerShowsOpenedDrawing = true
                 self.viewerHiddenLayers[drawing.source] = nil
                 let notes = drawing.scene.diagnostics.summary
@@ -717,7 +738,18 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// The opened DXF placed under the plan in millimetres, or nil when the underlay is off or a PDF
     /// page is the underlay.
     var underlayScene: CADScene? {
-        guard showUnderlay, rasterUnderlay == nil, let drawing = openedDrawing else { return nil }
+        guard showUnderlay else { return nil }
+        if let rasterUnderlay {
+            // v12.7 a vector PDF's lines, placed with the page: snapped to and traced, not drawn.
+            guard let vectors = rasterVectors else { return nil }
+            let p = rasterPlacement
+            let key = "pdf|\(rasterUnderlay.id)|\(rasterUnderlay.paperScale)|\(p.offset.x)|\(p.offset.y)|\(p.rotationDegrees)|\(p.scale)"
+            if let cache = underlayCache, cache.key == key { return cache.scene }
+            let scene = CADScene(document: vectors, transform: p.transform(unitScale: rasterUnderlay.paperScale))
+            underlayCache = (key, scene)
+            return scene
+        }
+        guard let drawing = openedDrawing else { return nil }
         let p = underlayPlacement
         let key = "\(drawing.id)|\(p.offset.x)|\(p.offset.y)|\(p.rotationDegrees)|\(p.scale)"
         if let cache = underlayCache, cache.key == key { return cache.scene }
@@ -727,7 +759,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     }
 
     var underlayHiddenLayers: Set<String> {
-        openedDrawing.map(hiddenLayers(for:)) ?? []
+        rasterUnderlay != nil ? [] : openedDrawing.map(hiddenLayers(for:)) ?? []
     }
 
     /// The PDF page under the plan and its drawing-to-plan transform, when shown.
@@ -915,15 +947,58 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     // MARK: v12.6 PDF underlay
 
+    /// Renders and places a PDF page as the underlay, at an assumed 1:100 until calibrated.
+    @discardableResult
+    func openPDFUnderlay(data: Data, name: String) async -> Bool {
+        guard let loader = pdfPageLoader else { return false }
+        statusMessage = "Rendering \(name)\u{2026}"
+        let result = await Task.detached(priority: .userInitiated) { Result { try loader(data, name, 0) } }.value
+        switch result {
+        case let .success(page):
+            rasterSource = (data, name)
+            setRasterUnderlay(page)
+            return true
+        case let .failure(error):
+            statusMessage = "PDF underlay failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
     /// Uses a rendered PDF page as the underlay, at an assumed 1:100 until calibrated.
-    func setRasterUnderlay(_ underlay: RasterUnderlay) {
-        rasterUnderlay = underlay
+    func setRasterUnderlay(_ page: PDFUnderlayPage) {
+        rasterUnderlay = page.raster
+        rasterVectors = page.vectors
+        rasterPageCount = page.pageCount
+        rasterPageIndex = page.pageIndex
         rasterPlacement = UnderlayPlacement()
         showUnderlay = true
         isMovingUnderlay = false
         centreUnderlayOnPlan()
         beginUnderlayAlignment(.calibrate)
-        statusMessage = "\(underlay.name) placed at 1:\(Self.scaleText(underlay.paperScale)). Calibrate: tap two points a known distance apart."
+        let lines = page.vectors.map { " \($0.entities.count) lines to snap to and trace." } ?? " A scanned page: no lines to snap to."
+        statusMessage = "\(page.raster.name) placed at 1:\(Self.scaleText(page.raster.paperScale)).\(lines) Calibrate: tap two points a known distance apart."
+    }
+
+    /// v12.7 shows another page of the PDF in the same place and scale.
+    func setRasterPage(_ index: Int) {
+        guard let source = rasterSource, let loader = pdfPageLoader, let current = rasterUnderlay,
+              index != rasterPageIndex, (0..<rasterPageCount).contains(index) else { return }
+        let placement = rasterPlacement
+        Task {
+            let result = await Task.detached(priority: .userInitiated) { Result { try loader(source.data, source.name, index) } }.value
+            guard case let .success(page) = result, rasterSource?.data == source.data else {
+                if case let .failure(error) = result { statusMessage = "Page \(index + 1) failed: \(error.localizedDescription)" }
+                return
+            }
+            var raster = page.raster
+            raster.paperScale = current.paperScale
+            rasterUnderlay = raster
+            rasterVectors = page.vectors
+            rasterPageIndex = page.pageIndex
+            rasterPlacement = placement
+            syncProjectUnderlay()
+            statusMessage = "Showing page \(index + 1) of \(rasterPageCount)."
+        }
     }
 
     /// Sets the PDF's drawing scale (1:50, 1:100…) and clears any calibration.
@@ -942,9 +1017,120 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     func removeRasterUnderlay() {
         rasterUnderlay = nil
+        rasterVectors = nil
+        rasterSource = nil
         underlayAlignment = nil
-        if openedDrawing == nil { showUnderlay = false }
+        if openedDrawing == nil {
+            showUnderlay = false
+            if var next = project, next.underlay?.format == .pdf {
+                next.underlay = nil
+                project = next
+                scheduleAutosave()
+            }
+        } else {
+            syncProjectUnderlay()
+        }
         statusMessage = openedDrawing == nil ? "PDF underlay removed." : "PDF underlay removed; the DXF is the underlay again."
+    }
+
+    // MARK: v12.7 the underlay kept with the project
+
+    /// Writes the shown underlay's source and placement into the project, without an undo step.
+    private func syncProjectUnderlay() {
+        guard !isRestoringUnderlay, var next = project else { return }
+        let source: (data: Data, name: String)
+        let format: ProjectUnderlay.Format
+        if rasterUnderlay != nil, let raster = rasterSource {
+            source = raster
+            format = .pdf
+        } else if openedDrawing != nil, let drawing = openedDrawingData {
+            source = drawing
+            format = ProjectUnderlay.format(forFileName: drawing.name)
+        } else {
+            return
+        }
+        // Nothing to keep until the drawing has been shown under this project.
+        guard showUnderlay || next.underlay != nil else { return }
+        let reference: SurveyEvidenceReference
+        if let cache = underlayAssetCache, cache.projectID == next.id, cache.name == source.name, cache.size == source.data.count {
+            reference = cache.reference
+        } else {
+            do {
+                reference = try surveyAttachmentStore().importAsset(data: source.data, projectID: next.id, kind: .underlay, sourceName: source.name)
+                underlayAssetCache = (next.id, source.name, source.data.count, reference)
+            } catch {
+                statusMessage = "The underlay could not be saved with the project: \(error.localizedDescription)"
+                return
+            }
+        }
+        next.underlay = ProjectUnderlay(
+            format: format, asset: reference, fileName: source.name, placement: activeUnderlayPlacement,
+            paperScale: format == .pdf ? rasterUnderlay?.paperScale : nil, pageIndex: format == .pdf ? rasterPageIndex : nil,
+            hiddenLayers: format == .pdf ? nil : openedDrawing.map { hiddenLayers(for: $0).sorted() }, isVisible: showUnderlay)
+        guard next != project else { return }
+        project = next
+        if project != lastSavedProject { scheduleAutosave() }
+    }
+
+    /// Reloads the project's underlay (or clears the last project's) after a project is opened.
+    private func restoreUnderlay() {
+        isRestoringUnderlay = true
+        defer { isRestoringUnderlay = false }
+        underlayAlignment = nil
+        isTracingWalls = false
+        isMovingUnderlay = false
+        guard let project, let saved = project.underlay else {
+            rasterUnderlay = nil
+            rasterVectors = nil
+            rasterSource = nil
+            showUnderlay = false
+            underlayPlacement = UnderlayPlacement()
+            return
+        }
+        let data: Data
+        do {
+            data = try surveyAttachmentStore().readVerified(saved.asset, projectID: project.id)
+        } catch {
+            showUnderlay = false
+            statusMessage = "The project's underlay \(saved.fileName) could not be read: \(error.localizedDescription)"
+            return
+        }
+        underlayAssetCache = (project.id, saved.fileName, data.count, saved.asset)
+        let projectID = project.id
+        switch saved.format {
+        case .pdf:
+            guard let loader = pdfPageLoader else { return }
+            Task {
+                let result = await Task.detached(priority: .userInitiated) { Result { try loader(data, saved.fileName, saved.pageIndex ?? 0) } }.value
+                guard self.project?.id == projectID, case let .success(page) = result else { return }
+                self.isRestoringUnderlay = true
+                defer { self.isRestoringUnderlay = false }
+                var raster = page.raster
+                raster.paperScale = saved.paperScale ?? raster.paperScale
+                self.rasterSource = (data, saved.fileName)
+                self.rasterUnderlay = raster
+                self.rasterVectors = page.vectors
+                self.rasterPageCount = page.pageCount
+                self.rasterPageIndex = page.pageIndex
+                self.rasterPlacement = saved.placement
+                self.showUnderlay = saved.isVisible
+            }
+        case .dxf, .ifc:
+            Task {
+                let result = await Task.detached(priority: .userInitiated) { Result { try CADViewerDocument.open(data: data, fileName: saved.fileName) } }.value
+                guard self.project?.id == projectID, case let .success(drawing) = result else { return }
+                self.isRestoringUnderlay = true
+                defer { self.isRestoringUnderlay = false }
+                self.rasterUnderlay = nil
+                self.rasterVectors = nil
+                self.rasterSource = nil
+                self.openedDrawing = drawing
+                self.openedDrawingData = (data, saved.fileName)
+                if let hidden = saved.hiddenLayers { self.viewerHiddenLayers[drawing.source] = Set(hidden) }
+                self.underlayPlacement = saved.placement
+                self.showUnderlay = saved.isVisible
+            }
+        }
     }
 
     // MARK: v12.6 walls from drawings
@@ -975,13 +1161,13 @@ final class PlanOpsisMobileStore: ObservableObject {
             statusMessage = "Trace walls in Observed mode so they become semantic walls."
             return
         }
-        guard openedDrawing != nil, rasterUnderlay == nil else {
+        if !showUnderlay, hasUnderlaySource { toggleUnderlay() }
+        guard underlayScene != nil else {
             statusMessage = rasterUnderlay != nil
-                ? "Walls can be traced from a DXF underlay; a PDF page has no lines to follow. Draw walls over it instead."
-                : "Open a DXF in the DXF tab to trace walls from it."
+                ? "This PDF page is a scan with no lines to follow. Draw walls over it instead."
+                : "Open a DXF, IFC or vector PDF underlay to trace walls from it."
             return
         }
-        if !showUnderlay { toggleUnderlay() }
         creationTool = nil
         componentCreationTool = nil
         pendingWallStart = nil
@@ -2319,7 +2505,7 @@ final class PlanOpsisMobileStore: ObservableObject {
             guard project==initial else { throw SurveyError.invalid("Project changed while the folder was loading; open it again to replace the current project.") }
             flushAutosave()
             project=imported;plyImportModel.clear();committedPLYEvidence=nil;plyEvidenceProjectID=nil;showPLYEvidenceOverlay=false
-            resetEditHistory();clearPhysicalEditState(clearUndo:true);focusedRoomID=nil;setSelection([],primary:nil);regenerate();restoreSurveyEvidence()
+            resetEditHistory();clearPhysicalEditState(clearUndo:true);focusedRoomID=nil;setSelection([],primary:nil);regenerate();restoreSurveyEvidence();restoreUnderlay()
             statusMessage="Survey folder opened with verified project and evidence."
         } catch { statusMessage="Open survey failed: \(error.localizedDescription)" }
     }
@@ -2482,6 +2668,7 @@ final class PlanOpsisMobileStore: ObservableObject {
             regenerate()
             statusMessage = "Opened \u{201C}\(loaded.displayName)\u{201D}."
             restoreSurveyEvidence()
+            restoreUnderlay()
             refreshLibrary()
         } catch {
             statusMessage = "Open failed: \(error.localizedDescription)"

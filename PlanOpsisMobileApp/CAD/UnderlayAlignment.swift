@@ -188,3 +188,39 @@ public struct RasterUnderlay: Identifiable, Hashable, Sendable {
         return CADRect(points: [c.topLeft, c.topRight, c.bottomLeft, Point2D(x: pageWidthMM, y: 0)].map(t.apply)) ?? .empty
     }
 }
+
+/// v12.7 the underlay a project keeps: the source file (stored, hash-verified, with the project's
+/// attachments) and how it sits under the plan.
+public struct ProjectUnderlay: Codable, Hashable, Sendable {
+    public enum Format: String, Codable, Hashable, Sendable { case dxf, pdf, ifc }
+
+    public var format: Format
+    public var asset: SurveyEvidenceReference
+    public var fileName: String
+    public var placement: UnderlayPlacement
+    /// PDF only: the drawing scale denominator and the page shown (0-based).
+    public var paperScale: Double?
+    public var pageIndex: Int?
+    public var hiddenLayers: [String]?
+    public var isVisible: Bool
+
+    public init(format: Format, asset: SurveyEvidenceReference, fileName: String, placement: UnderlayPlacement,
+                paperScale: Double? = nil, pageIndex: Int? = nil, hiddenLayers: [String]? = nil, isVisible: Bool = true) {
+        self.format = format
+        self.asset = asset
+        self.fileName = fileName
+        self.placement = placement
+        self.paperScale = paperScale
+        self.pageIndex = pageIndex
+        self.hiddenLayers = hiddenLayers
+        self.isVisible = isVisible
+    }
+
+    public static func format(forFileName name: String) -> Format {
+        switch (name as NSString).pathExtension.lowercased() {
+        case "pdf": return .pdf
+        case "ifc": return .ifc
+        default: return .dxf
+        }
+    }
+}

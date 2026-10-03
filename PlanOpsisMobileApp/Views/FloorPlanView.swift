@@ -109,7 +109,8 @@ struct FloorPlanView: View {
                             layer.draw(Image(uiImage: image), in: CGRect(x: 0, y: 0, width: 1, height: 1))
                         }
                     }
-                    if let underlay {
+                    // A PDF page is drawn as its image; its lines (`underlay`) are only snapped to.
+                    if let underlay, rasterUnderlay == nil {
                         // The underlay is reference only: faded, below the grid and the model.
                         context.drawLayer { layer in
                             layer.opacity = isMovingUnderlay ? 0.7 : 0.4
