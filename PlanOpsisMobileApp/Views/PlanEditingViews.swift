@@ -87,7 +87,7 @@ struct PlanKeyboardShortcuts: View {
             Button("Select all") { store.selectAll() }
                 .keyboardShortcut("a", modifiers: .command)
             Button("Cancel") {
-                if store.creationTool != nil || store.componentCreationTool != nil { store.cancelCreation() }
+                if store.creationTool != nil || store.componentCreationTool != nil || store.underlayAlignment != nil || store.isTracingWalls { store.cancelCreation() }
                 else if store.isMovingUnderlay { store.isMovingUnderlay = false }
                 else { store.clearSelection() }
             }

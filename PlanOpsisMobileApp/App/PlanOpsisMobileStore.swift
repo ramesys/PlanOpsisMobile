@@ -63,9 +63,18 @@ final class PlanOpsisMobileStore: ObservableObject {
     @Published var objectSnapsEnabled = true
     /// v12.3 the DXF opened in the viewer, drawn faded under the plan.
     @Published var showUnderlay = false
-    @Published private(set) var underlayOffset = Point2D.zero
-    @Published private(set) var underlayRotationDegrees = 0.0
+    /// Where the DXF underlay sits on the plan.
+    @Published private(set) var underlayPlacement = UnderlayPlacement()
     @Published var isMovingUnderlay = false
+    /// v12.6 a PDF page under the plan; while loaded it is the underlay shown instead of the DXF.
+    @Published private(set) var rasterUnderlay: RasterUnderlay?
+    @Published private(set) var rasterPlacement = UnderlayPlacement()
+    /// v12.6 two-point alignment or scale calibration in progress.
+    @Published private(set) var underlayAlignment: UnderlayAlignmentSession?
+    /// v12.6 alignment whose scale differs from the drawing's units, waiting for the user's choice.
+    @Published var pendingAlignmentScale: Double?
+    /// v12.6 tapping between two parallel underlay lines adds a wall of that thickness.
+    @Published private(set) var isTracingWalls = false
     /// A plan dimension being edited by value.
     @Published var dimensionEdit: PlanDimensionEdit?
     private var underlayCache: (key: String, scene: CADScene)?
@@ -364,6 +373,8 @@ final class PlanOpsisMobileStore: ObservableObject {
         creationTool = kind
         pendingWallStart = nil
         wallChainStart = nil
+        underlayAlignment = nil
+        isTracingWalls = false
         cancelSectionPlacement()
         statusMessage = kind == .wall ? "Draw walls: tap corners (or type lengths); tap Done to finish." : "Add \(kind.rawValue.capitalized): tap a host wall."
     }
@@ -399,6 +410,14 @@ final class PlanOpsisMobileStore: ObservableObject {
         componentCreationTool = nil
         pendingWallStart = nil
         wallChainStart = nil
+        if underlayAlignment != nil || isTracingWalls {
+            let wasTracing = isTracingWalls
+            underlayAlignment = nil
+            pendingAlignmentScale = nil
+            isTracingWalls = false
+            statusMessage = wasTracing ? "Finished tracing walls." : "Underlay alignment cancelled."
+            return
+        }
         statusMessage = wasDrawingWalls ? "Finished drawing walls." : (wasPlacingSection ? "Section cancelled." : "Add-object tool cancelled.")
     }
 
@@ -407,6 +426,8 @@ final class PlanOpsisMobileStore: ObservableObject {
     func handlePlanTap(point: Point2D, hitID: UUID?, snapped: Bool = false) {
         guard let project else { return }
         if placeSectionPoint(point) { return }
+        if addUnderlayAlignmentPoint(point) { return }
+        if isTracingWalls { traceWall(at: point); return }
         let roomID = focusedRoomID ?? selectedRoom?.id ?? project.rooms.first?.id
         guard let roomID else { return }
 
@@ -693,12 +714,14 @@ final class PlanOpsisMobileStore: ObservableObject {
 
     // MARK: Underlay
 
-    /// The opened DXF placed under the plan in millimetres, or nil when the underlay is off.
+    /// The opened DXF placed under the plan in millimetres, or nil when the underlay is off or a PDF
+    /// page is the underlay.
     var underlayScene: CADScene? {
-        guard showUnderlay, let drawing = openedDrawing else { return nil }
-        let key = "\(drawing.id)|\(underlayOffset.x)|\(underlayOffset.y)|\(underlayRotationDegrees)"
+        guard showUnderlay, rasterUnderlay == nil, let drawing = openedDrawing else { return nil }
+        let p = underlayPlacement
+        let key = "\(drawing.id)|\(p.offset.x)|\(p.offset.y)|\(p.rotationDegrees)|\(p.scale)"
         if let cache = underlayCache, cache.key == key { return cache.scene }
-        let scene = CADScene(document: drawing.document, transform: underlayTransform(for: drawing, offset: underlayOffset, rotationDegrees: underlayRotationDegrees))
+        let scene = CADScene(document: drawing.document, transform: p.transform(unitScale: Self.millimetresPerUnit(drawing)))
         underlayCache = (key, scene)
         return scene
     }
@@ -707,46 +730,376 @@ final class PlanOpsisMobileStore: ObservableObject {
         openedDrawing.map(hiddenLayers(for:)) ?? []
     }
 
-    private func underlayTransform(for drawing: CADViewerDocument, offset: Point2D, rotationDegrees: Double) -> CADAffine {
-        let mm = drawing.document.units.millimetresPerUnit ?? 1
-        return CADAffine.translation(offset)
-            .concatenating(.rotation(rotationDegrees * .pi / 180))
-            .concatenating(.scale(mm, mm))
+    /// The PDF page under the plan and its drawing-to-plan transform, when shown.
+    var visibleRasterUnderlay: (underlay: RasterUnderlay, transform: CADAffine)? {
+        guard showUnderlay, let rasterUnderlay else { return nil }
+        return (rasterUnderlay, rasterPlacement.transform(unitScale: rasterUnderlay.paperScale))
+    }
+
+    var hasUnderlaySource: Bool { openedDrawing != nil || rasterUnderlay != nil }
+
+    /// "Drawing.dxf" or "Sheet.pdf · 1:100".
+    var underlayTitle: String? {
+        if let rasterUnderlay {
+            let scale = rasterUnderlay.paperScale * rasterPlacement.scale
+            return "\(rasterUnderlay.name) · 1:\(Self.scaleText(scale))"
+        }
+        guard let openedDrawing else { return nil }
+        return underlayPlacement.scale == 1 ? openedDrawing.title : "\(openedDrawing.title) · ×\(Self.scaleText(underlayPlacement.scale))"
+    }
+
+    private static func scaleText(_ value: Double) -> String {
+        abs(value - value.rounded()) < 0.005 ? String(Int(value.rounded())) : String(format: "%.3g", value)
+    }
+
+    private static func millimetresPerUnit(_ drawing: CADViewerDocument) -> Double {
+        drawing.document.units.millimetresPerUnit ?? 1
+    }
+
+    /// The placement of whichever underlay is shown.
+    private var activeUnderlayPlacement: UnderlayPlacement {
+        get { rasterUnderlay != nil ? rasterPlacement : underlayPlacement }
+        set { if rasterUnderlay != nil { rasterPlacement = newValue } else { underlayPlacement = newValue } }
+    }
+
+    /// Plan bounds of the shown underlay at a placement.
+    private func underlayBounds(_ placement: UnderlayPlacement) -> CADRect? {
+        if let rasterUnderlay { return rasterUnderlay.bounds(placement: placement) }
+        guard let drawing = openedDrawing else { return nil }
+        let scene = CADScene(document: drawing.document, transform: placement.transform(unitScale: Self.millimetresPerUnit(drawing)))
+        let bounds = scene.visibleBounds(hiddenLayers: hiddenLayers(for: drawing))
+        return bounds.isEmpty ? (scene.bounds.isEmpty ? nil : scene.bounds) : bounds
     }
 
     func toggleUnderlay() {
-        guard let drawing = openedDrawing else {
+        guard hasUnderlaySource else {
             showUnderlay = false
-            statusMessage = "Open a DXF in the DXF tab to use it as an underlay."
+            statusMessage = "Open a DXF in the DXF tab, or a PDF from this menu, to use it as an underlay."
             return
         }
         showUnderlay.toggle()
-        if !showUnderlay { isMovingUnderlay = false }
-        if showUnderlay, underlayOffset == .zero, underlayRotationDegrees == 0 {
+        if !showUnderlay {
+            isMovingUnderlay = false
+            underlayAlignment = nil
+            isTracingWalls = false
+        }
+        if showUnderlay, activeUnderlayPlacement == UnderlayPlacement() {
             centreUnderlayOnPlan()
         }
-        statusMessage = showUnderlay ? "Showing \(drawing.title) under the plan." : "Underlay hidden."
+        statusMessage = showUnderlay ? "Showing \(underlayTitle ?? "the drawing") under the plan." : "Underlay hidden."
     }
 
     /// Places the underlay so the centre of its drawing sits on the centre of the plan.
     func centreUnderlayOnPlan() {
-        guard let drawing = openedDrawing else { return }
-        let placed = CADScene(document: drawing.document, transform: underlayTransform(for: drawing, offset: .zero, rotationDegrees: underlayRotationDegrees))
-        guard !placed.bounds.isEmpty, let plan = displayGeometry.floor else { return }
-        underlayOffset = plan.center - placed.bounds.center
+        var placement = activeUnderlayPlacement
+        placement.offset = .zero
+        guard let placed = underlayBounds(placement), !placed.isEmpty else { return }
+        // An empty plan centres the drawing on the origin, where new walls start.
+        placement.offset = (displayGeometry.floor?.center ?? .zero) - placed.center
+        activeUnderlayPlacement = placement
     }
 
     func moveUnderlay(by delta: Point2D) {
-        underlayOffset = underlayOffset + delta
+        activeUnderlayPlacement = activeUnderlayPlacement.moved(by: delta)
     }
 
     /// Rotates the underlay about the centre of what it currently shows.
     func rotateUnderlay(byDegrees degrees: Double) {
-        guard let scene = underlayScene, !scene.bounds.isEmpty else { return }
-        let c = scene.bounds.center
-        let r = CADAffine.rotation(degrees * .pi / 180)
-        underlayOffset = c + r.apply(underlayOffset - c)
-        underlayRotationDegrees = (underlayRotationDegrees + degrees).truncatingRemainder(dividingBy: 360)
+        guard let bounds = underlayBounds(activeUnderlayPlacement), !bounds.isEmpty else { return }
+        activeUnderlayPlacement = activeUnderlayPlacement.rotated(byDegrees: degrees, about: bounds.center)
+    }
+
+    /// Back to the drawing's own units and orientation, centred on the plan.
+    func resetUnderlayPlacement() {
+        activeUnderlayPlacement = UnderlayPlacement()
+        centreUnderlayOnPlan()
+        statusMessage = "Underlay reset to its drawing units."
+    }
+
+    // MARK: v12.6 alignment and calibration
+
+    func beginUnderlayAlignment(_ mode: UnderlayAlignmentSession.Mode) {
+        guard hasUnderlaySource else {
+            statusMessage = "Open a DXF or PDF underlay first."
+            return
+        }
+        if !showUnderlay { toggleUnderlay() }
+        creationTool = nil
+        componentCreationTool = nil
+        pendingWallStart = nil
+        cancelSectionPlacement()
+        isMovingUnderlay = false
+        isTracingWalls = false
+        pendingAlignmentScale = nil
+        let session = UnderlayAlignmentSession(mode: mode)
+        underlayAlignment = session
+        statusMessage = (mode == .align ? "Align underlay: " : "Calibrate scale: ") + session.prompt
+    }
+
+    /// Points picked so far, in plan mm, for markers.
+    var underlayAlignmentMarkers: (underlay: [Point2D], plan: [Point2D]) {
+        (underlayAlignment?.underlayPoints ?? [], underlayAlignment?.planPoints ?? [])
+    }
+
+    /// True while the next alignment pick belongs on the underlay (snap to it, not to the model).
+    var isPickingUnderlayPoint: Bool { underlayAlignment?.needsUnderlayPoint ?? false }
+
+    /// Calibration has both points and waits for the real distance.
+    var needsCalibrationLength: Bool {
+        guard let underlayAlignment else { return false }
+        return underlayAlignment.mode == .calibrate && underlayAlignment.isComplete
+    }
+
+    /// Takes a tap for an alignment in progress; false when none is.
+    private func addUnderlayAlignmentPoint(_ point: Point2D) -> Bool {
+        guard var session = underlayAlignment else { return false }
+        guard !session.isComplete else { return true }
+        session.add(point)
+        underlayAlignment = session
+        if session.mode == .align, session.isComplete {
+            finishAlignment(session)
+        } else {
+            statusMessage = session.prompt
+        }
+        return true
+    }
+
+    func undoUnderlayAlignmentPoint() {
+        guard var session = underlayAlignment else { return }
+        session.undo()
+        underlayAlignment = session
+        pendingAlignmentScale = nil
+        statusMessage = session.prompt
+    }
+
+    private func finishAlignment(_ session: UnderlayAlignmentSession) {
+        guard let factor = session.alignmentScaleFactor else {
+            statusMessage = "The two points must be apart. " + session.prompt
+            undoUnderlayAlignmentPoint()
+            return
+        }
+        // A PDF has no reliable units, so it always takes the fitted scale. A DXF keeps its units
+        // unless the points disagree clearly, and then the user decides.
+        if rasterUnderlay != nil || abs(factor - 1) <= 0.02 {
+            applyUnderlayAlignment(matchScale: rasterUnderlay != nil)
+        } else {
+            pendingAlignmentScale = factor
+            statusMessage = "The drawing measures \(String(format: "%.3g", factor))× the plan between those points."
+        }
+    }
+
+    /// Applies the picked alignment; `matchScale` also scales the underlay so both points fit exactly.
+    func applyUnderlayAlignment(matchScale: Bool) {
+        pendingAlignmentScale = nil
+        guard let session = underlayAlignment, let correction = session.alignment(matchScale: matchScale) else { return }
+        activeUnderlayPlacement = activeUnderlayPlacement.applying(correction)
+        underlayAlignment = nil
+        let turn = correction.rotation * 180 / .pi
+        let normalized = (turn + 540).truncatingRemainder(dividingBy: 360) - 180
+        statusMessage = String(format: "Underlay aligned: turned %.1f°", normalized)
+            + (matchScale && abs(correction.scale - 1) > 1e-6 ? String(format: ", scaled ×%.4g.", correction.scale) : ", drawing scale kept.")
+    }
+
+    /// Scales the underlay so the two picked points are `knownLength` mm apart.
+    func applyUnderlayCalibration(knownLength: Double) {
+        guard let session = underlayAlignment, let measured = session.measuredLength,
+              let correction = session.calibration(knownLength: knownLength) else {
+            statusMessage = "Enter a distance greater than zero."
+            return
+        }
+        activeUnderlayPlacement = activeUnderlayPlacement.applying(correction)
+        underlayAlignment = nil
+        statusMessage = String(format: "Underlay calibrated: %.0f mm measured, %.0f mm entered (×%.4g).", measured, knownLength, correction.scale)
+            + (rasterUnderlay != nil ? " Now 1:\(underlayTitle?.components(separatedBy: "1:").last ?? "")." : "")
+    }
+
+    // MARK: v12.6 PDF underlay
+
+    /// Uses a rendered PDF page as the underlay, at an assumed 1:100 until calibrated.
+    func setRasterUnderlay(_ underlay: RasterUnderlay) {
+        rasterUnderlay = underlay
+        rasterPlacement = UnderlayPlacement()
+        showUnderlay = true
+        isMovingUnderlay = false
+        centreUnderlayOnPlan()
+        beginUnderlayAlignment(.calibrate)
+        statusMessage = "\(underlay.name) placed at 1:\(Self.scaleText(underlay.paperScale)). Calibrate: tap two points a known distance apart."
+    }
+
+    /// Sets the PDF's drawing scale (1:50, 1:100…) and clears any calibration.
+    func setRasterPaperScale(_ scale: Double) {
+        guard var underlay = rasterUnderlay, scale > 0 else { return }
+        let before = underlayBounds(rasterPlacement)?.center
+        underlay.paperScale = scale
+        rasterUnderlay = underlay
+        rasterPlacement.scale = 1
+        // Keep the sheet centred where it was.
+        if let before, let after = underlayBounds(rasterPlacement)?.center {
+            rasterPlacement = rasterPlacement.moved(by: before - after)
+        }
+        statusMessage = "\(underlay.name) at 1:\(Self.scaleText(scale))."
+    }
+
+    func removeRasterUnderlay() {
+        rasterUnderlay = nil
+        underlayAlignment = nil
+        if openedDrawing == nil { showUnderlay = false }
+        statusMessage = openedDrawing == nil ? "PDF underlay removed." : "PDF underlay removed; the DXF is the underlay again."
+    }
+
+    // MARK: v12.6 walls from drawings
+
+    /// A new project with one empty room, for drawing or tracing over an underlay.
+    func startBlankProject() {
+        flushAutosave()
+        clearPhysicalEditState(clearUndo: true)
+        project = PlanOpsisProject(rooms: [PlanOpsisRoom()], name: openedDrawing?.title ?? rasterUnderlay?.name)
+        plyEvidenceProjectID = nil
+        committedPLYEvidence = nil
+        showPLYEvidenceOverlay = false
+        plyImportModel.clear()
+        resetEditHistory()
+        diagnostics = []
+        focusedRoomID = nil
+        representationMode = .semanticObservations
+        setSelection([], primary: nil)
+        regenerate()
+        if hasUnderlaySource, !showUnderlay { toggleUnderlay() }
+        statusMessage = hasUnderlaySource
+            ? "Blank plan over \(underlayTitle ?? "the drawing"). Align it, then trace or draw walls."
+            : "Blank plan. Draw walls, or open a DXF or PDF underlay to trace."
+    }
+
+    func beginTracingWalls() {
+        guard representationMode == .semanticObservations else {
+            statusMessage = "Trace walls in Observed mode so they become semantic walls."
+            return
+        }
+        guard openedDrawing != nil, rasterUnderlay == nil else {
+            statusMessage = rasterUnderlay != nil
+                ? "Walls can be traced from a DXF underlay; a PDF page has no lines to follow. Draw walls over it instead."
+                : "Open a DXF in the DXF tab to trace walls from it."
+            return
+        }
+        if !showUnderlay { toggleUnderlay() }
+        creationTool = nil
+        componentCreationTool = nil
+        pendingWallStart = nil
+        cancelSectionPlacement()
+        underlayAlignment = nil
+        isMovingUnderlay = false
+        isTracingWalls = true
+        statusMessage = "Trace walls: tap inside a wall on the underlay, between its two lines."
+    }
+
+    /// Adds the wall whose two faces straddle `point` on the underlay, joined to walls it meets.
+    func traceWall(at point: Point2D) {
+        guard var project, let scene = underlayScene else {
+            statusMessage = "Show a DXF underlay to trace walls."
+            return
+        }
+        let reach = 900.0
+        let region = CADRect(minX: point.x - reach, minY: point.y - reach, maxX: point.x + reach, maxY: point.y + reach)
+        let tracer = UnderlayWallTracer(scene: scene, hiddenLayers: underlayHiddenLayers, near: region)
+        guard let traced = tracer.trace(at: point) else {
+            statusMessage = "No wall there: tap between two parallel lines 50–700 mm apart."
+            return
+        }
+        var roomID = focusedRoomID ?? selectedRoom?.id ?? project.rooms.first?.id
+        if roomID == nil {
+            let room = PlanOpsisRoom()
+            project.rooms.append(room)
+            roomID = room.id
+        }
+        guard let roomID, let room = project.rooms.first(where: { $0.id == roomID }) else { return }
+        let existing = room.walls.map { TracedWall(start: $0.start, end: $0.end, thickness: $0.thickness) }
+        let wall = UnderlayWallTracer.joined([traced], against: existing)[0]
+        guard !existing.contains(where: { (($0.start - wall.start).length < 20 && ($0.end - wall.end).length < 20) || (($0.start - wall.end).length < 20 && ($0.end - wall.start).length < 20) }) else {
+            statusMessage = "That wall is already in the model."
+            return
+        }
+        guard var result = semanticEditingEngine.addWall(to: roomID, start: wall.start, end: wall.end, project: project),
+              let roomIndex = result.0.rooms.firstIndex(where: { $0.id == roomID }),
+              let wallIndex = result.0.rooms[roomIndex].walls.firstIndex(where: { $0.id == result.1 }) else {
+            statusMessage = "That wall is too short to add."
+            return
+        }
+        result.0.rooms[roomIndex].walls[wallIndex].thickness = wall.thickness
+        if commitSemanticProject(result.0, label: "Trace wall", selectionAfter: [result.1], primaryAfter: result.1) {
+            statusMessage = "Traced wall \(Int(wall.length.rounded())) mm long, \(Int(wall.thickness.rounded())) mm thick. Tap the next wall or tap Done."
+        }
+    }
+
+    /// Layers of the opened DXF that hold walls (IfcWall, A-WALL, WALL…).
+    var drawingWallLayers: [String] {
+        openedDrawing?.scene.layers.map(\.id).filter(UnderlayWallTracer.isWallLayer) ?? []
+    }
+
+    /// Converts every wall drawn on the opened DXF's wall layers into model walls, with doors and windows
+    /// where a swing or window symbol sits in a gap. Starts a project when none is open; otherwise adds
+    /// one room holding the imported walls. The underlay placement is used, so walls land where the
+    /// drawing shows.
+    func importWallsFromDrawing() {
+        guard let drawing = openedDrawing else {
+            statusMessage = "Open a DXF in the DXF tab first."
+            return
+        }
+        let wallLayers = Set(drawingWallLayers)
+        guard !wallLayers.isEmpty else {
+            statusMessage = "No wall layers in \(drawing.title). Name them IfcWall, A-WALL or WALL, or trace walls by tapping them."
+            return
+        }
+        let placement = project == nil ? UnderlayPlacement(scale: underlayPlacement.scale) : underlayPlacement
+        let scene = CADScene(document: drawing.document, transform: placement.transform(unitScale: Self.millimetresPerUnit(drawing)))
+        let tracer = UnderlayWallTracer(scene: scene, hiddenLayers: hiddenLayers(for: drawing), layers: { wallLayers.contains($0) })
+        let traced = tracer.traceAll()
+        guard !traced.walls.isEmpty else {
+            statusMessage = "No double-line walls (50–700 mm) found on \(wallLayers.sorted().joined(separator: ", "))."
+            return
+        }
+        let defaults = ArchitecturalDraftingConvention.Defaults()
+        var room = PlanOpsisRoom()
+        room.walls = traced.walls.map { w in
+            let v = w.end - w.start
+            return PlanOpsisWall(start: w.start, length: v.length, angleRadians: atan2(v.y, v.x), height: defaults.wallHeight, thickness: w.thickness, confidence: .unknown)
+        }
+        for opening in traced.openings {
+            let host = room.walls[opening.wallIndex]
+            let height = opening.kind == .door ? 2_100.0 : 1_200
+            let sill = opening.kind == .door ? 0.0 : 900
+            let p = HostedOpeningParameters(hostWallID: host.id, offsetAlongWall: opening.offset, width: opening.width,
+                                            height: min(height, host.height - sill), sillHeight: sill, confidence: .unknown)
+            room.openings.append(opening.kind == .door ? .door(PlanOpsisDoor(parameters: p)) : .window(PlanOpsisWindow(parameters: p)))
+        }
+        let doors = traced.openings.filter { $0.kind == .door }.count
+        let summary = "\(traced.walls.count) wall(s), \(doors) door(s) and \(traced.openings.count - doors) window(s) from \(drawing.title)"
+        if var next = project {
+            next.rooms.append(room)
+            if commitSemanticProject(next, label: "Import walls", selectionAfter: Set(room.walls.map(\.id)), primaryAfter: room.walls.first?.id) {
+                focusedRoomID = nil
+                statusMessage = "Imported \(summary) as a new room. Openings without a symbol stay as gaps."
+            }
+        } else {
+            flushAutosave()
+            clearPhysicalEditState(clearUndo: true)
+            project = PlanOpsisProject(rooms: [room], name: drawing.title)
+            plyEvidenceProjectID = nil
+            committedPLYEvidence = nil
+            showPLYEvidenceOverlay = false
+            plyImportModel.clear()
+            resetEditHistory()
+            diagnostics = []
+            focusedRoomID = nil
+            creationTool = nil
+            componentCreationTool = nil
+            pendingWallStart = nil
+            representationMode = .semanticObservations
+            setSelection([], primary: nil)
+            underlayPlacement = placement
+            showUnderlay = true
+            regenerate()
+            statusMessage = "Started a project with \(summary)."
+        }
     }
 
     // MARK: - v12.4 documentation
@@ -1335,11 +1688,22 @@ final class PlanOpsisMobileStore: ObservableObject {
         }
     }
 
+    /// v12.6: rooms are numbered in plan order (north-west first), the same as IFC, DXF and schedules.
     func roomLabel(_ roomID: UUID) -> String {
-        guard let project, let index = project.rooms.firstIndex(where: { $0.id == roomID }) else {
-            return "Room"
-        }
-        return "Room \(index + 1)"
+        guard let project else { return "Room" }
+        return PlanOrdering(project: project).roomLabel(roomID) ?? "Room"
+    }
+
+    /// "Wall 07": the wall number used by IFC, clockwise from the north-west.
+    func wallLabel(_ wallID: UUID) -> String {
+        guard let project else { return "Wall" }
+        return PlanOrdering(project: project).wallName(wallID) ?? "Wall"
+    }
+
+    /// Rooms in plan order, for room pickers.
+    var orderedRooms: [PlanOpsisRoom] {
+        guard let project else { return [] }
+        return PlanOrdering(project: project).rooms
     }
 
     func focusRoom(_ roomID: UUID?) {

@@ -19,15 +19,16 @@ final class PlanOpsisV124DocumentationTests: XCTestCase {
         let schedules = ProjectSchedules(project: project)
         let room = project.rooms[0]
         func mark(_ n: Int) -> String? { schedules.marks[room.openings[n].id] }
-        XCTAssertEqual(mark(0), "D01")
-        XCTAssertEqual(mark(2), "W01")
-        XCTAssertEqual(mark(3), "W02")
-        XCTAssertEqual(mark(1), "D02", "the stem wall comes after the perimeter walls")
+        // v12.6: walls clockwise from the north-west (north, east, south, west), then the stem wall.
+        XCTAssertEqual(mark(3), "W01", "north window")
+        XCTAssertEqual(mark(2), "W02", "east window")
+        XCTAssertEqual(mark(0), "D01", "south door")
+        XCTAssertEqual(mark(1), "D02", "the stem wall comes after the outline walls")
         XCTAssertEqual(schedules.doors.map(\.mark), ["D01", "D02"])
         XCTAssertEqual(schedules.doors[1].operation, "Sliding")
         XCTAssertEqual(schedules.doors[0].swing, "Left in")
-        XCTAssertEqual(schedules.windows[0].head, 2_100, accuracy: 1e-9)
-        XCTAssertEqual(schedules.windows[1].operation, "Double casement")
+        XCTAssertEqual(schedules.windows[1].head, 2_100, accuracy: 1e-9)
+        XCTAssertEqual(schedules.windows[0].operation, "Double casement")
         let row = try XCTUnwrap(schedules.rooms.first)
         XCTAssertEqual(row.name, "Living, dining")
         XCTAssertEqual(row.area, 11_760 * 8_260, accuracy: 1)
@@ -114,8 +115,9 @@ final class PlanOpsisV124DocumentationTests: XCTestCase {
         let room = project.rooms[0]
         let views = ArchitecturalSectionEngine().interiorElevations(room: room, roomName: "Room 1", project: project, physical: physical, schedules: schedules, scale: 50)
         XCTAssertEqual(views.count, room.walls.count)
-        let south = try XCTUnwrap(views.first)
-        XCTAssertTrue(south.title.hasPrefix("Room 1 · Elevation 1 (S)"), south.title)
+        XCTAssertTrue(views[0].title.hasPrefix("Room 1 · Elevation 1 (N)"), "elevations run clockwise from the north: \(views[0].title)")
+        let south = try XCTUnwrap(views.first { $0.title.contains("(S)") })
+        XCTAssertTrue(south.title.hasPrefix("Room 1 · Elevation 3 (S)"), south.title)
         let texts = south.primitives.compactMap { p -> String? in if case let .text(t, _, _, _, _, _) = p.shape { return t }; return nil }
         XCTAssertTrue(texts.contains("D01"))
         XCTAssertTrue(texts.contains("2100"), "door head height is dimensioned: \(texts)")

@@ -111,6 +111,7 @@ struct PlanOpsisRootView: View {
     @State private var showingExporter = false
     @State private var showingDXFReview = false
     @State private var showingProjects = false
+    @State private var showingPDFUnderlayImporter = false
     @State private var exportDocument = ArchitecturalExchangeTextDocument()
     @State private var exportFormat: ArchitecturalExchangeFormat = .dxf
     /// v12.4 file name for the next export; nil uses the format's default name.
@@ -318,9 +319,14 @@ struct PlanOpsisRootView: View {
                     onFinishCreation: store.cancelCreation,
                     sections: store.documentationSettings.includeSections ? store.documentationSettings.sections : [],
                     isPlacingSection: store.isPlacingSection,
-                    pendingSectionStart: store.pendingSectionStart
+                    pendingSectionStart: store.pendingSectionStart,
+                    rasterUnderlay: store.visibleRasterUnderlay,
+                    underlayTool: underlayToolState,
+                    onUndoUnderlayPoint: store.undoUnderlayAlignmentPoint
                 )
                 .background { PlanKeyboardShortcuts(store: store) }
+                // On the plan, not the root: one view hosting several file importers shows only one.
+                .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, mode: $mode))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
             } else {
@@ -380,8 +386,8 @@ struct PlanOpsisRootView: View {
                 if store.project != nil {
                     Button("Show all rooms") { store.focusRoom(nil) }
                     if store.rooms.count > 1 {
-                        ForEach(Array(store.rooms.enumerated()), id: \.element.id) { index, room in
-                            Button("Room \(index + 1)") { store.focusRoom(room.id) }
+                        ForEach(store.orderedRooms, id: \.id) { room in
+                            Button(store.roomLabel(room.id)) { store.focusRoom(room.id) }
                         }
                         Divider()
                     }
@@ -606,12 +612,31 @@ struct PlanOpsisRootView: View {
                         Toggle("Ortho", isOn: $store.orthoEnabled)
                         Toggle("Grid", isOn: $store.gridEnabled)
                     }
-                    Section("DXF underlay") {
+                    Section(store.underlayTitle.map { "Underlay · \($0)" } ?? "Underlay") {
                         Toggle("Show underlay", isOn: Binding(get: { store.showUnderlay }, set: { _ in store.toggleUnderlay() }))
                         if store.showUnderlay {
-                            Button("Move underlay") { store.isMovingUnderlay = true }
-                            Button("Rotate 90°") { store.rotateUnderlay(byDegrees: 90) }
-                            Button("Centre on plan") { store.centreUnderlayOnPlan() }
+                            Button { store.beginUnderlayAlignment(.align) } label: { Label("Align by two points", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+                            Button { store.beginUnderlayAlignment(.calibrate) } label: { Label("Calibrate scale", systemImage: "ruler") }
+                            Menu("Move and rotate") {
+                                Button("Drag to move") { store.isMovingUnderlay = true }
+                                Button("Rotate 90°") { store.rotateUnderlay(byDegrees: 90) }
+                                Button("Centre on plan") { store.centreUnderlayOnPlan() }
+                                Button("Reset placement") { store.resetUnderlayPlacement() }
+                            }
+                        }
+                        if store.rasterUnderlay != nil {
+                            Picker("PDF drawing scale", selection: Binding(get: { store.rasterUnderlay?.paperScale ?? 100 }, set: { store.setRasterPaperScale($0) })) {
+                                ForEach([20.0, 50, 100, 200, 500], id: \.self) { Text("1:\(Int($0))").tag($0) }
+                            }
+                            Button("Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
+                        }
+                        Button { showingPDFUnderlayImporter = true } label: { Label("PDF underlay\u{2026}", systemImage: "doc.richtext") }
+                    }
+                    if store.openedDrawing != nil, store.rasterUnderlay == nil {
+                        Section("Walls from the drawing") {
+                            Button { store.beginTracingWalls() } label: { Label("Trace walls", systemImage: "hand.tap") }
+                            Button { store.importWallsFromDrawing() } label: { Label("Import all walls", systemImage: "square.stack.3d.down.right") }
+                                .disabled(store.drawingWallLayers.isEmpty)
                         }
                     }
                 } label: {
@@ -724,10 +749,10 @@ struct PlanOpsisRootView: View {
                 if store.focusedRoomID == nil { Label("All rooms", systemImage: "checkmark") }
                 else { Text("All rooms") }
             }
-            ForEach(Array(store.rooms.enumerated()), id: \.element.id) { index, room in
+            ForEach(store.orderedRooms, id: \.id) { room in
                 Button { store.focusRoom(room.id) } label: {
-                    if store.focusedRoomID == room.id { Label("Room \(index + 1)", systemImage: "checkmark") }
-                    else { Text("Room \(index + 1)") }
+                    if store.focusedRoomID == room.id { Label(store.roomLabel(room.id), systemImage: "checkmark") }
+                    else { Text(store.roomLabel(room.id)) }
                 }
             }
         } label: {
@@ -805,12 +830,39 @@ struct PlanOpsisRootView: View {
         showingExporter = true
     }
 
+    /// v12.6 alignment, calibration or tracing state for the plan view.
+    private var underlayToolState: UnderlayToolState? {
+        if store.isTracingWalls {
+            return UnderlayToolState(prompt: "Trace: tap inside a wall on the underlay", pickingUnderlay: true, snaps: false, isTracing: true,
+                                     underlayMarkers: [], planMarkers: [], canUndo: false)
+        }
+        guard let session = store.underlayAlignment else { return nil }
+        return UnderlayToolState(prompt: (session.mode == .align ? "Align: " : "Calibrate: ") + session.prompt,
+                                 pickingUnderlay: session.needsUnderlayPoint, snaps: true, isTracing: false,
+                                 underlayMarkers: session.underlayPoints, planMarkers: session.planPoints,
+                                 canUndo: !session.underlayPoints.isEmpty)
+    }
+
     private var emptyProject: some View {
-        ContentUnavailableView(
-            "No project",
-            systemImage: "square.dashed",
-            description: Text("Scan a room, reconstruct a PLY, import a DXF, or open a saved project from Projects in the \u{2026} menu.")
-        )
+        ContentUnavailableView {
+            Label("No project", systemImage: "square.dashed")
+        } description: {
+            Text("Scan a room, reconstruct a PLY, import a DXF, or open a saved project from Projects in the \u{2026} menu.")
+        } actions: {
+            // v12.6 start from an architect's drawing.
+            if let drawing = store.openedDrawing, !store.drawingWallLayers.isEmpty {
+                Button("Import walls from \(drawing.title)") {
+                    store.importWallsFromDrawing()
+                    mode = .plan
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            Button(store.hasUnderlaySource ? "Blank plan over the drawing" : "Start a blank plan") {
+                store.startBlankProject()
+                mode = .plan
+            }
+        }
+        .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, mode: $mode))
     }
 }
 

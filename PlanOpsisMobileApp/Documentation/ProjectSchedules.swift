@@ -3,8 +3,8 @@ import Foundation
 /// v12.4 door, window, opening and room schedules, with the marks (D01, W01, O01) shown on drawings.
 ///
 /// Marks follow the physical drawing: a door that two adjacent rooms both captured is one door with one
-/// mark. Numbering is deterministic: rooms in project order, then walls in room order, then position
-/// along the wall, so marks only change when the model changes.
+/// mark. Numbering follows the plan (`PlanOrdering`): rooms north-west first, walls clockwise, then
+/// position along the wall, so marks do not depend on capture order.
 public struct ProjectSchedules: Sendable {
     public struct DoorRow: Hashable, Sendable, Identifiable {
         public var mark: String
@@ -72,15 +72,17 @@ public struct ProjectSchedules: Sendable {
     public init(project: PlanOpsisProject, semanticGeometry: ArchitecturalGeometrySnapshot? = nil, physicalGeometry: DisplayGeometrySnapshot? = nil) {
         let semantic = semanticGeometry ?? ParametricGeometryEngine().generate(from: project)
         let physical = physicalGeometry ?? PhysicalDisplayGeometryEngine().generate(from: project, semanticGeometry: semantic)
-        let roomNames = Self.roomNames(project)
+        let ordering = PlanOrdering(project: project)
+        let roomNames = Self.roomNames(project, ordering: ordering)
 
         // Where each semantic opening sits, for ordering and lookups.
         struct Placement { var roomIndex: Int; var wallIndex: Int; var offset: Double; var opening: PlanOpsisOpening; var wall: PlanOpsisWall; var roomID: UUID }
         var placements: [UUID: Placement] = [:]
-        for (roomIndex, room) in project.rooms.enumerated() {
+        for room in ordering.rooms {
             for opening in room.openings {
-                guard let wallIndex = room.walls.firstIndex(where: { $0.id == opening.parameters.hostWallID }) else { continue }
-                placements[opening.id] = Placement(roomIndex: roomIndex, wallIndex: wallIndex, offset: opening.parameters.offsetAlongWall, opening: opening, wall: room.walls[wallIndex], roomID: room.id)
+                guard let wall = room.walls.first(where: { $0.id == opening.parameters.hostWallID }),
+                      let key = ordering.openingKey(opening, in: room) else { continue }
+                placements[opening.id] = Placement(roomIndex: key.0, wallIndex: key.1, offset: key.2, opening: opening, wall: wall, roomID: room.id)
             }
         }
 
@@ -123,7 +125,7 @@ public struct ProjectSchedules: Sendable {
             }
         }
 
-        for (index, room) in project.rooms.enumerated() {
+        for (index, room) in ordering.rooms.enumerated() {
             let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: semantic.topology)
             let faces = RoomFaceBoundary(room: room, centerline: centerline)
             let inner = faces?.inner ?? []
@@ -146,10 +148,10 @@ public struct ProjectSchedules: Sendable {
 
     public var isEmpty: Bool { doors.isEmpty && windows.isEmpty && openings.isEmpty && rooms.isEmpty }
 
-    /// Room display names: the survey name, else "Room n".
-    public static func roomNames(_ project: PlanOpsisProject) -> [UUID: String] {
+    /// Room display names: the survey name, else "Room n" numbered by `PlanOrdering`.
+    public static func roomNames(_ project: PlanOpsisProject, ordering: PlanOrdering? = nil) -> [UUID: String] {
         var names: [UUID: String] = [:]
-        for (index, room) in project.rooms.enumerated() {
+        for (index, room) in (ordering ?? PlanOrdering(project: project)).rooms.enumerated() {
             let surveyName = project.survey.roomNames[room.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             names[room.id] = surveyName.isEmpty ? "Room \(index + 1)" : surveyName
         }

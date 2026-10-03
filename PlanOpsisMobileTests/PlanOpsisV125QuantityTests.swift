@@ -28,8 +28,9 @@ final class PlanOpsisV125QuantityTests: XCTestCase {
         let door = try XCTUnwrap(q.openings.first { $0.mark == "D01" })
         XCTAssertEqual(door.lintelLength, 1_200)
         XCTAssertEqual(door.revealArea, (2 * 2_100 + 900) * 240, accuracy: 1e-6, "doors have no sill reveal")
+        // W01 is the north window: walls are numbered clockwise from the north-west.
         let window = try XCTUnwrap(q.openings.first { $0.mark == "W01" })
-        XCTAssertEqual(window.revealArea, 2 * (1_200 + 1_600) * 240, accuracy: 1e-6)
+        XCTAssertEqual(window.revealArea, 2 * (1_400 + 1_800) * 240, accuracy: 1e-6)
         XCTAssertEqual(q.openings.map(\.mark), ["D01", "D02", "W01", "W02"])
 
         let types = q.wallTypes
@@ -50,11 +51,13 @@ final class PlanOpsisV125QuantityTests: XCTestCase {
         ]
         let q = ProjectQuantities(project: project, schedules: ProjectSchedules(project: project))
         let totals = Dictionary(uniqueKeysWithValues: q.finishTotals.map { ($0.finish, $0) })
+        // Rows follow plan order, so look rooms up by ID.
+        let rows = project.rooms.map { room in q.rooms.first { $0.roomID == room.id }! }
         XCTAssertEqual(Set(totals.keys), ["Oak", "Paint", "Tiles", "Tile"])
         XCTAssertEqual(totals["Oak"]!.floorArea, 3_900 * 2_900, accuracy: 1)
-        XCTAssertEqual(totals["Paint"]!.wallArea, q.rooms[0].netWallArea + q.rooms[1].netWallArea, accuracy: 1e-6, "trimmed names group together")
-        XCTAssertEqual(totals["Paint"]!.ceilingArea, q.rooms[0].ceilingArea, accuracy: 1e-6)
-        XCTAssertEqual(totals["Tile"]!.skirtingLength, q.rooms[1].skirtingLength, accuracy: 1e-6)
+        XCTAssertEqual(totals["Paint"]!.wallArea, rows[0].netWallArea + rows[1].netWallArea, accuracy: 1e-6, "trimmed names group together")
+        XCTAssertEqual(totals["Paint"]!.ceilingArea, rows[0].ceilingArea, accuracy: 1e-6)
+        XCTAssertEqual(totals["Tile"]!.skirtingLength, rows[1].skirtingLength, accuracy: 1e-6)
         XCTAssertTrue(q.tables.map(\.title).contains("Finish totals"))
         XCTAssertEqual(q.tables.first?.rows.last?[1], "Total", "several rooms get a total row")
         let csv = ProjectSchedules.csv(q.tables)

@@ -78,7 +78,8 @@ public struct ProjectQuantities: Sendable {
         let measurement = SurveyMeasurementEngine()
         finishes = project.documentation?.finishes ?? [:]
         var seenOpenings = Set<String>()
-        for room in project.rooms {
+        let ordering = PlanOrdering(project: project)
+        for room in ordering.rooms {
             guard let schedule = schedules.rooms.first(where: { $0.roomID == room.id }) else { continue }
             var gross = 0.0, openingArea = 0.0, doorWidths = 0.0
             for wall in room.walls where wall.length > 1 {
@@ -108,8 +109,8 @@ public struct ProjectQuantities: Sendable {
         openings.sort { $0.mark < $1.mark }
 
         // Each wall once, centreline length, openings cut through its full thickness.
-        for room in project.rooms {
-            for wall in room.walls where wall.length > 1 {
+        for room in ordering.rooms {
+            for wall in ordering.orderedWalls(of: room) where wall.length > 1 {
                 let hosted = room.openings.filter { $0.parameters.hostWallID == wall.id }
                 let area = hosted.reduce(0.0) { sum, o in sum + o.parameters.width * max(0, min(o.parameters.height, wall.height - o.parameters.sillHeight)) }
                 walls.append(WallRow(wallID: wall.id, length: wall.length, thickness: wall.thickness, height: wall.height, openingArea: area, openingVolume: area * wall.thickness))

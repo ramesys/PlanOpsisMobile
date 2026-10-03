@@ -442,6 +442,9 @@ public struct PlanObjectSnapper: Sendable {
         scene = CADScene(document: CADDocument(units: .millimetres, layers: [CADLayer(name: "AXIS")], entities: entities))
     }
 
+    /// v12.6 what a pick may snap to: two-point underlay alignment picks the underlay and then the plan.
+    public enum Source: Sendable { case planThenUnderlay, planOnly, underlayOnly }
+
     /// The snapped point near `point` (within `radius` mm), checking the plan first and then the underlay.
     public func snap(
         _ point: Point2D,
@@ -449,11 +452,12 @@ public struct PlanObjectSnapper: Sendable {
         from origin: Point2D? = nil,
         kinds: Set<CADSnapKind> = CADSnapKind.standard,
         underlay: CADScene? = nil,
-        underlayHiddenLayers: Set<String> = []
+        underlayHiddenLayers: Set<String> = [],
+        source: Source = .planThenUnderlay
     ) -> CADSnap? {
         let engine = CADSnapEngine(kinds: kinds)
-        if let snap = engine.snap(at: point, radius: radius, in: scene, from: origin) { return snap }
-        guard let underlay else { return nil }
+        if source != .underlayOnly, let snap = engine.snap(at: point, radius: radius, in: scene, from: origin) { return snap }
+        guard source != .planOnly, let underlay else { return nil }
         return engine.snap(at: point, radius: radius, in: underlay, hiddenLayers: underlayHiddenLayers, from: origin)
     }
 }

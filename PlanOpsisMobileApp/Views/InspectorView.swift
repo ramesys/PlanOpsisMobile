@@ -44,7 +44,7 @@ struct InspectorView: View {
                     }
                 }
             } else if let wall = store.selectedWall {
-                Section("Wall · mm") {
+                Section("\(store.wallLabel(wall.id)) · mm") {
                     TextField("Length", value: lengthBinding, format: .number.precision(.fractionLength(0...1)))
                         .keyboardType(.decimalPad)
                     TextField("Height", value: heightBinding, format: .number.precision(.fractionLength(0...1)))

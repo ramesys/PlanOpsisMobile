@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C20B394E1ABC772631EC2794 /* PlanOpsisV126UnderlayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */; };
+		B3AD2BAEEC2D921E350FE302 /* UnderlayPresentations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E782DE678DC5E06B3AD2BAE /* UnderlayPresentations.swift */; };
+		4C3FEDADB5B59E60E49FACA2 /* PDFUnderlayLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B4902FAD7A27954C3FEDAD /* PDFUnderlayLoader.swift */; };
+		94C25B56F51372E6523477A9 /* UnderlayWallTracer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B80ADFFD9DCD6D94C25B56 /* UnderlayWallTracer.swift */; };
+		9ABACDB3672C0CEDD9FC79F9 /* UnderlayAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */; };
+		EE63D5659C4ED00639B2C46D /* PlanOpsisV126OrderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */; };
+		B0B8A47F7430B521F1254B0A /* PlanOrdering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */; };
 		52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */; };
 		485836818478859A08B0B5DB /* ProjectQuantities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E7F20A43F12B64948583681 /* ProjectQuantities.swift */; };
 		22954109429BDE2C8817E618 /* SheetsWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */; };
@@ -145,6 +152,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV126UnderlayTests.swift"; sourceTree = SOURCE_ROOT; };
+		0E782DE678DC5E06B3AD2BAE /* UnderlayPresentations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/UnderlayPresentations.swift"; sourceTree = SOURCE_ROOT; };
+		E2B4902FAD7A27954C3FEDAD /* PDFUnderlayLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PDFUnderlayLoader.swift"; sourceTree = SOURCE_ROOT; };
+		72B80ADFFD9DCD6D94C25B56 /* UnderlayWallTracer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/UnderlayWallTracer.swift"; sourceTree = SOURCE_ROOT; };
+		0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/UnderlayAlignment.swift"; sourceTree = SOURCE_ROOT; };
+		2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV126OrderingTests.swift"; sourceTree = SOURCE_ROOT; };
+		B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/PlanOrdering.swift"; sourceTree = SOURCE_ROOT; };
 		3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV125QuantityTests.swift"; sourceTree = SOURCE_ROOT; };
 		8E7F20A43F12B64948583681 /* ProjectQuantities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Documentation/ProjectQuantities.swift"; sourceTree = SOURCE_ROOT; };
 		4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/SheetsWorkspaceView.swift"; sourceTree = SOURCE_ROOT; };
@@ -315,6 +329,8 @@
 				8FB9880D6191892BDE60EC9B /* RealCaptureFixtures.swift */,
 				C68BF35E9D6AE408958295A6 /* PlanOpsisV123EditingTests.swift */,
 				F3B6451BA90D9A73C94A02C8 /* PlanOpsisV123LayerTests.swift */,
+				70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */,
+				2F1C6013FFA00215EE63D565 /* PlanOpsisV126OrderingTests.swift */,
 				3FCA8758E227518A52D79073 /* PlanOpsisV125QuantityTests.swift */,
 				DE28D150ECC5FA94DE390434 /* PlanOpsisV124DocumentationTests.swift */,
 				A787A5C526EED856834DD420 /* PlanOpsisV123CADTests.swift */,
@@ -355,6 +371,8 @@
 			children = (
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
 				F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */,
+				E2B4902FAD7A27954C3FEDAD /* PDFUnderlayLoader.swift */,
+				0E782DE678DC5E06B3AD2BAE /* UnderlayPresentations.swift */,
 				3E517723DEFA26D54CE840D9 /* DXFWorkspaceView.swift */,
 				A39733BE5D47894DEF80BD26 /* PlanEditingViews.swift */,
 				4B84B4B9FAE8F12B22954109 /* SheetsWorkspaceView.swift */,
@@ -447,9 +465,12 @@
 				F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */,
 				D0D589FA234E905733113569 /* CADMeasurement.swift */,
 				FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */,
+				0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */,
+				72B80ADFFD9DCD6D94C25B56 /* UnderlayWallTracer.swift */,
 				3C33207D2CCE91C925C00DA5 /* CADSnapEngine.swift */,
 				0C1C65CCF59504AEAD32316D /* CADSpatialIndex.swift */,
 				23E830EA318CA6EFB6E941CB /* CADViewerDocument.swift */,
+				B17852080F6EE6B2B0B8A47F /* PlanOrdering.swift */,
 				5287EB21A108089B52AC4F3E /* ProjectSchedules.swift */,
 				B99546227DC16B5BC2369B51 /* PlanTagEngine.swift */,
 				ABF19A97CF17927E580236D6 /* DocumentationModel.swift */,
@@ -718,6 +739,8 @@
 				DE60EC9B262D54BE2E9E1C18 /* RealCaptureFixtures.swift in Sources */,
 				958295A6CA5570C26D8CFF86 /* PlanOpsisV123EditingTests.swift in Sources */,
 				C94A02C8302F181DDDA8856D /* PlanOpsisV123LayerTests.swift in Sources */,
+				C20B394E1ABC772631EC2794 /* PlanOpsisV126UnderlayTests.swift in Sources */,
+				EE63D5659C4ED00639B2C46D /* PlanOpsisV126OrderingTests.swift in Sources */,
 				52D790733B8F989A2990215D /* PlanOpsisV125QuantityTests.swift in Sources */,
 				DE39043488334BB0E3713DD8 /* PlanOpsisV124DocumentationTests.swift in Sources */,
 				834DD420BF7B948A2CDA8386 /* PlanOpsisV123CADTests.swift in Sources */,
@@ -794,9 +817,12 @@
 				8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */,
 				331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */,
 				01AFB708D544BB83BF84537D /* CADScene.swift in Sources */,
+				9ABACDB3672C0CEDD9FC79F9 /* UnderlayAlignment.swift in Sources */,
+				94C25B56F51372E6523477A9 /* UnderlayWallTracer.swift in Sources */,
 				25C00DA50E5313F43694319C /* CADSnapEngine.swift in Sources */,
 				AD32316DD5DDA5015C528575 /* CADSpatialIndex.swift in Sources */,
 				B6E941CB611F94FB25DE139F /* CADViewerDocument.swift in Sources */,
+				B0B8A47F7430B521F1254B0A /* PlanOrdering.swift in Sources */,
 				52AC4F3ED06835AC21539765 /* ProjectSchedules.swift in Sources */,
 				C2369B516A35B5423196E522 /* PlanTagEngine.swift in Sources */,
 				580236D601265F90CE7FA157 /* DocumentationModel.swift in Sources */,
@@ -815,6 +841,8 @@
 				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
 				CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */,
+				4C3FEDADB5B59E60E49FACA2 /* PDFUnderlayLoader.swift in Sources */,
+				B3AD2BAEEC2D921E350FE302 /* UnderlayPresentations.swift in Sources */,
 				4CE840D9142D52382F4B9BAA /* DXFWorkspaceView.swift in Sources */,
 				EF80BD26D0DBB98C3FDA9E52 /* PlanEditingViews.swift in Sources */,
 				22954109429BDE2C8817E618 /* SheetsWorkspaceView.swift in Sources */,

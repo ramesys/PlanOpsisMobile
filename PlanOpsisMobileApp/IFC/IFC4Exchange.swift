@@ -95,7 +95,16 @@ public struct IFC4ExchangeEngine {
             _ = writer.add("IFCRELDEFINESBYPROPERTIES('\(relGUID(id, "rel.qto.\(name)"))',#\(owner),$,$,(#\(entity)),#\(quantities))")
         }
 
-        for (roomIndex, room) in project.rooms.enumerated() {
+        // v12.6: entities are written and numbered in plan order (rooms north-west first, walls and
+        // openings clockwise), never in capture order, so names read in sequence in any IFC viewer.
+        let ordering = PlanOrdering(project: project)
+        func openingKey(_ opening: PlanOpsisOpening, _ room: PlanOpsisRoom) -> (Int, Int, Double, String) {
+            let key = ordering.openingKey(opening, in: room) ?? (Int.max, Int.max, 0)
+            return (key.0, key.1, key.2, opening.id.uuidString)
+        }
+
+        for room in ordering.rooms {
+            let roomNumber = ordering.roomNumbers[room.id] ?? 0
             let centerline = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
             // v12.1: the space body is the clear interior between wall faces, the same construction as
             // the DXF A-SPACE boundary, so drawn and modelled floor areas agree.
@@ -114,7 +123,7 @@ public struct IFC4ExchangeEngine {
             // Name is the stable room number; the surveyed room name is the IFC LongName.
             let surveyName = project.survey.roomNames[room.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let longName = surveyName.isEmpty ? "$" : "'\(stepString(surveyName))'"
-            let roomRef = writer.add("IFCSPACE('\(roomGUID)',#\(owner),'Room \(roomIndex + 1)',$,$,#\(roomPlacement),\(roomRepresentation),\(longName),.ELEMENT.,.SPACE.,0.)")
+            let roomRef = writer.add("IFCSPACE('\(roomGUID)',#\(owner),'Room \(roomNumber)',$,$,#\(roomPlacement),\(roomRepresentation),\(longName),.ELEMENT.,.SPACE.,0.)")
             if let faces {
                 var items: [(String, String, Double)] = [("area", "NetFloorArea", faces.netArea)]
                 if let q = takeoff.rooms.first(where: { $0.roomID == room.id }) {
@@ -129,7 +138,7 @@ public struct IFC4ExchangeEngine {
 
             _ = writer.add("IFCRELAGGREGATES('\(relGUID(room.id, "rel.storey.space"))',#\(owner),$,$,#\(storeyRef),(#\(roomRef)))")
 
-            for wall in room.walls {
+            for wall in ordering.orderedWalls(of: room) {
                 let placement = makeLocalPlacement(
                     &writer,
                     relativeTo: storeyPlacement,
@@ -148,7 +157,7 @@ public struct IFC4ExchangeEngine {
                 )
                 let guid = PlanOpsisExchangeIdentity.ifcGlobalID(for: wall.id)
                 objectGlobalIDs[wall.id] = guid
-                let wallRef = writer.add("IFCWALL('\(guid)',#\(owner),'Wall',$,$,#\(placement),#\(representation),$,.NOTDEFINED.)")
+                let wallRef = writer.add("IFCWALL('\(guid)',#\(owner),'\(ordering.wallName(wall.id) ?? "Wall")',$,$,#\(placement),#\(representation),$,.NOTDEFINED.)")
                 wallRefs[wall.id] = wallRef
                 storeyContainedRefs.append(wallRef)
                 if let q = takeoff.walls.first(where: { $0.wallID == wall.id }) {
@@ -208,8 +217,8 @@ public struct IFC4ExchangeEngine {
         }
 
         // Openings are emitted after all walls exist so host relationships are explicit.
-        for room in project.rooms {
-            for opening in room.openings {
+        for room in ordering.rooms {
+            for opening in room.openings.sorted(by: { openingKey($0, room) < openingKey($1, room) }) {
                 guard let wall = room.walls.first(where: { $0.id == opening.parameters.hostWallID }),
                       let wallRef = wallRefs[wall.id] else { continue }
                 let p = opening.parameters
@@ -236,7 +245,11 @@ public struct IFC4ExchangeEngine {
                     ? opening.id
                     : PlanOpsisExchangeIdentity.derivedUUID(namespace: opening.id, role: "ifc.void")
                 let voidGUID = PlanOpsisExchangeIdentity.ifcGlobalID(for: voidUUID)
-                let openingRef = writer.add("IFCOPENINGELEMENT('\(voidGUID)',#\(owner),'Opening',$,$,#\(openingPlacement),#\(openingRepresentation),$,.OPENING.)")
+                // Doors, windows and openings carry their schedule mark (D01, W01, O01) as Name and Tag.
+                let mark = schedules.marks[opening.id].map { stepString($0) }
+                let tag = mark.map { "'\($0)'" } ?? "$"
+                let voidName = isGenericOpening ? (mark ?? "Opening") : mark.map { "\($0) opening" } ?? "Opening"
+                let openingRef = writer.add("IFCOPENINGELEMENT('\(voidGUID)',#\(owner),'\(voidName)',$,$,#\(openingPlacement),#\(openingRepresentation),\(isGenericOpening ? tag : "$"),.OPENING.)")
                 openingRefs[opening.id] = openingRef
                 if isGenericOpening {
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: openingRef, ifcClass: "IfcOpeningElement", semanticType: semanticType, roomID: room.id, hostID: wall.id)
@@ -264,7 +277,7 @@ public struct IFC4ExchangeEngine {
                     let fillPlacement = makeLocalPlacement(&writer, relativeTo: openingPlacement, x: 0, y: 0, z: 0, angleRadians: 0)
                     let fillRepresentation = makeBoxRepresentation(&writer, context: modelContext, width: max(1, p.width), depth: min(max(30, wall.thickness * 0.25), 60), height: max(1, p.height), originMode: .centered)
                     let operation = ifcDoorOperation(door)
-                    let doorRef = writer.add("IFCDOOR('\(semanticGUID)',#\(owner),'Door',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),$,\(number(p.height)),\(number(p.width)),.DOOR.,\(operation),$)")
+                    let doorRef = writer.add("IFCDOOR('\(semanticGUID)',#\(owner),'\(mark ?? "Door")',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),\(tag),\(number(p.height)),\(number(p.width)),.DOOR.,\(operation),$)")
                     roomContainedRefs[room.id, default: []].append(doorRef)
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: doorRef, ifcClass: "IfcDoor", semanticType: PlanOpsisExchangeIdentity.semanticType(for: opening), roomID: room.id, hostID: wall.id,
                                           sourceDimensions: ["SillHeight": p.sillHeight], sourceLabels: ["Swing": door.swing.rawValue,"Operation": door.operation.rawValue])
@@ -276,7 +289,7 @@ public struct IFC4ExchangeEngine {
                     objectGlobalIDs[opening.id] = semanticGUID
                     let fillPlacement = makeLocalPlacement(&writer, relativeTo: openingPlacement, x: 0, y: 0, z: 0, angleRadians: 0)
                     let fillRepresentation = makeBoxRepresentation(&writer, context: modelContext, width: max(1, p.width), depth: min(max(30, wall.thickness * 0.25), 60), height: max(1, p.height), originMode: .centered)
-                    let windowRef = writer.add("IFCWINDOW('\(semanticGUID)',#\(owner),'Window',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),$,\(number(p.height)),\(number(p.width)),.WINDOW.,.NOTDEFINED.,$)")
+                    let windowRef = writer.add("IFCWINDOW('\(semanticGUID)',#\(owner),'\(mark ?? "Window")',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),\(tag),\(number(p.height)),\(number(p.width)),.WINDOW.,.NOTDEFINED.,$)")
                     roomContainedRefs[room.id, default: []].append(windowRef)
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: windowRef, ifcClass: "IfcWindow", semanticType: PlanOpsisExchangeIdentity.semanticType(for: opening), roomID: room.id, hostID: wall.id,
                                           sourceDimensions: ["SillHeight": p.sillHeight], sourceLabels: ["Operation": (opening.windowOperation ?? .fixed).rawValue])
@@ -291,7 +304,7 @@ public struct IFC4ExchangeEngine {
             let refs = storeyContainedRefs.map { "#\($0)" }.joined(separator: ",")
             _ = writer.add("IFCRELCONTAINEDINSPATIALSTRUCTURE('\(relGUID(project.id, "rel.storey.contains"))',#\(owner),$,$,(\(refs)),#\(storeyRef))")
         }
-        for room in project.rooms {
+        for room in ordering.rooms {
             guard let spaceRef = spaceRefs[room.id], let refsForRoom = roomContainedRefs[room.id], !refsForRoom.isEmpty else { continue }
             let refs = refsForRoom.map { "#\($0)" }.joined(separator: ",")
             _ = writer.add("IFCRELCONTAINEDINSPATIALSTRUCTURE('\(relGUID(room.id, "rel.space.contains"))',#\(owner),$,$,(\(refs)),#\(spaceRef))")

@@ -1,5 +1,37 @@
 # Changelog
 
+## 12.6 — Plan-ordered numbering and architects' files
+
+### Numbering follows the plan, not capture order
+- Rooms are numbered in reading order: north to south, west to east within a row. Walls are numbered
+  clockwise around each room, starting at the north-west, with the room outline before any partitions
+  inside it. Openings follow their wall and run clockwise along it. Plan +Y is north.
+- **IFC:** spaces, walls, doors, windows and openings are written in this order. Spaces are named
+  *Room 1…*, walls *Wall 01…*, and doors, windows and openings carry their schedule mark (D01, W01, O01)
+  as Name and Tag, so the model tree in any IFC viewer reads in sequence.
+- Schedule marks, room numbers, DXF room labels, interior elevation numbers, the room menus and the
+  inspector (*Wall 07 · mm*) all use the same numbers. Numbers change only when the geometry does.
+
+### Working with architects' files
+- **Align by two points** (Drafting aids ▸ Underlay): tap two points on the underlay, then where they
+  belong on the plan. Underlay picks snap to the drawing and plan picks to the model. The underlay
+  turns and moves onto them. If the two distances differ by more than 2 %, you choose whether to
+  scale the drawing to fit (wrong units) or keep its scale (approximate picks).
+- **Calibrate scale:** tap two points on the underlay and enter their real distance.
+- **PDF underlay:** the first page of a PDF drawing is placed at its paper size, assumed 1:100, with
+  calibration starting straight away. A scale picker (1:20 … 1:500) is also available. The page is
+  inverted in dark mode.
+- **Trace walls:** tap inside a wall on a DXF underlay, between its two lines. A wall of that thickness
+  is added on the axis, joined to the walls it meets.
+- **Import all walls** from a DXF's wall layers (IfcWall, A-WALL, WALL, MUR, WAND…; not axis or hatch
+  layers):
+  - Double lines 50–700 mm apart become walls, joined at corners and T-junctions.
+  - Gaps with a door swing or window glazing become doors and windows.
+  - With no project open this starts one; otherwise the walls arrive as a new room.
+  - Also available from the DXF tab's drawing menu and the empty plan.
+- **Blank plan:** start an empty project to draw or trace over a drawing. An empty plan fits the
+  underlay.
+
 ## 12.5 — Quantities, area plan and reflected ceiling plan
 
 ### Quantities and finishes

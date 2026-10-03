@@ -12,7 +12,7 @@ public struct PlanTagEngine: Sendable {
         let weight = ArchitecturalDraftingConvention.lineWeightMM(for: layer)
         var output: [DXFPrimitive] = []
         var tagged = Set<String>()
-        for room in project.rooms {
+        for room in PlanOrdering(project: project).rooms {
             let boundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: topology)
             for opening in room.openings {
                 // Shared openings are tagged once, from the first room that holds them.

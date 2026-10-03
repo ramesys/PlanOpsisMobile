@@ -48,7 +48,9 @@ public struct ArchitecturalSectionEngine: Sendable {
     public func interiorElevations(room: PlanOpsisRoom, roomName: String, project: PlanOpsisProject, physical: DisplayGeometrySnapshot, schedules: ProjectSchedules?, scale: Int) -> [DrawingView] {
         let measurement = SurveyMeasurementEngine()
         var views: [DrawingView] = []
-        for (index, wall) in room.walls.enumerated() where wall.length > 1 {
+        // Elevations go clockwise around the room from the north-west, like wall numbering.
+        let ordered = PlanOrdering(project: project).orderedWalls(of: room)
+        for (index, wall) in ordered.enumerated() where wall.length > 1 {
             guard let side = measurement.roomSide(ofWall: wall.id, in: room),
                   let face = try? measurement.faceSegment(wallID: wall.id, side: side, in: room) else { continue }
             let inward = wall.normal * Double(side)

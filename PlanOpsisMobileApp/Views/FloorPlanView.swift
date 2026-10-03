@@ -80,8 +80,14 @@ struct FloorPlanView: View {
     let sections: [SectionLine]
     let isPlacingSection: Bool
     let pendingSectionStart: Point2D?
+    // v12.6 architects' files
+    /// A PDF page under the plan and its drawing-to-plan transform.
+    let rasterUnderlay: (underlay: RasterUnderlay, transform: CADAffine)?
+    /// Two-point alignment, calibration or wall tracing in progress.
+    let underlayTool: UnderlayToolState?
+    let onUndoUnderlayPoint: () -> Void
 
-    private var isPlacingPoints: Bool { creationTool != nil || componentCreationTool != nil || isPlacingSection }
+    private var isPlacingPoints: Bool { creationTool != nil || componentCreationTool != nil || isPlacingSection || underlayTool != nil }
 
     var body: some View {
         GeometryReader { proxy in
@@ -89,6 +95,20 @@ struct FloorPlanView: View {
             let viewport = PlanViewport(transform: camera ?? fittedCamera(size: size), size: size)
             ZStack {
                 Canvas { context, _ in
+                    if let rasterUnderlay, let image = RasterUnderlayImageCache.shared.image(for: rasterUnderlay.underlay) {
+                        // The PDF page maps its unit square onto the placed sheet corners.
+                        context.drawLayer { layer in
+                            layer.opacity = isMovingUnderlay ? 0.7 : 0.45
+                            if colorScheme == .dark { layer.addFilter(.colorInvert()) }
+                            let corners = rasterUnderlay.underlay.corners
+                            let t = rasterUnderlay.transform
+                            let tl = viewport.screen(t.apply(corners.topLeft))
+                            let tr = viewport.screen(t.apply(corners.topRight))
+                            let bl = viewport.screen(t.apply(corners.bottomLeft))
+                            layer.concatenate(CGAffineTransform(a: tr.x - tl.x, b: tr.y - tl.y, c: bl.x - tl.x, d: bl.y - tl.y, tx: tl.x, ty: tl.y))
+                            layer.draw(Image(uiImage: image), in: CGRect(x: 0, y: 0, width: 1, height: 1))
+                        }
+                    }
                     if let underlay {
                         // The underlay is reference only: faded, below the grid and the model.
                         context.drawLayer { layer in
@@ -149,6 +169,10 @@ struct FloorPlanView: View {
                         drawSection(section, viewport: viewport, context: &context)
                     }
 
+                    if let underlayTool {
+                        drawAlignmentMarkers(underlayTool, viewport: viewport, context: &context)
+                    }
+
                     if let activeSnap {
                         drawSnap(activeSnap, viewport: viewport, context: &context)
                     }
@@ -163,7 +187,18 @@ struct FloorPlanView: View {
                         .onEnded { value in
                             guard !isPinching, !isPanning, marqueeStart == nil, !isMovingUnderlay else { return }
                             let hit = hitTest(value.location, viewport: viewport)
-                            if creationTool == .wall || componentCreationTool != nil || isPlacingSection {
+                            if let underlayTool {
+                                // Alignment picks snap to the underlay, then to the model; tracing takes
+                                // the raw tap, which only has to fall between the two wall lines.
+                                if underlayTool.snaps {
+                                    let resolved = snappedPoint(value.location, viewport: viewport, from: nil,
+                                                                source: underlayTool.pickingUnderlay ? .underlayOnly : .planOnly)
+                                    onPlanTap(resolved.point, hit, resolved.snapped)
+                                } else {
+                                    activeSnap = nil
+                                    onPlanTap(viewport.plan(value.location), hit, false)
+                                }
+                            } else if creationTool == .wall || componentCreationTool != nil || isPlacingSection {
                                 let resolved = snappedPoint(value.location, viewport: viewport, from: isPlacingSection ? pendingSectionStart : pendingWallStart)
                                 onPlanTap(resolved.point, hit, resolved.snapped)
                             } else if creationTool != nil {
@@ -270,16 +305,24 @@ struct FloorPlanView: View {
 
     /// Fit to the complete visible drawing extent for the current geometry.
     private func fittedCamera(size: CGSize) -> PlanViewTransform {
-        PlanViewTransform.fitted(
-            to: PlanViewport.fitBounds(
-                snapshot: snapshot,
-                components: components,
-                annotations: annotations,
-                plyEvidence: showPLYEvidence ? plyEvidence : nil
-            ),
-            viewWidth: Double(size.width),
-            viewHeight: Double(size.height)
+        var bounds = PlanViewport.fitBounds(
+            snapshot: snapshot,
+            components: components,
+            annotations: annotations,
+            plyEvidence: showPLYEvidence ? plyEvidence : nil
         )
+        // v12.6 an empty plan fits the underlay, so a blank project opens on the drawing to trace.
+        if bounds == nil, let extent = underlayExtent, !extent.isEmpty { bounds = extent.floorGeometry }
+        return PlanViewTransform.fitted(to: bounds, viewWidth: Double(size.width), viewHeight: Double(size.height))
+    }
+
+    private var underlayExtent: CADRect? {
+        if let rasterUnderlay {
+            let c = rasterUnderlay.underlay.corners, t = rasterUnderlay.transform
+            let w = rasterUnderlay.underlay.pageWidthMM
+            return CADRect(points: [c.topLeft, c.topRight, c.bottomLeft, Point2D(x: w, y: 0)].map(t.apply))
+        }
+        return underlay?.bounds
     }
 
     private func refit(size: CGSize) {
@@ -367,6 +410,7 @@ struct FloorPlanView: View {
     }
 
     private var creationPrompt: String {
+        if let underlayTool { return underlayTool.prompt }
         if isPlacingSection { return pendingSectionStart == nil ? "Section: tap the cut start" : "Section: tap the cut end" }
         if let componentCreationTool { return "Place \(componentCreationTool.displayName)" }
         if let creationTool {
@@ -583,14 +627,15 @@ struct FloorPlanView: View {
     // MARK: v12.3 professional editing
 
     /// The model point under `screenPoint`, moved to an object snap when one is within reach.
-    private func snappedPoint(_ screenPoint: CGPoint, viewport: PlanViewport, from origin: Point2D?) -> (point: Point2D, snapped: Bool) {
+    private func snappedPoint(_ screenPoint: CGPoint, viewport: PlanViewport, from origin: Point2D?,
+                              source: PlanObjectSnapper.Source = .planThenUnderlay) -> (point: Point2D, snapped: Bool) {
         let model = viewport.plan(screenPoint)
         guard let snapper else {
             activeSnap = nil
             return (model, false)
         }
         let radius = 18 / max(viewport.scale, 1e-9)
-        if let snap = snapper.snap(model, radius: radius, from: origin, underlay: underlay, underlayHiddenLayers: underlayHiddenLayers) {
+        if let snap = snapper.snap(model, radius: radius, from: origin, underlay: underlay, underlayHiddenLayers: underlayHiddenLayers, source: source) {
             activeSnap = snap
             return (snap.point, true)
         }
@@ -786,12 +831,44 @@ struct FloorPlanView: View {
                     .accessibilityLabel("Typed point")
                     .accessibilityHint("Length, length and angle, relative or absolute coordinates in millimetres")
             }
-            Button("Done", action: onFinishCreation)
+            if underlayTool?.canUndo == true {
+                Button("Undo point", action: onUndoUnderlayPoint)
+                    .font(.caption)
+            }
+            Button(underlayTool?.isTracing == false ? "Cancel" : "Done", action: onFinishCreation)
                 .font(.caption.weight(.semibold))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .planOpsisLiquidSurface(cornerRadius: 16)
+    }
+
+    /// Picked alignment points: underlay picks as numbered rings, plan picks as filled dots, each pair
+    /// joined by a line so the move reads before it is applied.
+    private func drawAlignmentMarkers(_ tool: UnderlayToolState, viewport: PlanViewport, context: inout GraphicsContext) {
+        let accent = Color.accentColor
+        for (index, point) in tool.planMarkers.enumerated() where index < tool.underlayMarkers.count {
+            var link = Path()
+            link.move(to: viewport.screen(tool.underlayMarkers[index]))
+            link.addLine(to: viewport.screen(point))
+            context.stroke(link, with: .color(accent.opacity(0.7)), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        }
+        for (index, point) in tool.underlayMarkers.enumerated() {
+            let c = viewport.screen(point)
+            context.stroke(Path(ellipseIn: CGRect(x: c.x - 9, y: c.y - 9, width: 18, height: 18)), with: .color(.orange), lineWidth: 2)
+            context.draw(Text("\(index + 1)").font(.caption2.bold()).foregroundColor(.orange), at: CGPoint(x: c.x + 14, y: c.y - 12))
+        }
+        if tool.underlayMarkers.count == 2 {
+            var line = Path()
+            line.move(to: viewport.screen(tool.underlayMarkers[0]))
+            line.addLine(to: viewport.screen(tool.underlayMarkers[1]))
+            context.stroke(line, with: .color(.orange.opacity(0.6)), lineWidth: 1)
+        }
+        for (index, point) in tool.planMarkers.enumerated() {
+            let c = viewport.screen(point)
+            context.fill(Path(ellipseIn: CGRect(x: c.x - 6, y: c.y - 6, width: 12, height: 12)), with: .color(accent))
+            context.draw(Text("\(index + 1)′").font(.caption2.bold()).foregroundColor(accent), at: CGPoint(x: c.x + 14, y: c.y - 12))
+        }
     }
 
     private var underlayMoveBanner: some View {
@@ -944,6 +1021,32 @@ struct FloorPlanView: View {
             j = i
         }
         return inside
+    }
+}
+
+/// v12.6 what the plan shows and how taps behave while aligning, calibrating or tracing on an underlay.
+struct UnderlayToolState {
+    var prompt: String
+    /// The next tap belongs on the underlay (snap to its lines, not the model).
+    var pickingUnderlay: Bool
+    /// Whether taps snap at all; tracing takes the raw tap.
+    var snaps: Bool
+    var isTracing: Bool
+    var underlayMarkers: [Point2D]
+    var planMarkers: [Point2D]
+    var canUndo: Bool
+}
+
+/// Decoded PDF page images, one at a time: decoding a large PNG for every frame would stall drawing.
+final class RasterUnderlayImageCache {
+    static let shared = RasterUnderlayImageCache()
+    private var entry: (id: UUID, image: UIImage)?
+
+    func image(for underlay: RasterUnderlay) -> UIImage? {
+        if let entry, entry.id == underlay.id { return entry.image }
+        guard let image = UIImage(data: underlay.imageData) else { return nil }
+        entry = (underlay.id, image)
+        return image
     }
 }
 
