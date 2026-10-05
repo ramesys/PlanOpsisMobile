@@ -36,6 +36,10 @@ public struct RoomPlanAdapter {
         case openingVerticalExtentOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
         /// v12.1: less than half of the observed opening lies on its host wall; it was not imported.
         case openingMostlyOutsideHost(surfaceSourceID: UUID, hostWallID: UUID)
+        /// v12.8: RoomPlan recognised an object PlanOpsis has no kind for (kept in the capture evidence).
+        case unsupportedObject(objectSourceID: UUID, category: String)
+        /// v12.8: an object's box was empty or not upright and was skipped.
+        case invalidObjectGeometry(objectSourceID: UUID)
     }
 
     public struct Result {
@@ -231,12 +235,44 @@ public struct RoomPlanAdapter {
             }
         }
 
+        // v12.8 recognised objects become interior components in this room: the box's centre, its
+        // width (local x), depth (local z) and height, turned with the box, raised when it does not stand
+        // on the floor (a wall cabinet, a television on the wall). The box's +z is its front, which is
+        // the component's -y (its back stands against the wall).
+        var components: [PlanOpsisComponent] = []
+        for object in snapshot.objects {
+            guard let kind = PlanOpsisComponent.Kind(roomPlanCategory: object.category) else {
+                diagnostics.append(.unsupportedObject(objectSourceID: object.sourceRoomPlanID, category: object.category))
+                continue
+            }
+            let axis = Point2D(x: object.transform.localXAxisX, y: -object.transform.localXAxisZ)
+            guard [object.dimensions.x, object.dimensions.y, object.dimensions.z].allSatisfy({ $0.isFinite && $0 > 0.01 }),
+                  axis.length > 0.5, object.transform.translationX.isFinite, object.transform.translationZ.isFinite else {
+                diagnostics.append(.invalidObjectGeometry(objectSourceID: object.sourceRoomPlanID))
+                continue
+            }
+            let bottom = coordinates.millimetres(fromMetres: object.transform.translationY - object.dimensions.y * 0.5) - (floorElevationMM ?? 0)
+            components.append(PlanOpsisComponent(
+                id: configuration.uuidProvider(),
+                kind: kind,
+                position: coordinates.planPointMM(from: object.transform),
+                width: coordinates.millimetres(fromMetres: object.dimensions.x),
+                depth: coordinates.millimetres(fromMetres: object.dimensions.z),
+                height: coordinates.millimetres(fromMetres: object.dimensions.y),
+                elevationMM: bottom > configuration.floorNoiseToleranceMM ? bottom : nil,
+                rotationRadians: atan2(axis.y, axis.x),
+                sourceRoomPlanID: object.sourceRoomPlanID,
+                confidence: object.confidence
+            ))
+        }
+
         return (
             PlanOpsisRoom(
                 id: configuration.uuidProvider(),
                 sourceRoomPlanID: snapshot.sourceRoomPlanID,
                 walls: walls,
                 openings: openings,
+                components: components,
                 captureFloorElevationMM: floorElevationMM
             ),
             diagnostics

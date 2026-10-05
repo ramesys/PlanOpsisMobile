@@ -999,12 +999,7 @@ public struct DXFExchangeEngine {
     }
 
     private func ifcClass(for kind: PlanOpsisComponent.Kind) -> ArchitecturalDraftingConvention.IFCClass {
-        switch kind {
-        case .column: return .column
-        case .beam: return .beam
-        case .bed, .table, .chair, .sofa: return .furnishing
-        case .wc, .sink: return .sanitaryTerminal
-        }
+        ArchitecturalDraftingConvention.ifcClass(for: kind)
     }
 
     private func ifcClass(for kind: DisplayOpeningKind) -> ArchitecturalDraftingConvention.IFCClass {

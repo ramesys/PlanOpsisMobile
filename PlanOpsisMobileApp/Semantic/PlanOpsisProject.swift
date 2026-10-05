@@ -112,6 +112,17 @@ public struct PlanOpsisComponent: Codable, Hashable, Sendable, Identifiable {
         case sofa
         case wc
         case sink
+        // v12.8 every object RoomPlan recognises has a kind of its own.
+        case storage
+        case fireplace
+        case bathtub
+        case refrigerator
+        case stove
+        case oven
+        case dishwasher
+        case washerDryer
+        case television
+        case stairs
 
         public var displayName: String {
             switch self {
@@ -123,6 +134,16 @@ public struct PlanOpsisComponent: Codable, Hashable, Sendable, Identifiable {
             case .sofa: return "Sofa"
             case .wc: return "WC"
             case .sink: return "Sink"
+            case .storage: return "Storage"
+            case .fireplace: return "Fireplace"
+            case .bathtub: return "Bathtub"
+            case .refrigerator: return "Refrigerator"
+            case .stove: return "Stove"
+            case .oven: return "Oven"
+            case .dishwasher: return "Dishwasher"
+            case .washerDryer: return "Washer / dryer"
+            case .television: return "Television"
+            case .stairs: return "Stairs"
             }
         }
 
@@ -136,6 +157,53 @@ public struct PlanOpsisComponent: Codable, Hashable, Sendable, Identifiable {
             case .sofa: return (1_800, 850, 800)
             case .wc: return (380, 700, 780)
             case .sink: return (600, 500, 850)
+            case .storage: return (1_000, 600, 2_000)
+            case .fireplace: return (1_200, 450, 1_100)
+            case .bathtub: return (1_700, 750, 550)
+            case .refrigerator: return (600, 650, 1_850)
+            case .stove: return (600, 600, 900)
+            case .oven: return (600, 600, 900)
+            case .dishwasher: return (600, 600, 850)
+            case .washerDryer: return (600, 600, 850)
+            case .television: return (1_250, 80, 720)
+            case .stairs: return (1_000, 3_000, 2_800)
+            }
+        }
+
+        /// Groups for menus and colours.
+        public enum Group: String, CaseIterable, Sendable { case structure, furniture, sanitary, appliance, building }
+
+        public var group: Group {
+            switch self {
+            case .column, .beam: return .structure
+            case .bed, .table, .chair, .sofa, .storage, .fireplace: return .furniture
+            case .wc, .sink, .bathtub: return .sanitary
+            case .refrigerator, .stove, .oven, .dishwasher, .washerDryer, .television: return .appliance
+            case .stairs: return .building
+            }
+        }
+
+        /// v12.8 the kind for a RoomPlan object category (`CapturedRoom.Object.Category` case name);
+        /// nil for categories PlanOpsis does not know yet.
+        public init?(roomPlanCategory: String) {
+            switch roomPlanCategory {
+            case "toilet": self = .wc
+            case "sink": self = .sink
+            case "bathtub": self = .bathtub
+            case "bed": self = .bed
+            case "table": self = .table
+            case "chair": self = .chair
+            case "sofa": self = .sofa
+            case "storage": self = .storage
+            case "fireplace": self = .fireplace
+            case "refrigerator": self = .refrigerator
+            case "stove": self = .stove
+            case "oven": self = .oven
+            case "dishwasher": self = .dishwasher
+            case "washerDryer": self = .washerDryer
+            case "television": self = .television
+            case "stairs": self = .stairs
+            default: return nil
             }
         }
     }
@@ -150,6 +218,10 @@ public struct PlanOpsisComponent: Codable, Hashable, Sendable, Identifiable {
     /// Structural beams use this to retain their measured overhead placement.
     public var elevationMM: Double?
     public var rotationRadians: Double
+    /// v12.8 provenance for objects RoomPlan detected: its identifier and how sure it was. Nil for
+    /// objects placed by hand.
+    public var sourceRoomPlanID: UUID?
+    public var confidence: CaptureConfidence?
 
     public init(
         id: UUID = UUID(),
@@ -159,9 +231,13 @@ public struct PlanOpsisComponent: Codable, Hashable, Sendable, Identifiable {
         depth: Double? = nil,
         height: Double? = nil,
         elevationMM: Double? = nil,
-        rotationRadians: Double = 0
+        rotationRadians: Double = 0,
+        sourceRoomPlanID: UUID? = nil,
+        confidence: CaptureConfidence? = nil
     ) {
         let defaults = kind.defaultSize
+        self.sourceRoomPlanID = sourceRoomPlanID
+        self.confidence = confidence
         self.id = id
         self.kind = kind
         self.position = position

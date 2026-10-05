@@ -1464,6 +1464,8 @@ final class PlanOpsisMobileTests: XCTestCase {
             case .beam?: XCTAssertEqual(primitive.layer, ArchitecturalDraftingConvention.Layer.beam.rawValue)
             case .furnishing?: XCTAssertEqual(primitive.layer, ArchitecturalDraftingConvention.Layer.furnishing.rawValue)
             case .sanitaryTerminal?: XCTAssertEqual(primitive.layer, ArchitecturalDraftingConvention.Layer.sanitary.rawValue)
+            case .appliance?: XCTAssertEqual(primitive.layer, ArchitecturalDraftingConvention.Layer.appliance.rawValue)
+            case .stair?: XCTAssertEqual(primitive.layer, ArchitecturalDraftingConvention.Layer.stair.rawValue)
             case nil: break
             }
         }

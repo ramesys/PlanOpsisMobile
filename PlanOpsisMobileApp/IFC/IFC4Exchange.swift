@@ -205,11 +205,35 @@ public struct IFC4ExchangeEngine {
                     entityRef = writer.add("IFCFURNISHINGELEMENT('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$)")
                     ifcClass = "IfcFurnishingElement"
                     roomContainedRefs[room.id, default: []].append(entityRef)
-                case .wc, .sink:
-                    let predefined = component.kind == .wc ? ".TOILETPAN." : ".SINK."
+                case .wc, .sink, .bathtub:
+                    let predefined = component.kind == .wc ? ".TOILETPAN." : (component.kind == .sink ? ".SINK." : ".BATH.")
                     entityRef = writer.add("IFCSANITARYTERMINAL('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,\(predefined))")
                     ifcClass = "IfcSanitaryTerminal"
                     roomContainedRefs[room.id, default: []].append(entityRef)
+                // v12.8 objects from the scan library.
+                case .storage, .fireplace:
+                    entityRef = writer.add("IFCFURNISHINGELEMENT('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$)")
+                    ifcClass = "IfcFurnishingElement"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .refrigerator, .stove, .oven, .dishwasher, .washerDryer:
+                    let predefined: String
+                    switch component.kind {
+                    case .refrigerator: predefined = ".FRIDGE_FREEZER."
+                    case .dishwasher: predefined = ".DISHWASHER."
+                    case .washerDryer: predefined = ".WASHINGMACHINE."
+                    default: predefined = ".ELECTRICCOOKER."
+                    }
+                    entityRef = writer.add("IFCELECTRICAPPLIANCE('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,\(predefined))")
+                    ifcClass = "IfcElectricAppliance"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .television:
+                    entityRef = writer.add("IFCAUDIOVISUALAPPLIANCE('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,.TV.)")
+                    ifcClass = "IfcAudioVisualAppliance"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .stairs:
+                    entityRef = writer.add("IFCSTAIR('\(guid)',#\(owner),'Stairs',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,.NOTDEFINED.)")
+                    ifcClass = "IfcStair"
+                    storeyContainedRefs.append(entityRef)
                 }
                 addIdentityProperties(&writer, owner: owner, semanticID: component.id, entityRef: entityRef, ifcClass: ifcClass, semanticType: semanticType, roomID: room.id, hostID: nil,
                                       sourceDimensions: ["Width": component.width,"Depth": component.depth,"Height": component.height])
@@ -218,6 +242,8 @@ public struct IFC4ExchangeEngine {
 
         // Openings are emitted after all walls exist so host relationships are explicit.
         for room in ordering.rooms {
+            // v12.7 door swings are written by the IFC convention: the door opens towards its local +y.
+            let roomBoundary = ArchitecturalRoomEnvelope.polygon(for: room, topology: semanticGeometry.topology)
             for opening in room.openings.sorted(by: { openingKey($0, room) < openingKey($1, room) }) {
                 guard let wall = room.walls.first(where: { $0.id == opening.parameters.hostWallID }),
                       let wallRef = wallRefs[wall.id] else { continue }
@@ -274,10 +300,14 @@ public struct IFC4ExchangeEngine {
                 case .door(let door):
                     let semanticGUID = PlanOpsisExchangeIdentity.ifcGlobalID(for: opening.id)
                     objectGlobalIDs[opening.id] = semanticGUID
-                    let fillPlacement = makeLocalPlacement(&writer, relativeTo: openingPlacement, x: 0, y: 0, z: 0, angleRadians: 0)
+                    let inward = ArchitecturalSymbolLibrary.inwardSign(center: wall.start + wall.direction * p.offsetAlongWall, angle: wall.angleRadians, boundary: roomBoundary)
+                    let opensIn = door.swing == .leftIn || door.swing == .rightIn
+                    // Turned half a turn when the door opens to the wall's right, so +y points the way it opens.
+                    let turned = door.swing != .unspecified && (opensIn ? inward : -inward) < 0
+                    let fillPlacement = makeLocalPlacement(&writer, relativeTo: openingPlacement, x: 0, y: 0, z: 0, angleRadians: turned ? .pi : 0)
                     let fillRepresentation = makeBoxRepresentation(&writer, context: modelContext, width: max(1, p.width), depth: min(max(30, wall.thickness * 0.25), 60), height: max(1, p.height), originMode: .centered)
-                    let operation = ifcDoorOperation(door)
-                    let doorRef = writer.add("IFCDOOR('\(semanticGUID)',#\(owner),'\(mark ?? "Door")',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),\(tag),\(number(p.height)),\(number(p.width)),.DOOR.,\(operation),$)")
+                    let operation = ifcDoorOperation(door, turned: turned)
+                    let doorRef = writer.add("IFCDOOR('\(semanticGUID)',#\(owner),'\(mark ?? "Door")',$,'\(stepString(PlanOpsisExchangeIdentity.semanticType(for: opening)))',#\(fillPlacement),#\(fillRepresentation),\(tag),\(number(p.height)),\(number(p.width)),.DOOR.,\(operation.type),\(operation.userDefined.map { "'\($0)'" } ?? "$"))")
                     roomContainedRefs[room.id, default: []].append(doorRef)
                     addIdentityProperties(&writer, owner: owner, semanticID: opening.id, entityRef: doorRef, ifcClass: "IfcDoor", semanticType: PlanOpsisExchangeIdentity.semanticType(for: opening), roomID: room.id, hostID: wall.id,
                                           sourceDimensions: ["SillHeight": p.sillHeight], sourceLabels: ["Swing": door.swing.rawValue,"Operation": door.operation.rawValue])
@@ -502,18 +532,22 @@ public struct IFC4ExchangeEngine {
         writer.entityPlacement[entityRef]
     }
 
-    private func ifcDoorOperation(_ door: PlanOpsisDoor) -> String {
+    /// IFC door operation: the hinge (or slide) side as seen looking along the door's +y, which
+    /// `turned` reverses against the wall's direction. PlanOpsis "left" is the wall's start side.
+    private func ifcDoorOperation(_ door: PlanOpsisDoor, turned: Bool) -> (type: String, userDefined: String?) {
+        let startSide = door.swing == .leftIn || door.swing == .leftOut
+        let left = startSide != turned
         switch door.operation {
         case .singleHinged:
-            switch door.swing {
-            case .leftIn, .leftOut: return ".SINGLE_SWING_LEFT."
-            case .rightIn, .rightOut: return ".SINGLE_SWING_RIGHT."
-            case .unspecified: return ".NOTDEFINED."
-            }
+            if door.swing == .unspecified { return (".NOTDEFINED.", nil) }
+            return (left ? ".SINGLE_SWING_LEFT." : ".SINGLE_SWING_RIGHT.", nil)
         case .doubleHinged:
-            return ".DOUBLE_DOOR_SINGLE_SWING."
-        case .sliding, .pocket:
-            return ".NOTDEFINED."
+            return (".DOUBLE_DOOR_SINGLE_SWING.", nil)
+        case .sliding:
+            if door.swing == .unspecified { return (".SLIDING_TO_LEFT.", nil) }
+            return (left ? ".SLIDING_TO_LEFT." : ".SLIDING_TO_RIGHT.", nil)
+        case .pocket:
+            return (".USERDEFINED.", "POCKET")
         }
     }
 
@@ -578,7 +612,8 @@ private struct STEPWriter {
     }
 
     private func parseObjectPlacement(_ body: String) -> Int? {
-        let productPrefixes = ["IFCWALL(", "IFCOPENINGELEMENT(", "IFCDOOR(", "IFCWINDOW(", "IFCCOLUMN(", "IFCBEAM(", "IFCFURNISHINGELEMENT(", "IFCSANITARYTERMINAL(", "IFCSPACE("]
+        let productPrefixes = ["IFCWALL(", "IFCOPENINGELEMENT(", "IFCDOOR(", "IFCWINDOW(", "IFCCOLUMN(", "IFCBEAM(", "IFCFURNISHINGELEMENT(", "IFCSANITARYTERMINAL(", "IFCSPACE(",
+                               "IFCELECTRICAPPLIANCE(", "IFCAUDIOVISUALAPPLIANCE(", "IFCSTAIR("]
         guard productPrefixes.contains(where: { body.hasPrefix($0) }) else { return nil }
         // Root4 + ObjectType = five fields; field 6 is ObjectPlacement.
         let fields = splitTopLevelArguments(body)

@@ -135,6 +135,71 @@ public enum ArchitecturalSymbolLibrary {
             // A short cross remains legible without sub-millimetre circles.
             line("drain-x",p(-0.035,-0.04),p(0.035,-0.04))
             line("drain-y",p(0,-0.075),p(0,-0.005))
+        // v12.8 symbols for every object RoomPlan recognises. Local -y is the front (the room side),
+        // +y the back (against the wall), as for the bed, sofa and WC above.
+        case .storage:
+            // A cupboard: its outline, the door line along the front and one diagonal.
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            line("doors", p(-0.5, -0.4), p(0.5, -0.4))
+            line("diagonal", p(-0.5, -0.4), p(0.5, 0.5))
+        case .fireplace:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            poly("hearth", [p(-0.32, -0.5), p(-0.2, 0.2), p(0.2, 0.2), p(0.32, -0.5)], .detail)
+        case .bathtub:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            // The basin: a rounded rectangle inside the rim, the drain at the tap end.
+            let rimX = min(0.45, 0.5 - 60 / w), rimY = min(0.42, 0.5 - 60 / d)
+            let r = min(0.12, rimX * 0.3)
+            var basin: [Point2D] = []
+            for (cx, cy, start) in [(rimX - r, -rimY + r * w / d, -Double.pi / 2), (rimX - r, rimY - r * w / d, 0),
+                                    (-rimX + r, rimY - r * w / d, Double.pi / 2), (-rimX + r, -rimY + r * w / d, Double.pi)] {
+                for i in 0...4 {
+                    let a = start + Double(i) * Double.pi / 8
+                    basin.append(p(cx + cos(a) * r, cy + sin(a) * r * w / d))
+                }
+            }
+            poly("basin", basin, .detail)
+            ellipse("drain", rimX - 0.1, 0, 0.025, 0.025 * w / d)
+        case .refrigerator:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            line("door", p(-0.5, -0.38), p(0.5, -0.38))
+            line("cross-a", p(-0.5, -0.38), p(0.5, 0.5))
+            line("cross-b", p(0.5, -0.38), p(-0.5, 0.5))
+        case .stove:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            for (i, xy) in [(-0.24, -0.22), (0.24, -0.22), (-0.24, 0.24), (0.24, 0.24)].enumerated() {
+                ellipse("burner:\(i)", xy.0, xy.1, 0.16, 0.16 * w / d)
+            }
+        case .oven:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            rect("door", -0.42, -0.5, 0.42, -0.36, .detail)
+            line("handle", p(-0.3, -0.43), p(0.3, -0.43))
+        case .dishwasher:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            line("door", p(-0.5, -0.4), p(0.5, -0.4))
+            line("rack-a", p(-0.38, -0.3), p(0.38, 0.42))
+            line("rack-b", p(0.38, -0.3), p(-0.38, 0.42))
+        case .washerDryer:
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            ellipse("drum", 0, 0.03, 0.34, 0.34 * w / d)
+            line("door", p(-0.5, -0.42), p(0.5, -0.42))
+        case .television:
+            // A thin screen and its stand line behind it.
+            rect("screen", -0.5, -0.5, 0.5, 0.0)
+            line("stand", p(-0.15, 0.0), p(0.15, 0.0))
+            line("back", p(-0.15, 0.5), p(0.15, 0.5))
+        case .stairs:
+            // Treads across the run (along +y) every 280 mm or so, and the walking line with its arrow.
+            rect("outline", -0.5, -0.5, 0.5, 0.5)
+            let treads = max(2, Int((d / 280).rounded()))
+            for i in 1..<treads {
+                let y = -0.5 + Double(i) / Double(treads)
+                line("tread:\(i)", p(-0.5, y), p(0.5, y), .outline)
+            }
+            line("walk", p(0, -0.45), p(0, 0.45))
+            let head = min(0.2, 250 / d)
+            line("arrow-a", p(0, 0.45), p(-min(0.15, 120 / w), 0.45 - head))
+            line("arrow-b", p(0, 0.45), p(min(0.15, 120 / w), 0.45 - head))
         }
         return ArchitecturalSymbol(primitives: items)
     }

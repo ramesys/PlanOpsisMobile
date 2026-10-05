@@ -16,22 +16,27 @@ public struct RoomCaptureSnapshot: Codable, Hashable, Sendable, Identifiable {
     public var surfaces: [CapturedSurfaceSnapshot]
     /// v12.2. Captures retained before this field existed are real RoomPlan scans: interior faces.
     public var wallReference: WallSurfaceReference
+    /// v12.8 furniture, fixtures, appliances and stairs RoomPlan recognised in the room.
+    public var objects: [CapturedObjectSnapshot]
 
     public var id: UUID { sourceRoomPlanID }
 
-    public init(sourceRoomPlanID: UUID, surfaces: [CapturedSurfaceSnapshot], wallReference: WallSurfaceReference = .interiorFace) {
+    public init(sourceRoomPlanID: UUID, surfaces: [CapturedSurfaceSnapshot], wallReference: WallSurfaceReference = .interiorFace,
+                objects: [CapturedObjectSnapshot] = []) {
         self.sourceRoomPlanID = sourceRoomPlanID
         self.surfaces = surfaces
         self.wallReference = wallReference
+        self.objects = objects
     }
 
-    private enum CodingKeys: String, CodingKey { case sourceRoomPlanID, surfaces, wallReference }
+    private enum CodingKeys: String, CodingKey { case sourceRoomPlanID, surfaces, wallReference, objects }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sourceRoomPlanID = try container.decode(UUID.self, forKey: .sourceRoomPlanID)
         surfaces = try container.decode([CapturedSurfaceSnapshot].self, forKey: .surfaces)
         wallReference = try container.decodeIfPresent(WallSurfaceReference.self, forKey: .wallReference) ?? .interiorFace
+        objects = try container.decodeIfPresent([CapturedObjectSnapshot].self, forKey: .objects) ?? []
     }
 }
 
@@ -100,6 +105,28 @@ public struct CapturedSurfaceSnapshot: Codable, Hashable, Sendable {
         self.dimensions = dimensions
         self.confidence = confidence
         self.shapeHints = shapeHints
+    }
+}
+
+/// v12.8 one object RoomPlan recognised: its category name as RoomPlan spells it
+/// (`CapturedRoom.Object.Category`, kept as text so categories added later survive as evidence), its
+/// box (centre transform, dimensions in metres: x width, y height, z depth) and confidence.
+public struct CapturedObjectSnapshot: Codable, Hashable, Sendable {
+    public var sourceRoomPlanID: UUID
+    public var parentIdentifier: UUID?
+    public var category: String
+    public var transform: TransformSnapshot
+    public var dimensions: Dimensions3D
+    public var confidence: CaptureConfidence
+
+    public init(sourceRoomPlanID: UUID, parentIdentifier: UUID? = nil, category: String, transform: TransformSnapshot,
+                dimensions: Dimensions3D, confidence: CaptureConfidence) {
+        self.sourceRoomPlanID = sourceRoomPlanID
+        self.parentIdentifier = parentIdentifier
+        self.category = category
+        self.transform = transform
+        self.dimensions = dimensions
+        self.confidence = confidence
     }
 }
 

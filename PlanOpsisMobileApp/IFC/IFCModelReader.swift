@@ -347,8 +347,9 @@ public struct IFCModelReader {
         var model = IFCArchitecturalModel()
         model.name = file.entities.values.first { $0.type == "IFCPROJECT" }?.arguments[safe: 2]?.string
 
-        // Walls.
-        var wallIndexByEntity: [Int: Int] = [:]
+        // Walls. A straight wall is the smallest rectangle around its body; a wall whose footprint
+        // fills that rectangle poorly (an L or a U) is split into its straight runs.
+        var wallIndexByEntity: [Int: [Int]] = [:]
         var wallBase: [Int: Double] = [:]
         let wallTypes: Set = ["IFCWALL", "IFCWALLSTANDARDCASE", "IFCWALLELEMENTEDCASE"]
         for id in file.entities.keys.sorted() {
@@ -357,11 +358,23 @@ public struct IFCModelReader {
             guard points.count >= 3, let rect = Self.minimumRectangle(points.map { Point2D(x: $0.x, y: $0.y) }) else { continue }
             let zs = points.map(\.z)
             let height = (zs.max() ?? 0) - (zs.min() ?? 0)
-            guard rect.length > 50, rect.thickness > 10, rect.thickness < 1_500 else { continue }
-            wallIndexByEntity[id] = model.walls.count
-            wallBase[id] = zs.min() ?? 0
-            model.walls.append(TracedWall(start: rect.start, end: rect.end, thickness: (rect.thickness * 10).rounded() / 10))
-            model.wallHeights.append(height > 100 ? height : ArchitecturalDraftingConvention.Defaults().wallHeight)
+            guard rect.length > 50, rect.thickness > 10 else { continue }
+            var pieces: [TracedWall] = []
+            if let outline = context.footprintPolygon(of: id), outline.count >= 5,
+               PlanPolygon.area(outline) < 0.85 * rect.length * rect.thickness {
+                let edges = zip(outline, outline.dropFirst() + [outline[0]]).map { UnderlayWallTracer.Segment($0.0, $0.1) }
+                pieces = UnderlayWallTracer(segments: edges).traceAll().walls
+            }
+            if pieces.isEmpty {
+                guard rect.thickness < 1_500 else { continue }
+                pieces = [TracedWall(start: rect.start, end: rect.end, thickness: rect.thickness)]
+            }
+            for piece in pieces {
+                wallIndexByEntity[id, default: []].append(model.walls.count)
+                wallBase[model.walls.count] = zs.min() ?? 0
+                model.walls.append(TracedWall(start: piece.start, end: piece.end, thickness: (piece.thickness * 10).rounded() / 10))
+                model.wallHeights.append(height > 100 ? height : ArchitecturalDraftingConvention.Defaults().wallHeight)
+            }
         }
 
         // Openings: void → wall, fill → door/window.
@@ -380,23 +393,35 @@ public struct IFCModelReader {
             // The void says where the opening is; the filler's own body is the fallback.
             var points = void.map { context.bodyPoints(of: $0) } ?? []
             if points.count < 3 { points = context.bodyPoints(of: id) }
-            let host = void.flatMap { voidHost[$0] }.flatMap { wallIndexByEntity[$0] }
+            let hosts = void.flatMap { voidHost[$0] }.flatMap { wallIndexByEntity[$0] }
             let width = entity.arguments[safe: 9]?.number.map { $0 * context.unitScale }
             let height = entity.arguments[safe: 8]?.number.map { $0 * context.unitScale }
-            guard let placed = place(points: points, kind: kind, host: host, width: width, height: height, walls: model.walls, wallBase: { i in
-                wallBase.first { wallIndexByEntity[$0.key] == i }?.value ?? 0
-            }) else { continue }
-            model.openingHeights.append((placed.height, placed.sill))
-            if kind == .door, let operation = (entity.arguments[safe: 11]?.enumeration ?? entity.arguments[safe: 10]?.enumeration).flatMap(Self.doorOperation) {
-                model.doorOperations[model.openings.count] = operation
+            guard var placed = place(points: points, kind: kind, hosts: hosts, width: width, height: height, walls: model.walls,
+                                     wallBase: { wallBase[$0] ?? 0 }) else { continue }
+            if kind == .door {
+                // IFC operation types: hinge side as seen looking along the door's +y, the way it opens.
+                let operationName = entity.arguments[safe: 11]?.enumeration ?? entity.arguments[safe: 10]?.enumeration ?? ""
+                let userDefined = entity.arguments[safe: 12]?.string ?? ""
+                let operation = Self.doorOperation(operationName) ?? (operationName == "USERDEFINED" && userDefined.uppercased().contains("POCKET") ? .pocket : nil)
+                if let operation { model.doorOperations[model.openings.count] = operation }
+                let frame = context.placement(entity.arguments[safe: 5]?.ref)
+                let wall = model.walls[placed.opening.wallIndex]
+                let normal = Point2D(x: -wall.direction.y, y: wall.direction.x)
+                let x = Point2D(x: frame.x.x, y: frame.x.y), y = Point2D(x: frame.y.x, y: frame.y.y)
+                if let hand = Self.hingeHand(operationName), abs(x.dot(wall.direction)) > 0.7, abs(y.dot(normal)) > 0.7 {
+                    placed.opening.opensToLeft = y.dot(normal) > 0
+                    placed.opening.hingeAtEnd = hand == .left ? x.dot(wall.direction) < 0 : x.dot(wall.direction) > 0
+                }
+                placed.opening.isDouble = operation == .doubleHinged
             }
+            model.openingHeights.append((placed.height, placed.sill))
             model.openings.append(placed.opening)
         }
         // Voids nobody fills are plain openings only when they reach the floor (passages), not recesses.
-        for (void, wallEntity) in voidHost where !filledVoids.contains(void) {
-            guard let host = wallIndexByEntity[wallEntity] else { continue }
+        for (void, wallEntity) in voidHost.sorted(by: { $0.key < $1.key }) where !filledVoids.contains(void) {
+            guard let hosts = wallIndexByEntity[wallEntity] else { continue }
             let points = context.bodyPoints(of: void)
-            guard let placed = place(points: points, kind: .opening, host: host, width: nil, height: nil, walls: model.walls, wallBase: { _ in wallBase[wallEntity] ?? 0 }),
+            guard let placed = place(points: points, kind: .opening, hosts: hosts, width: nil, height: nil, walls: model.walls, wallBase: { wallBase[$0] ?? 0 }),
                   placed.sill < 50, placed.height > 1_800 else { continue }
             model.openingHeights.append((placed.height, placed.sill))
             model.openings.append(placed.opening)
@@ -416,12 +441,14 @@ public struct IFCModelReader {
     }
 
     /// An opening along its wall from the points of its void or body.
-    private func place(points: [Point3], kind: PlanOpsisOpening.Kind, host: Int?, width: Double?, height: Double?,
+    private func place(points: [Point3], kind: PlanOpsisOpening.Kind, hosts: [Int]?, width: Double?, height: Double?,
                        walls: [TracedWall], wallBase: (Int) -> Double) -> (opening: TracedOpening, height: Double, sill: Double)? {
         guard !points.isEmpty else { return nil }
         let plan = points.map { Point2D(x: $0.x, y: $0.y) }
         let center = plan.reduce(Point2D.zero) { $0 + $1 } * (1 / Double(plan.count))
-        let wallIndex = host ?? walls.indices.min { a, b in
+        // The host wall's straight run nearest the opening (any wall when the file names none).
+        let candidates = hosts.map { Array($0) } ?? Array(walls.indices)
+        let wallIndex = candidates.min { a, b in
             Self.distance(center, to: walls[a]) < Self.distance(center, to: walls[b])
         }
         guard let wallIndex, Self.distance(center, to: walls[wallIndex]) <= walls[wallIndex].thickness + 300 else { return nil }
@@ -437,6 +464,17 @@ public struct IFCModelReader {
         let h = height.flatMap { $0 > 1 ? $0 : nil } ?? max(1, (zs.max() ?? 0) - (zs.min() ?? 0))
         let opening = TracedOpening(kind: kind, wallIndex: wallIndex, offset: (low + high) / 2, width: min(w, wall.length))
         return (opening, h, kind == .door ? 0 : sill)
+    }
+
+    enum Hand { case left, right }
+
+    /// Which side the hinge (or the slide) is on, seen looking along the door's +y.
+    static func hingeHand(_ value: String) -> Hand? {
+        switch value {
+        case "SINGLE_SWING_LEFT", "DOUBLE_SWING_LEFT": return .left
+        case "SINGLE_SWING_RIGHT", "DOUBLE_SWING_RIGHT": return .right
+        default: return nil
+        }
     }
 
     static func doorOperation(_ value: String) -> PlanOpsisDoor.Operation? {
@@ -650,6 +688,48 @@ private struct Context {
             }
         }
         return nil
+    }
+
+    /// The plan outline of a product's body: an extruded profile (through clipping results) when it is
+    /// extruded vertically, else a horizontal face of a brep. Nil when neither applies.
+    mutating func footprintPolygon(of productID: Int) -> [Point2D]? {
+        guard let product = file[productID], let shape = file[product.arguments[safe: 6]?.ref] else { return nil }
+        let world = placement(product.arguments[safe: 5]?.ref)
+        var representations = shape.arguments[safe: 2]?.list.compactMap(\.ref) ?? []
+        representations.sort { rank(file[$0]) < rank(file[$1]) }
+        for representation in representations {
+            for item in file[representation]?.arguments[safe: 3]?.list.compactMap(\.ref) ?? [] {
+                if let outline = itemFootprint(item, frame: world, depth: 0) { return outline }
+            }
+        }
+        return nil
+    }
+
+    mutating func itemFootprint(_ id: Int, frame: Frame3, depth: Int) -> [Point2D]? {
+        guard depth < 12, let e = file[id] else { return nil }
+        switch e.type {
+        case "IFCBOOLEANCLIPPINGRESULT", "IFCBOOLEANRESULT":
+            return e.arguments[safe: 1]?.ref.flatMap { itemFootprint($0, frame: frame, depth: depth + 1) }
+        case "IFCEXTRUDEDAREASOLID":
+            let solidFrame = frame.then(axisPlacement(e.arguments[safe: 1]?.ref))
+            let along = solidFrame.applyVector(direction(e.arguments[safe: 2]?.ref) ?? Point3(x: 0, y: 0, z: 1))
+            guard abs(along.z) > 0.99 else { return nil }
+            let profile = profilePoints(e.arguments[safe: 0]?.ref)
+            return profile.count >= 3 ? profile.map { let p = solidFrame.apply($0); return Point2D(x: p.x, y: p.y) } : nil
+        case "IFCFACETEDBREP", "IFCFACETEDBREPWITHVOIDS":
+            guard let shell = file[e.arguments[safe: 0]?.ref] else { return nil }
+            var lowest: (z: Double, outline: [Point2D])?
+            for faceID in shell.arguments[safe: 0]?.list.compactMap(\.ref) ?? [] {
+                guard let face = file[faceID], let boundID = face.arguments[safe: 0]?.list.first?.ref,
+                      let loop = file[file[boundID]?.arguments[safe: 0]?.ref], loop.type == "IFCPOLYLOOP" else { continue }
+                let points = (loop.arguments[safe: 0]?.list.compactMap(\.ref) ?? []).compactMap(point).map(frame.apply)
+                guard points.count >= 3, let z = points.first?.z, points.allSatisfy({ abs($0.z - z) < 1 }) else { continue }
+                if lowest == nil || z < lowest!.z { lowest = (z, points.map { Point2D(x: $0.x, y: $0.y) }) }
+            }
+            return lowest?.outline
+        default:
+            return nil
+        }
     }
 
     /// Points of a geometric representation item, in `frame`.

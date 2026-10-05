@@ -93,6 +93,11 @@ public enum PlanOpsisExchangeIdentity {
         case .sofa: return "furniture.sofa"
         case .wc: return "sanitary.wc"
         case .sink: return "sanitary.sink"
+        case .bathtub: return "sanitary.bathtub"
+        case .storage: return "furniture.storage"
+        case .fireplace: return "furniture.fireplace"
+        case .refrigerator, .stove, .oven, .dishwasher, .washerDryer, .television: return "appliance.\(component.kind.rawValue)"
+        case .stairs: return "stair"
         }
     }
 }
