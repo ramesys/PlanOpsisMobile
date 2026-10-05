@@ -180,6 +180,10 @@ public struct ArchitecturalSurveyReadinessEngine {
                 issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence required clipping to its host wall."))
             case .openingMostlyOutsideHost(let sourceID, _):
                 issues.append(.init(code: .captureRelationshipError, severity: .warning, entityID: sourceID, message: "RoomPlan opening evidence lay mostly outside its host wall and was not imported."))
+            case .unsupportedObject(let sourceID, let category):
+                issues.append(.init(code: .captureRelationshipError, severity: .info, entityID: sourceID, message: "RoomPlan recognised a \(category) that PlanOpsis has no object for; it was not added."))
+            case .invalidObjectGeometry(let sourceID):
+                issues.append(.init(code: .captureRelationshipError, severity: .info, entityID: sourceID, message: "A recognised RoomPlan object had an empty box and was skipped."))
             }
         }
 

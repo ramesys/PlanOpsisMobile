@@ -205,11 +205,35 @@ public struct IFC4ExchangeEngine {
                     entityRef = writer.add("IFCFURNISHINGELEMENT('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$)")
                     ifcClass = "IfcFurnishingElement"
                     roomContainedRefs[room.id, default: []].append(entityRef)
-                case .wc, .sink:
-                    let predefined = component.kind == .wc ? ".TOILETPAN." : ".SINK."
+                case .wc, .sink, .bathtub:
+                    let predefined = component.kind == .wc ? ".TOILETPAN." : (component.kind == .sink ? ".SINK." : ".BATH.")
                     entityRef = writer.add("IFCSANITARYTERMINAL('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,\(predefined))")
                     ifcClass = "IfcSanitaryTerminal"
                     roomContainedRefs[room.id, default: []].append(entityRef)
+                // v12.8 objects from the scan library.
+                case .storage, .fireplace:
+                    entityRef = writer.add("IFCFURNISHINGELEMENT('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$)")
+                    ifcClass = "IfcFurnishingElement"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .refrigerator, .stove, .oven, .dishwasher, .washerDryer:
+                    let predefined: String
+                    switch component.kind {
+                    case .refrigerator: predefined = ".FRIDGE_FREEZER."
+                    case .dishwasher: predefined = ".DISHWASHER."
+                    case .washerDryer: predefined = ".WASHINGMACHINE."
+                    default: predefined = ".ELECTRICCOOKER."
+                    }
+                    entityRef = writer.add("IFCELECTRICAPPLIANCE('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,\(predefined))")
+                    ifcClass = "IfcElectricAppliance"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .television:
+                    entityRef = writer.add("IFCAUDIOVISUALAPPLIANCE('\(guid)',#\(owner),'\(stepString(component.kind.displayName))',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,.TV.)")
+                    ifcClass = "IfcAudioVisualAppliance"
+                    roomContainedRefs[room.id, default: []].append(entityRef)
+                case .stairs:
+                    entityRef = writer.add("IFCSTAIR('\(guid)',#\(owner),'Stairs',$,'\(stepString(semanticType))',#\(placement),#\(representation),$,.NOTDEFINED.)")
+                    ifcClass = "IfcStair"
+                    storeyContainedRefs.append(entityRef)
                 }
                 addIdentityProperties(&writer, owner: owner, semanticID: component.id, entityRef: entityRef, ifcClass: ifcClass, semanticType: semanticType, roomID: room.id, hostID: nil,
                                       sourceDimensions: ["Width": component.width,"Depth": component.depth,"Height": component.height])
@@ -588,7 +612,8 @@ private struct STEPWriter {
     }
 
     private func parseObjectPlacement(_ body: String) -> Int? {
-        let productPrefixes = ["IFCWALL(", "IFCOPENINGELEMENT(", "IFCDOOR(", "IFCWINDOW(", "IFCCOLUMN(", "IFCBEAM(", "IFCFURNISHINGELEMENT(", "IFCSANITARYTERMINAL(", "IFCSPACE("]
+        let productPrefixes = ["IFCWALL(", "IFCOPENINGELEMENT(", "IFCDOOR(", "IFCWINDOW(", "IFCCOLUMN(", "IFCBEAM(", "IFCFURNISHINGELEMENT(", "IFCSANITARYTERMINAL(", "IFCSPACE(",
+                               "IFCELECTRICAPPLIANCE(", "IFCAUDIOVISUALAPPLIANCE(", "IFCSTAIR("]
         guard productPrefixes.contains(where: { body.hasPrefix($0) }) else { return nil }
         // Root4 + ObjectType = five fields; field 6 is ObjectPlacement.
         let fields = splitTopLevelArguments(body)

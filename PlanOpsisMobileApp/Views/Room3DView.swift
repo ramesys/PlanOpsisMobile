@@ -198,11 +198,12 @@ struct Room3DView: UIViewRepresentable {
                 let height = max(0.01, Float(component.height / 1000))
                 let isSelected = selectedIDs.contains(component.id)
                 let baseColor: UIColor
-                switch component.kind {
-                case .column: baseColor = .systemGray2
-                case .beam: baseColor = .systemIndigo.withAlphaComponent(0.78)
-                case .wc, .sink: baseColor = .systemCyan.withAlphaComponent(0.7)
-                case .bed, .table, .chair, .sofa: baseColor = .systemBrown.withAlphaComponent(0.65)
+                switch component.kind.group {
+                case .structure: baseColor = component.kind == .column ? .systemGray2 : .systemIndigo.withAlphaComponent(0.78)
+                case .sanitary: baseColor = .systemCyan.withAlphaComponent(0.7)
+                case .furniture: baseColor = .systemBrown.withAlphaComponent(0.65)
+                case .appliance: baseColor = .systemGray.withAlphaComponent(0.75)
+                case .building: baseColor = .systemGray3
                 }
                 let material = SimpleMaterial(color: isSelected ? .systemOrange : baseColor, isMetallic: false)
 

@@ -133,6 +133,16 @@ struct InspectorView: View {
                     TextField("Rotation °", value: componentRotationBinding, format: .number.precision(.fractionLength(0...2)))
                         .keyboardType(.numbersAndPunctuation)
                 }
+                // v12.8 objects from the scan: what RoomPlan saw, re-typed or turned when it misread them.
+                Section(component.sourceRoomPlanID == nil ? "Object" : "Object · from the scan") {
+                    Picker("Type", selection: Binding(get: { component.kind }, set: { store.setSelectedComponentKind($0) })) {
+                        ForEach(PlanOpsisComponent.Kind.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    Button("Turn front to back") { store.turnSelectedComponentAround() }
+                    if let confidence = component.confidence {
+                        LabeledContent("Scan confidence", value: confidence.rawValue.capitalized)
+                    }
+                }
             } else {
                 Section {
                     ContentUnavailableView("Select a wall, opening, or component", systemImage: "cursorarrow.click")

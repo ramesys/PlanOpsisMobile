@@ -65,8 +65,29 @@ public struct MockRoomCaptureProvider {
             confidence: .medium
         ))
 
+        // v12.8 recognised objects: a bed under the windows, a wardrobe on the east wall, a television
+        // hung on the west wall. A box's +z is its front.
+        let objects = [
+            object(1, "bed", centerX: 2.0, bottom: 0, centerZ: -2.0, width: 1.6, height: 0.5, depth: 2.0, front: 0),
+            object(2, "storage", centerX: 3.7, bottom: 0, centerZ: -0.9, width: 1.0, height: 2.0, depth: 0.6, front: -.pi / 2),
+            object(3, "television", centerX: 0.06, bottom: 1.0, centerZ: -1.5, width: 1.25, height: 0.72, depth: 0.08, front: .pi / 2),
+        ]
+
         // The mock walls describe centrelines; real RoomPlan walls are interior faces.
-        return RoomCaptureSnapshot(sourceRoomPlanID: Self.roomSourceID, surfaces: surfaces, wallReference: .centerline)
+        return RoomCaptureSnapshot(sourceRoomPlanID: Self.roomSourceID, surfaces: surfaces, wallReference: .centerline, objects: objects)
+    }
+
+    /// A recognised object's box. `front` is the plan angle of the box's local x axis (its width),
+    /// the same convention as walls: 0 faces the front south (towards -plan y).
+    fileprivate func object(_ n: Int, _ category: String, centerX: Double, bottom: Double, centerZ: Double,
+                            width: Double, height: Double, depth: Double, front: Double, confidence: CaptureConfidence = .high) -> CapturedObjectSnapshot {
+        CapturedObjectSnapshot(
+            sourceRoomPlanID: UUID(uuidString: String(format: "60000000-0000-0000-0000-%012d", n))!,
+            category: category,
+            transform: .wallTransform(centerX: centerX, centerY: bottom + height * 0.5, centerZ: centerZ, planAngleRadians: front),
+            dimensions: Dimensions3D(x: width, y: height, z: depth),
+            confidence: confidence
+        )
     }
 
     fileprivate func wall(id: UUID, centerX: Double, centerZ: Double, length: Double, angle: Double, height: Double) -> CapturedSurfaceSnapshot {
@@ -154,10 +175,17 @@ public struct MockStructureCaptureProvider {
             confidence: .high
         ))
 
+        // v12.8 a kitchen run along the north wall.
+        let room2Objects = [
+            provider.object(11, "refrigerator", centerX: 7.6, bottom: 0, centerZ: -2.65, width: 0.6, height: 1.85, depth: 0.65, front: 0),
+            provider.object(12, "stove", centerX: 6.9, bottom: 0, centerZ: -2.7, width: 0.6, height: 0.9, depth: 0.6, front: 0),
+            provider.object(13, "sink", centerX: 6.2, bottom: 0, centerZ: -2.7, width: 0.8, height: 0.9, depth: 0.6, front: 0, confidence: .medium),
+        ]
         let room2 = RoomCaptureSnapshot(
             sourceRoomPlanID: Self.room2SourceID,
             surfaces: room2Surfaces,
-            wallReference: .centerline
+            wallReference: .centerline,
+            objects: room2Objects
         )
 
         return StructureCaptureSnapshot(

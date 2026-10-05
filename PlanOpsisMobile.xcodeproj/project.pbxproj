@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7C0691CA01DD2D5E6E178E4 /* PlanOpsisV128ScanObjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */; };
 		D167F7046BB587F8C51AB355 /* PlanOpsisV127IFCDoorAndShapeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */; };
 		E51C504F49DFD9B4031D1827 /* PlanOpsisV127DeviationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */; };
 		7096289D15E071EC3EFD5FF6 /* DeviationReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0721E5EBA2FC4BAB7096289D /* DeviationReportView.swift */; };
@@ -162,6 +163,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV128ScanObjectTests.swift"; sourceTree = SOURCE_ROOT; };
 		313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127IFCDoorAndShapeTests.swift"; sourceTree = SOURCE_ROOT; };
 		169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127DeviationTests.swift"; sourceTree = SOURCE_ROOT; };
 		0721E5EBA2FC4BAB7096289D /* DeviationReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/DeviationReportView.swift"; sourceTree = SOURCE_ROOT; };
@@ -352,6 +354,7 @@
 				B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */,
 				313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */,
 				DE3DFDF2C91490F5BCB0277F /* PlanOpsisV127IFCImportTests.swift */,
+				382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */,
 				169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */,
 				A72159F68B6E8663F1B92542 /* PlanOpsisV127RoomTests.swift */,
 				70E6BFA597AE4840C20B394E /* PlanOpsisV126UnderlayTests.swift */,
@@ -772,6 +775,7 @@
 				FBFE20F6A93F33CEA4AC88F1 /* PlanOpsisV127UnderlayFileTests.swift in Sources */,
 				D167F7046BB587F8C51AB355 /* PlanOpsisV127IFCDoorAndShapeTests.swift in Sources */,
 				BCB0277F9C0B6DE6BC73FF9E /* PlanOpsisV127IFCImportTests.swift in Sources */,
+				E7C0691CA01DD2D5E6E178E4 /* PlanOpsisV128ScanObjectTests.swift in Sources */,
 				E51C504F49DFD9B4031D1827 /* PlanOpsisV127DeviationTests.swift in Sources */,
 				F1B92542123F052F714F84A1 /* PlanOpsisV127RoomTests.swift in Sources */,
 				C20B394E1ABC772631EC2794 /* PlanOpsisV126UnderlayTests.swift in Sources */,

@@ -480,16 +480,28 @@ struct PlanOpsisRootView: View {
                         Button("Column") { store.beginComponentCreation(.column) }
                         Button("Beam") { store.beginComponentCreation(.beam) }
                     }
+                    // v12.8 the full object library, the same kinds a scan recognises.
                     Section("Furniture") {
-                            Button("Bed") { store.beginComponentCreation(.bed) }
-                            Button("Table") { store.beginComponentCreation(.table) }
-                            Button("Chair") { store.beginComponentCreation(.chair) }
-                            Button("Sofa") { store.beginComponentCreation(.sofa) }
+                        ForEach(PlanOpsisComponent.Kind.allCases.filter { $0.group == .furniture }, id: \.self) { kind in
+                            Button(kind.displayName) { store.beginComponentCreation(kind) }
                         }
-                        Section("Sanitary") {
-                            Button("WC") { store.beginComponentCreation(.wc) }
-                            Button("Sink") { store.beginComponentCreation(.sink) }
+                    }
+                    Section("Sanitary") {
+                        ForEach(PlanOpsisComponent.Kind.allCases.filter { $0.group == .sanitary }, id: \.self) { kind in
+                            Button(kind.displayName) { store.beginComponentCreation(kind) }
                         }
+                    }
+                    Menu("Appliances") {
+                        ForEach(PlanOpsisComponent.Kind.allCases.filter { $0.group == .appliance }, id: \.self) { kind in
+                            Button(kind.displayName) { store.beginComponentCreation(kind) }
+                        }
+                    }
+                    Section("Building") {
+                        Button("Stairs") { store.beginComponentCreation(.stairs) }
+                        if store.scannedObjectCount > 0 {
+                            Button("Remove \(store.scannedObjectCount) scanned object(s)", role: .destructive) { store.removeScannedObjects() }
+                        }
+                    }
                     Section("Documentation") {
                         Toggle("Dimensions", isOn: $store.showDimensions)
                         Toggle("Opening widths", isOn: $store.showOpeningWidths)

@@ -14,6 +14,9 @@ public enum ArchitecturalDraftingConvention {
         case beam = "IfcBeam"
         case furnishing = "IfcFurnishingElement"
         case sanitaryTerminal = "IfcSanitaryTerminal"
+        /// v12.8 kitchen and laundry appliances and televisions.
+        case appliance = "IfcElectricAppliance"
+        case stair = "IfcStair"
     }
 
     public enum Layer: String, CaseIterable, Sendable {
@@ -28,6 +31,9 @@ public enum ArchitecturalDraftingConvention {
         case beam = "S-BEAM"
         case furnishing = "A-FURN"
         case sanitary = "P-FIXT"
+        /// v12.8 appliances (A-EQPM) and stairs (A-FLOR-STRS).
+        case appliance = "A-EQPM"
+        case stair = "A-FLOR-STRS"
 
         /// Drawing and annotation layers.
         case dimensions = "A-DIMS"
@@ -68,6 +74,8 @@ public enum ArchitecturalDraftingConvention {
         case .beam: return .beam
         case .furnishing: return .furnishing
         case .sanitaryTerminal: return .sanitary
+        case .appliance: return .appliance
+        case .stair: return .stair
         }
     }
 
@@ -78,7 +86,8 @@ public enum ArchitecturalDraftingConvention {
         case .door, .window, .opening: return 0.25
         case .space: return 0.13
         case .column, .beam: return 0.35
-        case .furnishing, .sanitary: return 0.18
+        case .furnishing, .sanitary, .appliance: return 0.18
+        case .stair: return 0.25
         case .doorSwing, .dimensions, .roomAnnotation, .tags: return 0.13
         case .wallCenter, .annotation, .metadata: return 0.09
         }
@@ -156,6 +165,8 @@ public extension ArchitecturalDraftingConvention.Layer {
         case .beam: return "IfcBeam"
         case .furnishing: return "IfcFurnishingElement"
         case .sanitary: return "IfcSanitaryTerminal"
+        case .appliance: return "IfcElectricAppliance"
+        case .stair: return "IfcStair"
         case .dimensions: return "IfcAnnotation-Dimensions"
         case .annotation, .roomAnnotation: return "IfcAnnotation"
         case .tags: return "IfcAnnotation-Tags"
@@ -185,11 +196,12 @@ public extension ArchitecturalDraftingConvention.Layer {
 public extension ArchitecturalDraftingConvention {
     /// IFC class of a component kind (the same classes the IFC4 export writes).
     static func ifcClass(for kind: PlanOpsisComponent.Kind) -> IFCClass {
-        switch kind {
-        case .column: return .column
-        case .beam: return .beam
-        case .bed, .table, .chair, .sofa: return .furnishing
-        case .wc, .sink: return .sanitaryTerminal
+        switch kind.group {
+        case .structure: return kind == .column ? .column : .beam
+        case .furniture: return .furnishing
+        case .sanitary: return .sanitaryTerminal
+        case .appliance: return .appliance
+        case .building: return .stair
         }
     }
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## 12.8 — Scanned furniture, fixtures and appliances in the design
+
+- **The scan's objects come in:** everything RoomPlan recognises becomes an editable interior object
+  in the room it was scanned in. That covers bed, table, chair, sofa, storage, fireplace, toilet,
+  sink, bathtub, refrigerator, stove, oven, dishwasher, washer/dryer, television and stairs.
+  - Each object keeps the scanned position, width, depth and height, and turns with the scan.
+  - Objects that don't stand on the floor keep their height above it (a TV on the wall, a wall
+    cabinet).
+  - Backs face the wall, as the plan symbols draw them.
+  - The import message counts the objects placed. Categories PlanOpsis does not know yet are noted
+    in the review and kept in the capture evidence.
+- **A larger object library:** the add menu now has storage, fireplace, bathtub, appliances
+  (refrigerator, stove, oven, dishwasher, washer/dryer, television) and stairs. Each has its own
+  plan symbol.
+- **Fixing misreads:** for any object, the inspector can change its type (RoomPlan may call a
+  dresser "storage") and turn it front to back. Objects from the scan show their scan confidence.
+  **Remove scanned objects** clears them all as one undoable step; objects placed by hand stay.
+- **DXF:**
+  - Furniture goes on IfcFurnishingElement / A-FURN and fixtures on IfcSanitaryTerminal / P-FIXT.
+  - Appliances go on a new IfcElectricAppliance / A-EQPM layer, and stairs on IfcStair /
+    A-FLOR-STRS.
+  - Every kind round-trips.
+- **IFC:**
+  - Appliances are IfcElectricAppliance (FRIDGE_FREEZER, ELECTRICCOOKER, DISHWASHER,
+    WASHINGMACHINE).
+  - The television is IfcAudioVisualAppliance (TV), the bathtub is IfcSanitaryTerminal (BATH) and
+    stairs are IfcStair.
+  - Storage and fireplaces are IfcFurnishingElement.
+- **3D view:** appliances and stairs have their own colours.
+
 ## 12.7 — From an architect's drawing to rooms, and the survey checked against it
 
 ### Rooms from walls

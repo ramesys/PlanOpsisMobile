@@ -225,7 +225,19 @@ enum RoomPlanSnapshotNormalizer {
         surfaces.append(contentsOf: room.doors.map { surface($0, category: .door) })
         surfaces.append(contentsOf: room.windows.map { surface($0, category: .window) })
         surfaces.append(contentsOf: room.openings.map { surface($0, category: .opening) })
-        return RoomCaptureSnapshot(sourceRoomPlanID: room.identifier, surfaces: surfaces, wallReference: .interiorFace)
+        // v12.8 recognised furniture, fixtures, appliances and stairs.
+        let objects = room.objects.map { object in
+            CapturedObjectSnapshot(
+                sourceRoomPlanID: object.identifier,
+                parentIdentifier: object.parentIdentifier,
+                // The case name ("washerDryer"), so categories added in later iOS releases survive as text.
+                category: String(describing: object.category),
+                transform: transform(object.transform),
+                dimensions: Dimensions3D(x: Double(object.dimensions.x), y: Double(object.dimensions.y), z: Double(object.dimensions.z)),
+                confidence: confidence(object.confidence)
+            )
+        }
+        return RoomCaptureSnapshot(sourceRoomPlanID: room.identifier, surfaces: surfaces, wallReference: .interiorFace, objects: objects)
     }
 
     static func snapshot(from structure: CapturedStructure) -> StructureCaptureSnapshot {

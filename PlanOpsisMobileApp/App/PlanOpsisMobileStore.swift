@@ -1885,10 +1885,13 @@ final class PlanOpsisMobileStore: ObservableObject {
         setSelection(first.map { [$0] } ?? [], primary: first)
         regenerate()
         let adjacencyCount = geometry.topology.adjacencies.count
+        // v12.8 recognised furniture, fixtures and appliances come in as editable objects.
+        let objectCount = result.project.rooms.reduce(0) { $0 + $1.components.count }
+        let objectNote = objectCount > 0 ? " \(objectCount) recognised object(s) placed." : ""
         statusMessage = (diagnostics.isEmpty
             ? "Imported \(result.project.rooms.count) semantic room(s); derived \(adjacencyCount) room adjacency relation(s)."
             : "Imported \(result.project.rooms.count) room(s) with \(diagnostics.count) capture diagnostic(s). Review Inspector.")
-            + evidenceNote + keptNote
+            + objectNote + evidenceNote + keptNote
     }
 
     func importPLYReconstruction(_ reconstruction: PLYReconstructionResult) {
@@ -2372,6 +2375,28 @@ final class PlanOpsisMobileStore: ObservableObject {
     func setSelectedComponentHeight(_ value: Double) { updateSelectedComponent { $0.height = max(20, value) } }
     func setSelectedComponentElevation(_ value: Double) { updateSelectedComponent { $0.elevationMM = max(0, value) } }
     func setSelectedComponentRotationDegrees(_ value: Double) { updateSelectedComponent { $0.rotationRadians = value * .pi / 180 } }
+    /// v12.8 re-types an object (RoomPlan sometimes calls a dresser "storage" or a desk a "table").
+    func setSelectedComponentKind(_ kind: PlanOpsisComponent.Kind) { updateSelectedComponent { $0.kind = kind } }
+    /// v12.8 swaps front and back, for an object whose front faces the wall.
+    func turnSelectedComponentAround() {
+        updateSelectedComponent { $0.rotationRadians = ($0.rotationRadians + .pi).truncatingRemainder(dividingBy: 2 * .pi) }
+    }
+
+    /// v12.8 objects RoomPlan recognised in the project.
+    var scannedObjectCount: Int {
+        project?.rooms.reduce(0) { $0 + $1.components.filter { $0.sourceRoomPlanID != nil }.count } ?? 0
+    }
+
+    /// v12.8 removes every object the scan added (hand-placed objects stay), as one undoable edit.
+    func removeScannedObjects() {
+        guard var next = project else { return }
+        let count = scannedObjectCount
+        guard count > 0 else { return }
+        for index in next.rooms.indices { next.rooms[index].components.removeAll { $0.sourceRoomPlanID != nil } }
+        if commitSemanticProject(next, label: "Remove scanned objects", selectionAfter: [], primaryAfter: nil) {
+            statusMessage = "Removed \(count) scanned object(s); objects placed by hand stay."
+        }
+    }
 
     private func updateSelectedComponent(_ mutate: (inout PlanOpsisComponent) -> Void) {
         guard let selectedID, var next = project else { return }
@@ -2912,6 +2937,10 @@ final class PlanOpsisMobileStore: ObservableObject {
             return "Opening \(short(sourceID)) extended below the floor or above its host wall and was clipped vertically."
         case .openingMostlyOutsideHost(let sourceID, _):
             return "Opening \(short(sourceID)) lay mostly outside its host wall and was not imported."
+        case .unsupportedObject(let sourceID, let category):
+            return "Object \(short(sourceID)) (\(category)) has no PlanOpsis kind and was not added."
+        case .invalidObjectGeometry(let sourceID):
+            return "Object \(short(sourceID)) had an empty box and was skipped."
         }
     }
 
