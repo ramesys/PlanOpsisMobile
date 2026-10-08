@@ -1,5 +1,25 @@
 # Changelog
 
+## 12.9 — Plan from a photo
+
+- **Photograph a paper plan:** in Drafting aids → Underlay, **Plan from photo** opens the document
+  camera (**Scan with camera**) or the photo library (**Choose photo**). The empty project screen
+  offers the same. A blank project is started when none is open.
+  - A sheet shot at an angle is found and squared up; the document camera does this as it scans.
+  - Uneven light and shadows are evened out, and a slightly turned sheet is straightened before the
+    lines are read, then drawn back over the photo as taken.
+- **Walls and lines on PlanOpsis semantic layers:** thick strokes are walls on IfcWall / A-WALL,
+  thin strokes (dimensions, fixtures, hatching edges) lines on IfcAnnotation / A-ANNO, and the text
+  read from the photo goes on A-ANNO-ROOM. The names follow the DXF layer naming setting, so the
+  result reads like every other PlanOpsis DXF. Lettering and filled areas are not taken for walls.
+- **Calibrate, then build:** a photo has no printed scale, so the underlay opens asking for two
+  points and a known distance. **Import all walls** then turns the wall strokes into walls, closed
+  loops into rooms, and names the rooms from the text read inside them. From there the plan exports
+  to DXF and IFC as usual.
+- **Export lines as DXF:** the photo's (or a PDF's or a drawing's) line work straight to an R12 DXF in
+  millimetres, placed and calibrated as it shows, on the semantic layers in the chosen naming.
+- The straightened photo is saved with the project and read again when it reopens.
+
 ## 12.8 — Scanned furniture, fixtures and appliances in the design
 
 - **The scan's objects come in:** everything RoomPlan recognises becomes an editable interior object

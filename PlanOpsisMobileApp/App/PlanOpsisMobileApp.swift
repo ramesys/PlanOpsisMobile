@@ -2,6 +2,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
+import VisionKit
 
 @main
 struct PlanOpsisMobileApp: App {
@@ -112,6 +113,8 @@ struct PlanOpsisRootView: View {
     @State private var showingDXFReview = false
     @State private var showingProjects = false
     @State private var showingPDFUnderlayImporter = false
+    @State private var showingPhotoPicker = false
+    @State private var showingDocumentCamera = false
     @State private var exportDocument = ArchitecturalExchangeTextDocument()
     @State private var exportFormat: ArchitecturalExchangeFormat = .dxf
     /// v12.4 file name for the next export; nil uses the format's default name.
@@ -176,6 +179,8 @@ struct PlanOpsisRootView: View {
                 .task {
                     // v12.7 PDF pages render with PDFKit, which the core does not link.
                     store.pdfPageLoader = { data, name, page in try PDFUnderlayLoader.load(data: data, name: name, page: page) }
+                    // v12.9 photos of plans are read with Vision.
+                    store.photoPlanLoader = { data, name, straighten in try PhotoPlanLoader.load(data: data, name: name, straighten: straighten) }
                     store.refreshLibrary()
                 }
                 .fileImporter(isPresented: $showingDXFImporter, allowedContentTypes: [.planOpsisDXF, .plainText]) { result in
@@ -331,7 +336,8 @@ struct PlanOpsisRootView: View {
                 )
                 .background { PlanKeyboardShortcuts(store: store) }
                 // On the plan, not the root: one view hosting several file importers shows only one.
-                .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, mode: $mode))
+                .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, showingPhotoPicker: $showingPhotoPicker,
+                                                showingDocumentCamera: $showingDocumentCamera, mode: $mode))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
             } else {
@@ -641,18 +647,33 @@ struct PlanOpsisRootView: View {
                                 Button("Reset placement") { store.resetUnderlayPlacement() }
                             }
                         }
-                        if store.rasterUnderlay != nil {
-                            Picker("PDF drawing scale", selection: Binding(get: { store.rasterUnderlay?.paperScale ?? 100 }, set: { store.setRasterPaperScale($0) })) {
-                                ForEach([20.0, 50, 100, 200, 500], id: \.self) { Text("1:\(Int($0))").tag($0) }
+                        if let raster = store.rasterUnderlay {
+                            // A photo has no printed scale: it is calibrated instead.
+                            if !raster.isPhoto {
+                                Picker("PDF drawing scale", selection: Binding(get: { store.rasterUnderlay?.paperScale ?? 100 }, set: { store.setRasterPaperScale($0) })) {
+                                    ForEach([20.0, 50, 100, 200, 500], id: \.self) { Text("1:\(Int($0))").tag($0) }
+                                }
                             }
                             if store.rasterPageCount > 1 {
                                 Picker("PDF page", selection: Binding(get: { store.rasterPageIndex }, set: { store.setRasterPage($0) })) {
                                     ForEach(0..<store.rasterPageCount, id: \.self) { Text("Page \($0 + 1)").tag($0) }
                                 }
                             }
-                            Button("Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
+                            Button(raster.isPhoto ? "Remove plan photo" : "Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
                         }
                         Button { showingPDFUnderlayImporter = true } label: { Label("PDF underlay\u{2026}", systemImage: "doc.richtext") }
+                        // v12.9 a photo of a paper plan, read into walls and lines.
+                        Menu {
+                            if VNDocumentCameraViewController.isSupported {
+                                Button { showingDocumentCamera = true } label: { Label("Scan with camera", systemImage: "doc.viewfinder") }
+                            }
+                            Button { showingPhotoPicker = true } label: { Label("Choose photo", systemImage: "photo") }
+                        } label: {
+                            Label("Plan from photo", systemImage: "camera.viewfinder")
+                        }
+                        if store.canExportUnderlayLines {
+                            Button { prepareUnderlayLinesExport() } label: { Label("Export lines as DXF", systemImage: "square.and.arrow.up") }
+                        }
                     }
                     if store.showUnderlay || store.deviation != nil {
                         // v12.7 survey against the drawing.
@@ -669,7 +690,7 @@ struct PlanOpsisRootView: View {
                         Section("Walls from the drawing") {
                             Button { store.beginTracingWalls() } label: { Label("Trace walls", systemImage: "hand.tap") }
                             Button { store.importWallsFromDrawing() } label: { Label("Import all walls", systemImage: "square.stack.3d.down.right") }
-                                .disabled(store.drawingWallLayers.isEmpty || store.rasterUnderlay != nil)
+                                .disabled(!store.canImportWalls)
                         }
                     }
                 } label: {
@@ -858,6 +879,15 @@ struct PlanOpsisRootView: View {
         showingExporter = true
     }
 
+    /// v12.9 the underlay's line work (a photo's, a PDF's or a drawing's) as a DXF in millimetres.
+    private func prepareUnderlayLinesExport() {
+        guard let text = store.exportUnderlayLinesDXF(), !text.isEmpty else { return }
+        exportFormat = .dxf
+        exportFilename = "\(store.exportBaseName) - lines.dxf"
+        exportDocument = ArchitecturalExchangeTextDocument(text: text)
+        showingExporter = true
+    }
+
     private func prepareSchedulesExport() {
         guard let data = store.exportSchedulesCSV() else { return }
         exportFormat = .csv
@@ -883,7 +913,7 @@ struct PlanOpsisRootView: View {
         ContentUnavailableView {
             Label("No project", systemImage: "square.dashed")
         } description: {
-            Text("Scan a room, reconstruct a PLY, import a DXF, or open a saved project from Projects in the \u{2026} menu.")
+            Text("Scan a room, reconstruct a PLY, import a DXF, photograph a paper plan, or open a saved project from Projects in the \u{2026} menu.")
         } actions: {
             // v12.6 start from an architect's drawing.
             if let drawing = store.openedDrawing, !store.drawingWallLayers.isEmpty {
@@ -897,8 +927,14 @@ struct PlanOpsisRootView: View {
                 store.startBlankProject()
                 mode = .plan
             }
+            // v12.9 start from a photo of a paper plan.
+            if VNDocumentCameraViewController.isSupported {
+                Button("Scan a paper plan") { showingDocumentCamera = true }
+            }
+            Button("Plan from a photo") { showingPhotoPicker = true }
         }
-        .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, mode: $mode))
+        .modifier(UnderlayPresentations(store: store, showingPDFImporter: $showingPDFUnderlayImporter, showingPhotoPicker: $showingPhotoPicker,
+                                                showingDocumentCamera: $showingDocumentCamera, mode: $mode))
     }
 }
 
