@@ -203,7 +203,7 @@ public struct UnderlayWallTracer: Sendable {
                 if best == nil || separation < best!.separation { best = (j, separation) }
             }
             guard let j = best?.j, paired.insert([min(i, j), max(i, j)]).inserted,
-                  let wall = wall(between: a, and: segments[j]) else { continue }
+                  let wall = wall(between: a, and: segments[j]), wall.length >= wall.thickness else { continue }
             // A long face pairs with several shorter ones; keep each wall once.
             if walls.contains(where: { Self.duplicates($0, wall) }) { continue }
             walls.append(wall)

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9F2C599496E556FD35F207B0 /* PhotoPlanLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */; };
+		D1876249F08E23A9CE4AD2FB /* CADDocumentDXFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D706245B942965B7D1876249 /* CADDocumentDXFWriter.swift */; };
+		FC80EBF2B58671BD6E30DE1A /* PlanOpsisV129PhotoPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */; };
+		0B081E603B7B68410983A7E4 /* PlanPhotoVectorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107601F08EEAB0060B081E60 /* PlanPhotoVectorizer.swift */; };
 		E7C0691CA01DD2D5E6E178E4 /* PlanOpsisV128ScanObjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */; };
 		D167F7046BB587F8C51AB355 /* PlanOpsisV127IFCDoorAndShapeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */; };
 		E51C504F49DFD9B4031D1827 /* PlanOpsisV127DeviationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */; };
@@ -163,6 +167,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PhotoPlanLoader.swift"; sourceTree = SOURCE_ROOT; };
+		D706245B942965B7D1876249 /* CADDocumentDXFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/DXF/CADDocumentDXFWriter.swift"; sourceTree = SOURCE_ROOT; };
+		82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV129PhotoPlanTests.swift"; sourceTree = SOURCE_ROOT; };
+		107601F08EEAB0060B081E60 /* PlanPhotoVectorizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/PlanPhotoVectorizer.swift"; sourceTree = SOURCE_ROOT; };
 		382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV128ScanObjectTests.swift"; sourceTree = SOURCE_ROOT; };
 		313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127IFCDoorAndShapeTests.swift"; sourceTree = SOURCE_ROOT; };
 		169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV127DeviationTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -354,6 +362,7 @@
 				B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */,
 				313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */,
 				DE3DFDF2C91490F5BCB0277F /* PlanOpsisV127IFCImportTests.swift */,
+				82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */,
 				382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */,
 				169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */,
 				A72159F68B6E8663F1B92542 /* PlanOpsisV127RoomTests.swift */,
@@ -399,6 +408,7 @@
 			children = (
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
 				F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */,
+				3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */,
 				E2B4902FAD7A27954C3FEDAD /* PDFUnderlayLoader.swift */,
 				0E782DE678DC5E06B3AD2BAE /* UnderlayPresentations.swift */,
 				0721E5EBA2FC4BAB7096289D /* DeviationReportView.swift */,
@@ -446,6 +456,7 @@
 				9ECF5A0BCF44BF2332B68172 /* SurveyDXFReconciliationEngine.swift */,
 				1A52D44A3CF1E818AEE1F08D /* SurveyExchangeManifest.swift */,
 				574A60E0285B516DF0F8A951 /* SurveyDXFDocument.swift */,
+				D706245B942965B7D1876249 /* CADDocumentDXFWriter.swift */,
 				510A6279FDE3EC15E62B0697 /* EditableDXFWriter.swift */,
 				B2A06F331B51443F35EB79EB /* EditableDXFReader.swift */,
 				6E49C5563219667F0748BF3B /* SurveyDimensionBuilder.swift */,
@@ -494,6 +505,7 @@
 				F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */,
 				D0D589FA234E905733113569 /* CADMeasurement.swift */,
 				FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */,
+				107601F08EEAB0060B081E60 /* PlanPhotoVectorizer.swift */,
 				6AD3F78CAF5A285DC244C339 /* PDFVectorExtractor.swift */,
 				0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */,
 				72B80ADFFD9DCD6D94C25B56 /* UnderlayWallTracer.swift */,
@@ -775,6 +787,7 @@
 				FBFE20F6A93F33CEA4AC88F1 /* PlanOpsisV127UnderlayFileTests.swift in Sources */,
 				D167F7046BB587F8C51AB355 /* PlanOpsisV127IFCDoorAndShapeTests.swift in Sources */,
 				BCB0277F9C0B6DE6BC73FF9E /* PlanOpsisV127IFCImportTests.swift in Sources */,
+				FC80EBF2B58671BD6E30DE1A /* PlanOpsisV129PhotoPlanTests.swift in Sources */,
 				E7C0691CA01DD2D5E6E178E4 /* PlanOpsisV128ScanObjectTests.swift in Sources */,
 				E51C504F49DFD9B4031D1827 /* PlanOpsisV127DeviationTests.swift in Sources */,
 				F1B92542123F052F714F84A1 /* PlanOpsisV127RoomTests.swift in Sources */,
@@ -811,6 +824,7 @@
 				EBA631692022D703ED8D8771 /* SurveyDXFReconciliationEngine.swift */,
 				FE513B6D1AAFCC408908D4D6 /* SurveyExchangeManifest.swift */,
 				DFD69C04C8125BE31D318710 /* SurveyDXFDocument.swift */,
+				D1876249F08E23A9CE4AD2FB /* CADDocumentDXFWriter.swift in Sources */,
 				90B9D8AEB387D7240082F133 /* EditableDXFWriter.swift */,
 				4630D0CE3CE92D779074B581 /* EditableDXFReader.swift */,
 				3A6AB2696316EAC9A36A127B /* SurveyDimensionBuilder.swift */,
@@ -858,6 +872,7 @@
 				8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */,
 				331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */,
 				01AFB708D544BB83BF84537D /* CADScene.swift in Sources */,
+				0B081E603B7B68410983A7E4 /* PlanPhotoVectorizer.swift in Sources */,
 				C244C339F70E427B6EA4CDA1 /* PDFVectorExtractor.swift in Sources */,
 				9ABACDB3672C0CEDD9FC79F9 /* UnderlayAlignment.swift in Sources */,
 				94C25B56F51372E6523477A9 /* UnderlayWallTracer.swift in Sources */,
@@ -884,6 +899,7 @@
 				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
 				CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */,
+				9F2C599496E556FD35F207B0 /* PhotoPlanLoader.swift in Sources */,
 				4C3FEDADB5B59E60E49FACA2 /* PDFUnderlayLoader.swift in Sources */,
 				B3AD2BAEEC2D921E350FE302 /* UnderlayPresentations.swift in Sources */,
 				7096289D15E071EC3EFD5FF6 /* DeviationReportView.swift in Sources */,
@@ -933,7 +949,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = P8GCN87B4N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces, and the camera to photograph plans.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1109,7 +1125,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = P8GCN87B4N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "PlanOpsis uses the camera and LiDAR to capture architectural room surfaces, and the camera to photograph plans.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

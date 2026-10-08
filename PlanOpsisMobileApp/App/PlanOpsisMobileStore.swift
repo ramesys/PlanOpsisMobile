@@ -88,6 +88,13 @@ final class PlanOpsisMobileStore: ObservableObject {
     var pdfPageLoader: ((Data, String, Int) throws -> PDFUnderlayPage)? {
         didSet { if project?.underlay?.format == .pdf, rasterUnderlay == nil { restoreUnderlay() } }
     }
+    /// v12.9 straightens (when the flag is set), reads and vectorises a photo of a plan; injected by the
+    /// app (Vision, UIKit).
+    var photoPlanLoader: ((Data, String, Bool) throws -> PDFUnderlayPage)? {
+        didSet { if project?.underlay?.format == .image, rasterUnderlay == nil { restoreUnderlay() } }
+    }
+    /// What the raster underlay was made from, for saving it with the project.
+    private var rasterFormat: ProjectUnderlay.Format = .pdf
     /// v12.6 two-point alignment or scale calibration in progress.
     @Published private(set) var underlayAlignment: UnderlayAlignmentSession?
     /// v12.6 alignment whose scale differs from the drawing's units, waiting for the user's choice.
@@ -778,6 +785,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// "Drawing.dxf" or "Sheet.pdf · 1:100".
     var underlayTitle: String? {
         if let rasterUnderlay {
+            if rasterUnderlay.isPhoto { return "\(rasterUnderlay.name) · " + (rasterPlacement.scale == 1 ? "not calibrated" : "calibrated") }
             let scale = rasterUnderlay.paperScale * rasterPlacement.scale
             return "\(rasterUnderlay.name) · 1:\(Self.scaleText(scale))"
         }
@@ -961,10 +969,34 @@ final class PlanOpsisMobileStore: ObservableObject {
         switch result {
         case let .success(page):
             rasterSource = (data, name)
+            rasterFormat = .pdf
             setRasterUnderlay(page)
             return true
         case let .failure(error):
             statusMessage = "PDF underlay failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// v12.9 turns a photo of a plan into an underlay: straightened, its walls and lines found, its text
+    /// read. Calibration starts straight away; then Import all walls makes the walls and rooms. A blank
+    /// project is started when none is open. A document camera scan is already squared up, so it is not
+    /// straightened again.
+    @discardableResult
+    func openPhotoPlan(data: Data, name: String, straighten: Bool = true) async -> Bool {
+        guard let loader = photoPlanLoader else { return false }
+        statusMessage = "Reading the plan in \(name)\u{2026}"
+        let result = await Task.detached(priority: .userInitiated) { Result { try loader(data, name, straighten) } }.value
+        switch result {
+        case let .success(page):
+            if project == nil { startBlankProject() }
+            // The straightened photo is what is kept with the project.
+            rasterSource = (page.raster.imageData, name + ".jpg")
+            rasterFormat = .image
+            setRasterUnderlay(page)
+            return true
+        case let .failure(error):
+            statusMessage = "The photo could not be read: \(error.localizedDescription)"
             return false
         }
     }
@@ -980,6 +1012,13 @@ final class PlanOpsisMobileStore: ObservableObject {
         isMovingUnderlay = false
         centreUnderlayOnPlan()
         beginUnderlayAlignment(.calibrate)
+        if page.raster.isPhoto {
+            let wallLayers = Set(page.vectors?.layers.map(\.name).filter(UnderlayWallTracer.isWallLayer) ?? [])
+            let faces = page.vectors?.entities.filter { wallLayers.contains($0.layer) }.count ?? 0
+            let lines = (page.vectors?.entities.count ?? 0) - faces
+            statusMessage = "\(page.raster.name): \(faces / 2) wall stroke(s) and \(lines) other line(s) found. Calibrate: tap both ends of a dimension you know, then enter it."
+            return
+        }
         let lines = page.vectors.map { " \($0.entities.count) lines to snap to and trace." } ?? " A scanned page: no lines to snap to."
         statusMessage = "\(page.raster.name) placed at 1:\(Self.scaleText(page.raster.paperScale)).\(lines) Calibrate: tap two points a known distance apart."
     }
@@ -1115,7 +1154,7 @@ final class PlanOpsisMobileStore: ObservableObject {
         let format: ProjectUnderlay.Format
         if rasterUnderlay != nil, let raster = rasterSource {
             source = raster
-            format = .pdf
+            format = rasterFormat
         } else if openedDrawing != nil, let drawing = openedDrawingData {
             source = drawing
             format = ProjectUnderlay.format(forFileName: drawing.name)
@@ -1138,8 +1177,8 @@ final class PlanOpsisMobileStore: ObservableObject {
         }
         next.underlay = ProjectUnderlay(
             format: format, asset: reference, fileName: source.name, placement: activeUnderlayPlacement,
-            paperScale: format == .pdf ? rasterUnderlay?.paperScale : nil, pageIndex: format == .pdf ? rasterPageIndex : nil,
-            hiddenLayers: format == .pdf ? nil : openedDrawing.map { hiddenLayers(for: $0).sorted() }, isVisible: showUnderlay)
+            paperScale: rasterUnderlay != nil ? rasterUnderlay?.paperScale : nil, pageIndex: format == .pdf ? rasterPageIndex : nil,
+            hiddenLayers: rasterUnderlay != nil ? nil : openedDrawing.map { hiddenLayers(for: $0).sorted() }, isVisible: showUnderlay)
         guard next != project else { return }
         project = next
         if project != lastSavedProject { scheduleAutosave() }
@@ -1173,13 +1212,23 @@ final class PlanOpsisMobileStore: ObservableObject {
         underlayAssetCache = (project.id, saved.fileName, data.count, saved.asset)
         let projectID = project.id
         switch saved.format {
-        case .pdf:
-            guard let loader = pdfPageLoader else { return }
+        case .pdf, .image:
+            let load: ((Data) throws -> PDFUnderlayPage)?
+            if saved.format == .pdf {
+                load = pdfPageLoader.map { loader in { try loader($0, saved.fileName, saved.pageIndex ?? 0) } }
+            } else {
+                // A photo is kept straightened, so it is not cut again (a border could pass for the sheet);
+                // its name keeps the extension the format is read from.
+                let name = (saved.fileName as NSString).deletingPathExtension
+                load = photoPlanLoader.map { loader in { try loader($0, name, false) } }
+            }
+            guard let load else { return }
             Task {
-                let result = await Task.detached(priority: .userInitiated) { Result { try loader(data, saved.fileName, saved.pageIndex ?? 0) } }.value
+                let result = await Task.detached(priority: .userInitiated) { Result { try load(data) } }.value
                 guard self.project?.id == projectID, case let .success(page) = result else { return }
                 self.isRestoringUnderlay = true
                 defer { self.isRestoringUnderlay = false }
+                self.rasterFormat = saved.format
                 var raster = page.raster
                 raster.paperScale = saved.paperScale ?? raster.paperScale
                 self.rasterSource = (data, saved.fileName)
@@ -1332,11 +1381,83 @@ final class PlanOpsisMobileStore: ObservableObject {
         openedDrawing?.scene.layers.map(\.id).filter(UnderlayWallTracer.isWallLayer) ?? []
     }
 
+    /// v12.9 whether Import all walls has something to read: a DXF or IFC with wall layers, or a photo
+    /// or PDF underlay with line work.
+    var canImportWalls: Bool {
+        rasterUnderlay != nil ? rasterVectors.map { !$0.entities.isEmpty } ?? false : !drawingWallLayers.isEmpty
+    }
+
+    /// v12.9 whether the underlay has line work to write as a DXF.
+    var canExportUnderlayLines: Bool {
+        rasterUnderlay != nil ? rasterVectors.map { !$0.entities.isEmpty } ?? false : openedDrawing != nil
+    }
+
+    /// v12.9 the underlay's line work as a DXF in plan millimetres (placed and calibrated as it shows),
+    /// on PlanOpsis's semantic layers in the chosen naming: the direct photo- or PDF-to-DXF conversion.
+    func exportUnderlayLinesDXF() -> String? {
+        let document: CADDocument
+        let transform: CADAffine
+        if let rasterUnderlay {
+            guard let vectors = rasterVectors, !vectors.entities.isEmpty else {
+                statusMessage = "The underlay has no line work to export."
+                return nil
+            }
+            document = vectors
+            transform = rasterPlacement.transform(unitScale: rasterUnderlay.paperScale)
+        } else if let drawing = openedDrawing {
+            document = drawing.document
+            transform = underlayPlacement.transform(unitScale: Self.millimetresPerUnit(drawing))
+        } else {
+            statusMessage = "There are no underlay lines to export."
+            return nil
+        }
+        statusMessage = rasterUnderlay?.isPhoto == true && rasterPlacement.scale == 1
+            ? "Exported the photo's lines before calibration: sizes follow the assumed scale."
+            : "Exported the underlay's lines in millimetres."
+        return CADDocumentDXFWriter().write(document, transform: transform, layerNaming: dxfLayerNaming)
+    }
+
+    /// v12.9 walls from a photo's or PDF's line work: thick strokes and double lines become walls, closed
+    /// loops rooms, named from the text read inside them. Needs the scale calibrated first.
+    private func importWallsFromRasterLines() {
+        guard var next = project, let raster = rasterUnderlay, let scene = underlayScene else {
+            statusMessage = "This underlay has no lines to read walls from. Trace or draw them instead."
+            return
+        }
+        let wallLayers = Set(scene.layers.map(\.id).filter(UnderlayWallTracer.isWallLayer))
+        let traced = UnderlayWallTracer(scene: scene, layers: wallLayers.isEmpty ? nil : { wallLayers.contains($0) }).traceAll()
+        guard !traced.walls.isEmpty else {
+            statusMessage = raster.isPhoto && rasterPlacement.scale == 1
+                ? "No walls at the assumed scale. Calibrate first (tap a known dimension) so walls read 50–700 mm thick."
+                : "No walls found: no thick strokes or double lines 50–700 mm apart."
+            return
+        }
+        let room = traced.makeRoom()
+        let split = RoomLoopDetector().split(room)
+        let rooms = split.allRooms.isEmpty ? [room] : split.allRooms
+        let names = RoomLoopDetector.names(for: split.rooms.map(\.loop), texts: scene.texts())
+        // A blank plan's empty room gives way to the rooms found.
+        next.rooms.removeAll { $0.walls.isEmpty && $0.openings.isEmpty && $0.components.isEmpty }
+        next.rooms += rooms
+        for (entry, name) in zip(split.rooms, names) {
+            if let name { next.survey.roomNames[entry.room.id] = name }
+        }
+        let wallIDs = Set(rooms.flatMap { $0.walls.map(\.id) })
+        if commitSemanticProject(next, label: "Import walls", selectionAfter: wallIDs, primaryAfter: rooms.first?.walls.first?.id) {
+            focusedRoomID = nil
+            statusMessage = "Imported \(traced.walls.count) wall(s) in \(split.rooms.count) room(s) from \(raster.name). Doors and windows show as gaps: add them on the walls."
+        }
+    }
+
     /// Converts every wall drawn on the opened DXF's wall layers into model walls, with doors and windows
     /// where a swing or window symbol sits in a gap. Starts a project when none is open; otherwise adds
     /// one room holding the imported walls. The underlay placement is used, so walls land where the
     /// drawing shows.
     func importWallsFromDrawing() {
+        if rasterUnderlay != nil {
+            importWallsFromRasterLines()
+            return
+        }
         guard let drawing = openedDrawing else {
             statusMessage = "Open a DXF or IFC in the DXF tab first."
             return

@@ -166,9 +166,12 @@ public struct RasterUnderlay: Identifiable, Hashable, Sendable {
     public var imageData: Data
     /// Drawing scale denominator: 100 for 1:100.
     public var paperScale: Double
+    /// v12.9 a photo of a plan: its "paper" unit is a pixel and its scale is only known once calibrated.
+    public var isPhoto: Bool
 
-    public init(id: UUID = UUID(), name: String, pageWidthMM: Double, pageHeightMM: Double, imageData: Data, paperScale: Double = 100) {
+    public init(id: UUID = UUID(), name: String, pageWidthMM: Double, pageHeightMM: Double, imageData: Data, paperScale: Double = 100, isPhoto: Bool = false) {
         self.id = id
+        self.isPhoto = isPhoto
         self.name = name
         self.pageWidthMM = pageWidthMM
         self.pageHeightMM = pageHeightMM
@@ -192,7 +195,8 @@ public struct RasterUnderlay: Identifiable, Hashable, Sendable {
 /// v12.7 the underlay a project keeps: the source file (stored, hash-verified, with the project's
 /// attachments) and how it sits under the plan.
 public struct ProjectUnderlay: Codable, Hashable, Sendable {
-    public enum Format: String, Codable, Hashable, Sendable { case dxf, pdf, ifc }
+    /// `image`: v12.9 a photo of a plan (stored straightened).
+    public enum Format: String, Codable, Hashable, Sendable { case dxf, pdf, ifc, image }
 
     public var format: Format
     public var asset: SurveyEvidenceReference
@@ -220,6 +224,7 @@ public struct ProjectUnderlay: Codable, Hashable, Sendable {
         switch (name as NSString).pathExtension.lowercased() {
         case "pdf": return .pdf
         case "ifc": return .ifc
+        case "jpg", "jpeg", "png", "heic", "heif": return .image
         default: return .dxf
         }
     }
