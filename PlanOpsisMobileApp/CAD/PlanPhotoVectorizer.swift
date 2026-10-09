@@ -63,6 +63,9 @@ public struct PlanPhotoVectorizer: Sendable {
         public var skewDegrees: Double
         public var width: Int
         public var height: Int
+        /// v12.10 the black-and-white image as read (rows top first, the photo as taken), for
+        /// `PlanPhotoInterpreter` to look for door swings, window lines and stair treads.
+        public var ink: [Bool] = []
         public var walls: [Stroke] { strokes.filter(\.isWall) }
         public var lines: [Stroke] { strokes.filter { !$0.isWall } }
     }
@@ -82,7 +85,7 @@ public struct PlanPhotoVectorizer: Sendable {
             let turn = PlanSimilarity.rotation(skew * .pi / 180, about: centre)
             strokes = strokes.map { Stroke(start: turn.apply($0.start), end: turn.apply($0.end), thickness: $0.thickness, isWall: $0.isWall) }
         }
-        return Result(strokes: strokes, skewDegrees: skew, width: image.width, height: image.height)
+        return Result(strokes: strokes, skewDegrees: skew, width: image.width, height: image.height, ink: mask)
     }
 
     // MARK: Black and white

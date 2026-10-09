@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		93D9E7C7400D5847A1B43A9F /* PhotoPlanReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A270D59E8FC16D6293D9E7C7 /* PhotoPlanReviewView.swift */; };
+		E3D9FDB2650D7E52FC1E88B4 /* PlanOpsisV1210PhotoReadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA8BE9B60A8284EE3D9FDB2 /* PlanOpsisV1210PhotoReadingTests.swift */; };
+		6C6985B578F92B7A9E00ED2B /* PlanPhotoInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1241864E05DED3E6C6985B5 /* PlanPhotoInterpreter.swift */; };
 		9F2C599496E556FD35F207B0 /* PhotoPlanLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */; };
 		D1876249F08E23A9CE4AD2FB /* CADDocumentDXFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D706245B942965B7D1876249 /* CADDocumentDXFWriter.swift */; };
 		FC80EBF2B58671BD6E30DE1A /* PlanOpsisV129PhotoPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */; };
@@ -167,6 +170,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A270D59E8FC16D6293D9E7C7 /* PhotoPlanReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PhotoPlanReviewView.swift"; sourceTree = SOURCE_ROOT; };
+		6AA8BE9B60A8284EE3D9FDB2 /* PlanOpsisV1210PhotoReadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV1210PhotoReadingTests.swift"; sourceTree = SOURCE_ROOT; };
+		C1241864E05DED3E6C6985B5 /* PlanPhotoInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/CAD/PlanPhotoInterpreter.swift"; sourceTree = SOURCE_ROOT; };
 		3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/Views/PhotoPlanLoader.swift"; sourceTree = SOURCE_ROOT; };
 		D706245B942965B7D1876249 /* CADDocumentDXFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileApp/DXF/CADDocumentDXFWriter.swift"; sourceTree = SOURCE_ROOT; };
 		82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlanOpsisMobileTests/PlanOpsisV129PhotoPlanTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -362,6 +368,7 @@
 				B7C332D984476206FBFE20F6 /* PlanOpsisV127UnderlayFileTests.swift */,
 				313A1ECE739E70C7D167F704 /* PlanOpsisV127IFCDoorAndShapeTests.swift */,
 				DE3DFDF2C91490F5BCB0277F /* PlanOpsisV127IFCImportTests.swift */,
+				6AA8BE9B60A8284EE3D9FDB2 /* PlanOpsisV1210PhotoReadingTests.swift */,
 				82701FD2A187952AFC80EBF2 /* PlanOpsisV129PhotoPlanTests.swift */,
 				382F4370F81E6B87E7C0691C /* PlanOpsisV128ScanObjectTests.swift */,
 				169306A037D851FDE51C504F /* PlanOpsisV127DeviationTests.swift */,
@@ -408,6 +415,7 @@
 			children = (
 				42E52FAC9AD128948801CB36 /* CaptureView.swift */,
 				F4AEB1F5DED893B6CA627D82 /* CADViewerView.swift */,
+				A270D59E8FC16D6293D9E7C7 /* PhotoPlanReviewView.swift */,
 				3F24B48D8E8C0FFA9F2C5994 /* PhotoPlanLoader.swift */,
 				E2B4902FAD7A27954C3FEDAD /* PDFUnderlayLoader.swift */,
 				0E782DE678DC5E06B3AD2BAE /* UnderlayPresentations.swift */,
@@ -505,6 +513,7 @@
 				F181DA48C845E83D8715F5B0 /* CADGeometryMath.swift */,
 				D0D589FA234E905733113569 /* CADMeasurement.swift */,
 				FFCA9C5EFF7E257A01AFB708 /* CADScene.swift */,
+				C1241864E05DED3E6C6985B5 /* PlanPhotoInterpreter.swift */,
 				107601F08EEAB0060B081E60 /* PlanPhotoVectorizer.swift */,
 				6AD3F78CAF5A285DC244C339 /* PDFVectorExtractor.swift */,
 				0D3B78D3383E5FE59ABACDB3 /* UnderlayAlignment.swift */,
@@ -787,6 +796,7 @@
 				FBFE20F6A93F33CEA4AC88F1 /* PlanOpsisV127UnderlayFileTests.swift in Sources */,
 				D167F7046BB587F8C51AB355 /* PlanOpsisV127IFCDoorAndShapeTests.swift in Sources */,
 				BCB0277F9C0B6DE6BC73FF9E /* PlanOpsisV127IFCImportTests.swift in Sources */,
+				E3D9FDB2650D7E52FC1E88B4 /* PlanOpsisV1210PhotoReadingTests.swift in Sources */,
 				FC80EBF2B58671BD6E30DE1A /* PlanOpsisV129PhotoPlanTests.swift in Sources */,
 				E7C0691CA01DD2D5E6E178E4 /* PlanOpsisV128ScanObjectTests.swift in Sources */,
 				E51C504F49DFD9B4031D1827 /* PlanOpsisV127DeviationTests.swift in Sources */,
@@ -872,6 +882,7 @@
 				8715F5B0C67DE27CE503388A /* CADGeometryMath.swift in Sources */,
 				331135697D0FEBB59DA08EF1 /* CADMeasurement.swift in Sources */,
 				01AFB708D544BB83BF84537D /* CADScene.swift in Sources */,
+				6C6985B578F92B7A9E00ED2B /* PlanPhotoInterpreter.swift in Sources */,
 				0B081E603B7B68410983A7E4 /* PlanPhotoVectorizer.swift in Sources */,
 				C244C339F70E427B6EA4CDA1 /* PDFVectorExtractor.swift in Sources */,
 				9ABACDB3672C0CEDD9FC79F9 /* UnderlayAlignment.swift in Sources */,
@@ -899,6 +910,7 @@
 				A88BA930586AAB308658D82C /* PlanOpsisWall.swift in Sources */,
 				9A53580B405F36451D5E905B /* CaptureView.swift in Sources */,
 				CA627D825DEE7F7963D5EFEB /* CADViewerView.swift in Sources */,
+				93D9E7C7400D5847A1B43A9F /* PhotoPlanReviewView.swift in Sources */,
 				9F2C599496E556FD35F207B0 /* PhotoPlanLoader.swift in Sources */,
 				4C3FEDADB5B59E60E49FACA2 /* PDFUnderlayLoader.swift in Sources */,
 				B3AD2BAEEC2D921E350FE302 /* UnderlayPresentations.swift in Sources */,

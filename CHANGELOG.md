@@ -1,5 +1,30 @@
 # Changelog
 
+## 12.10 — Smart plan from a photo
+
+- **Straight to a plan, like a scan:** photograph or pick a paper plan and the plan is built at once.
+  You get walls, doors, windows, doorways, stairs and the rooms they close, with names read from the
+  photo. A review card then shows what was found and how the scale was set.
+- **What it recognises:**
+  - **Walls**, drawn solid (poché) or as two face lines. Thin lines inside a wall (glazing carried
+    through) stay part of the wall.
+  - **Doors**, from the quarter-circle swing at a jamb. The hinge side and opening side become the
+    door's hand; two half swings make a double door. This also works for doors next to a corner,
+    where the wall stops short of the wall across.
+  - **Windows**, from glazing lines across a wall gap, or between the two faces of an outline wall.
+  - **Doorways**: a clean gap of door size becomes an opening, so the rooms either side still close.
+  - **Stairs**: five or more evenly stepped treads become a stair object with its width and run. A
+    tile grid is not taken for stairs.
+- **No calibration needed in most cases:** the scale is read from the plan's dimension figures
+  ("3500", "3.50", "350 cm", 12'-6") and the lines they label. Without readable dimensions it comes
+  from the doors (taken as 850 mm), then from the thickest walls (taken as 300 mm). The review card
+  says which, and flags a rule-of-thumb scale.
+- **Fix the scale** in the review card or the Underlay menu: tap a dimension you know, and the plan
+  rebuilds to it if it hasn't been edited since. **Remove this plan** takes it back out in one step.
+  **Build plan from photo** reads it again at any time.
+- The photo stays faded under the plan for checking and editing. The plan exports to DXF and IFC like
+  any other.
+
 ## 12.9 — Plan from a photo
 
 - **Photograph a paper plan:** in Drafting aids → Underlay, **Plan from photo** opens the document
