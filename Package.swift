@@ -28,6 +28,7 @@ let package = Package(
                 "CAD/CADSpatialIndex.swift",
                 "CAD/CADViewerDocument.swift",
                 "CAD/PDFVectorExtractor.swift",
+                "CAD/PlanPhotoInterpreter.swift",
                 "CAD/PlanPhotoVectorizer.swift",
                 "CAD/UnderlayAlignment.swift",
                 "CAD/UnderlayWallTracer.swift",

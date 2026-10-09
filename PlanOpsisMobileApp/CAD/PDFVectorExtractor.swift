@@ -8,12 +8,15 @@ public struct PDFUnderlayPage: Sendable {
     public var vectors: CADDocument?
     public var pageIndex: Int
     public var pageCount: Int
+    /// v12.10 a photo's plan read as walls, openings, stairs and scale.
+    public var reading: PlanPhotoReading?
 
-    public init(raster: RasterUnderlay, vectors: CADDocument?, pageIndex: Int, pageCount: Int) {
+    public init(raster: RasterUnderlay, vectors: CADDocument?, pageIndex: Int, pageCount: Int, reading: PlanPhotoReading? = nil) {
         self.raster = raster
         self.vectors = vectors
         self.pageIndex = pageIndex
         self.pageCount = pageCount
+        self.reading = reading
     }
 }
 

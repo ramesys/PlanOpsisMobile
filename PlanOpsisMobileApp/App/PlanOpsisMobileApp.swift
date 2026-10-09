@@ -659,6 +659,11 @@ struct PlanOpsisRootView: View {
                                     ForEach(0..<store.rasterPageCount, id: \.self) { Text("Page \($0 + 1)").tag($0) }
                                 }
                             }
+                            // v12.10 walls, doors, windows, stairs and rooms read from the photo.
+                            if store.canBuildPlanFromPhoto {
+                                Button { store.buildPlanFromPhoto() } label: { Label("Build plan from photo", systemImage: "wand.and.stars") }
+                                Button { store.fixPhotoScale() } label: { Label("Fix the photo's scale", systemImage: "ruler") }
+                            }
                             Button(raster.isPhoto ? "Remove plan photo" : "Remove PDF underlay", role: .destructive) { store.removeRasterUnderlay() }
                         }
                         Button { showingPDFUnderlayImporter = true } label: { Label("PDF underlay\u{2026}", systemImage: "doc.richtext") }

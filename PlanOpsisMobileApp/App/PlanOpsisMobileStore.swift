@@ -95,6 +95,12 @@ final class PlanOpsisMobileStore: ObservableObject {
     }
     /// What the raster underlay was made from, for saving it with the project.
     private var rasterFormat: ProjectUnderlay.Format = .pdf
+    /// v12.10 the photo's plan read as walls, openings, stairs and scale.
+    private var photoReading: PlanPhotoReading?
+    /// v12.10 the rooms last built from the photo, so a new scale can rebuild them while untouched.
+    private var photoBuild: [PlanOpsisRoom] = []
+    /// v12.10 what was recognised in the photo, shown for a quick check after building.
+    @Published var photoReview: PhotoPlanReview?
     /// v12.6 two-point alignment or scale calibration in progress.
     @Published private(set) var underlayAlignment: UnderlayAlignmentSession?
     /// v12.6 alignment whose scale differs from the drawing's units, waiting for the user's choice.
@@ -785,7 +791,10 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// "Drawing.dxf" or "Sheet.pdf · 1:100".
     var underlayTitle: String? {
         if let rasterUnderlay {
-            if rasterUnderlay.isPhoto { return "\(rasterUnderlay.name) · " + (rasterPlacement.scale == 1 ? "not calibrated" : "calibrated") }
+            if rasterUnderlay.isPhoto {
+                if rasterPlacement.scale != 1 { return "\(rasterUnderlay.name) · calibrated" }
+                return "\(rasterUnderlay.name) · " + (photoReading.map { "scale \($0.scaleSource.summary)" } ?? "not calibrated")
+            }
             let scale = rasterUnderlay.paperScale * rasterPlacement.scale
             return "\(rasterUnderlay.name) · 1:\(Self.scaleText(scale))"
         }
@@ -955,7 +964,11 @@ final class PlanOpsisMobileStore: ObservableObject {
         activeUnderlayPlacement = activeUnderlayPlacement.applying(correction)
         underlayAlignment = nil
         statusMessage = String(format: "Underlay calibrated: %.0f mm measured, %.0f mm entered (×%.4g).", measured, knownLength, correction.scale)
-            + (rasterUnderlay != nil ? " Now 1:\(underlayTitle?.components(separatedBy: "1:").last ?? "")." : "")
+            + (rasterUnderlay != nil && rasterUnderlay?.isPhoto != true ? " Now 1:\(underlayTitle?.components(separatedBy: "1:").last ?? "")." : "")
+        // v12.10 a plan built from the photo and not edited since follows the new scale.
+        if photoReading != nil, !photoBuild.isEmpty, isPhotoBuildUntouched {
+            buildPlanFromPhoto(calibrated: true)
+        }
     }
 
     // MARK: v12.6 PDF underlay
@@ -994,6 +1007,8 @@ final class PlanOpsisMobileStore: ObservableObject {
             rasterSource = (page.raster.imageData, name + ".jpg")
             rasterFormat = .image
             setRasterUnderlay(page)
+            // v12.10 straight to a plan when there is nothing drawn yet, as a scan does.
+            if photoReading != nil, project?.rooms.allSatisfy({ $0.walls.isEmpty }) ?? true { buildPlanFromPhoto() }
             return true
         case let .failure(error):
             statusMessage = "The photo could not be read: \(error.localizedDescription)"
@@ -1010,7 +1025,15 @@ final class PlanOpsisMobileStore: ObservableObject {
         rasterPlacement = UnderlayPlacement()
         showUnderlay = true
         isMovingUnderlay = false
+        photoReading = page.reading
+        photoBuild = []
+        photoReview = nil
         centreUnderlayOnPlan()
+        if let reading = page.reading {
+            // v12.10 the photo comes with its own scale: no calibration needed unless it looks wrong.
+            statusMessage = "\(page.raster.name): scale \(reading.scaleSource.summary). Build plan from photo reads it into walls and rooms."
+            return
+        }
         beginUnderlayAlignment(.calibrate)
         if page.raster.isPhoto {
             let wallLayers = Set(page.vectors?.layers.map(\.name).filter(UnderlayWallTracer.isWallLayer) ?? [])
@@ -1064,9 +1087,12 @@ final class PlanOpsisMobileStore: ObservableObject {
         rasterVectors = nil
         rasterSource = nil
         underlayAlignment = nil
+        photoReading = nil
+        photoBuild = []
+        photoReview = nil
         if openedDrawing == nil {
             showUnderlay = false
-            if var next = project, next.underlay?.format == .pdf {
+            if var next = project, next.underlay?.format == .pdf || next.underlay?.format == .image {
                 next.underlay = nil
                 project = next
                 scheduleAutosave()
@@ -1234,6 +1260,7 @@ final class PlanOpsisMobileStore: ObservableObject {
                 self.rasterSource = (data, saved.fileName)
                 self.rasterUnderlay = raster
                 self.rasterVectors = page.vectors
+                self.photoReading = page.reading
                 self.rasterPageCount = page.pageCount
                 self.rasterPageIndex = page.pageIndex
                 self.rasterPlacement = saved.placement
@@ -1384,7 +1411,7 @@ final class PlanOpsisMobileStore: ObservableObject {
     /// v12.9 whether Import all walls has something to read: a DXF or IFC with wall layers, or a photo
     /// or PDF underlay with line work.
     var canImportWalls: Bool {
-        rasterUnderlay != nil ? rasterVectors.map { !$0.entities.isEmpty } ?? false : !drawingWallLayers.isEmpty
+        rasterUnderlay != nil ? photoReading.map { !$0.walls.isEmpty } ?? rasterVectors.map { !$0.entities.isEmpty } ?? false : !drawingWallLayers.isEmpty
     }
 
     /// v12.9 whether the underlay has line work to write as a DXF.
@@ -1417,9 +1444,69 @@ final class PlanOpsisMobileStore: ObservableObject {
         return CADDocumentDXFWriter().write(document, transform: transform, layerNaming: dxfLayerNaming)
     }
 
+    // MARK: v12.10 plan from a photo
+
+    var canBuildPlanFromPhoto: Bool { photoReading.map { !$0.walls.isEmpty } ?? false }
+
+    /// Whether the rooms last built from the photo are still in the plan as built.
+    private var isPhotoBuildUntouched: Bool {
+        guard let rooms = project?.rooms, !photoBuild.isEmpty else { return false }
+        return photoBuild.allSatisfy { built in rooms.contains(built) }
+    }
+
+    /// Builds the plan the photo shows: walls, doors with their swing, windows, doorways, stairs, and the
+    /// rooms they close, named from the photo's text. Replaces the rooms built from it before while they
+    /// are untouched; one undo step.
+    func buildPlanFromPhoto(calibrated: Bool = false) {
+        guard let reading = photoReading, let raster = rasterUnderlay, var next = project else {
+            statusMessage = "Open a photo of a plan first."
+            return
+        }
+        let plan = reading.plan(transform: rasterPlacement.transform(unitScale: raster.paperScale))
+        guard !plan.rooms.isEmpty else {
+            statusMessage = "No walls found in \(raster.name). Try a sharper, straighter photo in even light, or trace the walls by tapping them."
+            return
+        }
+        let replacing = isPhotoBuildUntouched ? Set(photoBuild.map(\.id)) : []
+        next.rooms.removeAll { replacing.contains($0.id) || ($0.walls.isEmpty && $0.openings.isEmpty && $0.components.isEmpty) }
+        for id in replacing { next.survey.roomNames[id] = nil }
+        next.rooms += plan.rooms
+        for (id, name) in plan.roomNames { next.survey.roomNames[id] = name }
+        let label = replacing.isEmpty ? "Plan from photo" : "Rebuild plan from photo"
+        guard commitSemanticProject(next, label: label, selectionAfter: []) else { return }
+        let built = Set(plan.rooms.map(\.id))
+        photoBuild = project?.rooms.filter { built.contains($0.id) } ?? []
+        focusedRoomID = nil
+        let review = PhotoPlanReview(reading: reading, plan: plan, calibrated: calibrated || rasterPlacement.scale != 1,
+                                     millimetresPerPixel: raster.paperScale * rasterPlacement.scale)
+        photoReview = calibrated ? nil : review
+        statusMessage = (calibrated ? "Rebuilt at the calibrated scale: " : "Plan from photo: ") + review.summary
+    }
+
+    /// The scale from the photo looks wrong: measure a known dimension; the plan rebuilds to it.
+    func fixPhotoScale() {
+        photoReview = nil
+        if !showUnderlay { toggleUnderlay() }
+        beginUnderlayAlignment(.calibrate)
+        statusMessage = "Tap both ends of a dimension you know on the photo, then enter it. The plan rebuilds at that scale."
+    }
+
+    /// Takes the plan built from the photo back out.
+    func discardPhotoPlan() {
+        photoReview = nil
+        guard isPhotoBuildUntouched else { return }
+        undo()
+        photoBuild = []
+        statusMessage = "Plan from photo removed. The photo stays under the plan to trace or rebuild."
+    }
+
     /// v12.9 walls from a photo's or PDF's line work: thick strokes and double lines become walls, closed
     /// loops rooms, named from the text read inside them. Needs the scale calibrated first.
     private func importWallsFromRasterLines() {
+        if photoReading != nil {
+            buildPlanFromPhoto()
+            return
+        }
         guard var next = project, let raster = rasterUnderlay, let scene = underlayScene else {
             statusMessage = "This underlay has no lines to read walls from. Trace or draw them instead."
             return

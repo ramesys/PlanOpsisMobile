@@ -87,6 +87,9 @@ public struct UnderlayWallTracer: Sendable {
     public var maxThickness = 700.0
     public var minLength = 100.0
     public var parallelToleranceDegrees = 2.0
+    /// v12.10 how far past a crossing wall's reach an end still joins it (drawing units: 20 mm, or a
+    /// couple of pixels when tracing a photo).
+    public var joinPadding = 20.0
     public private(set) var segments: [Segment]
     public var symbols: [Symbol] = []
 
@@ -208,13 +211,13 @@ public struct UnderlayWallTracer: Sendable {
             if walls.contains(where: { Self.duplicates($0, wall) }) { continue }
             walls.append(wall)
         }
-        walls = Self.joined(walls)
+        walls = Self.joined(walls, padding: joinPadding)
         return bridgingOpenings(walls)
     }
 
     /// Moves wall ends onto the axis of a crossing wall when they stop within reach of it: a face ends at
     /// the other wall's face, the axis belongs on the other wall's axis.
-    public static func joined(_ walls: [TracedWall], against others: [TracedWall] = []) -> [TracedWall] {
+    public static func joined(_ walls: [TracedWall], against others: [TracedWall] = [], padding: Double = 20) -> [TracedWall] {
         let all = walls + others
         return walls.enumerated().map { index, wall in
             var result = wall
@@ -228,7 +231,7 @@ public struct UnderlayWallTracer: Sendable {
                     guard abs(denominator) > sin(15 * Double.pi / 180) else { continue }
                     // Intersection of this wall's line with the other's axis.
                     let s = cross(other.start - point, v) / denominator
-                    let reach = max(wall.thickness, other.thickness) * 0.75 + 20
+                    let reach = max(wall.thickness, other.thickness) * 0.75 + padding
                     guard abs(s) <= reach else { continue }
                     let crossing = point + outward * s
                     let along = (crossing - other.start).dot(v)
@@ -430,13 +433,16 @@ extension UnderlayTraceResult {
         }
         for opening in openings where room.walls.indices.contains(opening.wallIndex) {
             let host = room.walls[opening.wallIndex]
-            let isDoor = opening.kind == .door
-            let sill = isDoor ? 0.0 : 900
+            let isWindow = opening.kind == .window
+            let sill = isWindow ? 900.0 : 0
             let p = HostedOpeningParameters(hostWallID: host.id, offsetAlongWall: opening.offset, width: opening.width,
-                                            height: min(isDoor ? 2_100 : 1_200, host.height - sill), sillHeight: sill, confidence: .unknown)
-            room.openings.append(isDoor
-                ? .door(PlanOpsisDoor(parameters: p, swing: opening.swing, operation: opening.isDouble ? .doubleHinged : .singleHinged))
-                : .window(PlanOpsisWindow(parameters: p)))
+                                            height: min(isWindow ? 1_200 : 2_100, host.height - sill), sillHeight: sill, confidence: .unknown)
+            switch opening.kind {
+            case .door: room.openings.append(.door(PlanOpsisDoor(parameters: p, swing: opening.swing, operation: opening.isDouble ? .doubleHinged : .singleHinged)))
+            case .window: room.openings.append(.window(PlanOpsisWindow(parameters: p)))
+            // v12.10 a doorway without a door (a plain gap in a photo's wall).
+            case .opening: room.openings.append(.opening(p))
+            }
         }
         return room
     }

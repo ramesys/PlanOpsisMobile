@@ -7,7 +7,8 @@ import VisionKit
 
 /// v12.9 turns a photo of a paper plan into an underlay: the sheet straightened when it was shot at an
 /// angle, its walls and lines found by `PlanPhotoVectorizer`, its text read with Vision. The underlay's
-/// "paper" is the photo's pixels, at an assumed 15 m across until the user calibrates it.
+/// "paper" is the photo's pixels; v12.10 reads them as walls, doors, windows and stairs and takes the
+/// scale from the plan's dimensions (else its doors or walls).
 enum PhotoPlanLoader {
     enum LoadError: LocalizedError {
         case unreadable, renderFailed
@@ -21,8 +22,6 @@ enum PhotoPlanLoader {
 
     /// Long side of the analysed photo in pixels: a 200 mm wall on a 1:100 A3 print is still ~4 px.
     static let longSidePixels = 2_400.0
-    /// What the photo's long side is taken to measure before calibration, in millimetres.
-    static let assumedLongSideMM = 15_000.0
 
     /// `straighten` is off for a photo saved with the project, which was straightened when it was taken.
     static func load(data: Data, name: String, straighten: Bool = true) throws -> PDFUnderlayPage {
@@ -34,12 +33,15 @@ enum PhotoPlanLoader {
               let gray = grayImage(photo) else { throw LoadError.renderFailed }
 
         let result = PlanPhotoVectorizer().vectorize(gray)
-        let vectors = PlanPhotoVectorizer.document(from: result, texts: texts(in: photo))
+        let words = texts(in: photo)
+        let vectors = PlanPhotoVectorizer.document(from: result, texts: words)
+        // v12.10 read as walls, doors, windows, stairs and scale.
+        let reading = PlanPhotoInterpreter().read(result, texts: words.map { PlanPhotoReading.Text(position: $0.position, string: $0.string, height: $0.height) })
         guard let jpeg = UIImage(cgImage: photo).jpegData(compressionQuality: 0.8) else { throw LoadError.renderFailed }
         let width = Double(photo.width), height = Double(photo.height)
         let raster = RasterUnderlay(name: name, pageWidthMM: width, pageHeightMM: height, imageData: jpeg,
-                                    paperScale: assumedLongSideMM / max(width, height), isPhoto: true)
-        return PDFUnderlayPage(raster: raster, vectors: vectors, pageIndex: 0, pageCount: 1)
+                                    paperScale: reading.millimetresPerPixel, isPhoto: true)
+        return PDFUnderlayPage(raster: raster, vectors: vectors, pageIndex: 0, pageCount: 1, reading: reading)
     }
 
     /// The image drawn upright on white at scale 1, its long side at most `longSide` pixels.

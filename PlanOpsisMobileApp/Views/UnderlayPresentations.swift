@@ -88,6 +88,12 @@ struct UnderlayPresentations: ViewModifier {
             .onChange(of: store.needsCalibrationLength) { _, needed in
                 if needed { calibrationText = "" }
             }
+            // v12.10 what the photo was read as, right after the plan is built from it.
+            .sheet(item: $store.photoReview) { review in
+                PhotoPlanReviewView(store: store, review: review)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $store.showDeviationReport) {
                 DeviationReportView(store: store)
                     .presentationDetents([.medium, .large])
