@@ -1,0 +1,11 @@
+PlanOpsis Mobile
+Copyright 2026 The PlanOpsis Mobile authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It uses only Apple platform frameworks (such as SwiftUI, UIKit, RoomPlan, ARKit, RealityKit, Vision,
+VisionKit, PhotosUI, PDFKit, CryptoKit) and Foundation. It bundles no third-party source code or
+binaries.
+
+IFC is an open standard of buildingSMART International. DXF is a file format published by Autodesk,
+Inc. PlanOpsis reads and writes these formats; it is not affiliated with or endorsed by either.

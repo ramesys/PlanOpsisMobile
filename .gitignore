@@ -7,14 +7,48 @@ xcuserdata/
 *.xcuserstate
 *.xccheckout
 *.xcscmblueprint
+# Local build settings that may carry a personal signing team or bundle prefix.
+*.local.xcconfig
 
 # Swift Package Manager
 .build/
 .swiftpm/
 
-# Xcode archives
+# Xcode archives and exported builds
 *.xcarchive
+*.ipa
+*.dSYM.zip
+*.dSYM/
+
+# Local tool environments (e.g. the secret scanner in SECURITY.md)
+.venv*/
 
 # Temporary files
 *.log
 *.tmp
+
+# Secrets: never commit these. Copy .env.example to .env for local values.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.provisionprofile
+AuthKey_*.p8
+secrets/
+*.secrets
+*.secret
+credentials.json
+service-account*.json
+GoogleService-Info.plist
+
+# fastlane, if added later
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
