@@ -131,10 +131,10 @@ reconciliation engines keep shared walls consistent when one side is edited.
   - rooms are built in code;
   - plan photos are rendered from shapes (`PlanOpsisV129PhotoPlanTests`,
     `PlanOpsisV1210PhotoReadingTests`);
-  - captures are mocks (`MockRoomCaptureProvider`, `MockStructureCaptureProvider`).
+  - captures are mocks (`MockRoomCaptureProvider`, `MockStructureCaptureProvider`,
+    `SampleCaptureFixtures`).
 
-  The one recorded capture (`RealCaptureFixtures`) is bare geometry with random identifiers. Use
-  made-up data for new fixtures.
+  None of them is real data. Keep new fixtures made up too.
 - Add a test for every behaviour change, and keep tests independent of the machine (no network, no
   clock, no locale).
 

@@ -222,11 +222,13 @@ points.
   (`detect-secrets` plus pattern searches for keys, private keys and credentials). Secret files are
   excluded by [`.gitignore`](.gitignore), and [`.env.example`](.env.example) holds placeholders
   only. See [SECURITY.md](SECURITY.md).
-- **No personal or customer data.** Samples and test fixtures are synthetic: generated rooms and
-  plans, made-up names and addresses ("J. Doe", "1 Example Street"), and mock captures. The one
-  field-capture fixture (`PlanOpsisMobileTests/RealCaptureFixtures.swift`) is bare room geometry:
-  surface sizes and positions with random identifiers. It has no location, images, names or
-  metadata.
+- **No personal or customer data.** All samples and test fixtures are made up:
+  - generated rooms and plan images;
+  - invented names and addresses ("J. Doe", "1 Example Street");
+  - mock RoomPlan captures, including an invented irregular room
+    (`PlanOpsisMobileTests/SampleCaptureFixtures.swift`).
+
+  None of them describes a real place or person.
 
 ## Further development
 
