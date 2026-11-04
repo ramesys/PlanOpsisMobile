@@ -132,7 +132,7 @@ final class PlanOpsisV124DocumentationTests: XCTestCase {
     func testDrawingSetLaysOutPlanSchedulesElevationsAndSections() throws {
         var project = GoldenExchangeTests.project()
         project.name = "Golden flat"
-        var settings = DocumentationSettings(paper: .a3, author: "RS", siteAddress: "1 Test Street", revision: "B")
+        var settings = DocumentationSettings(paper: .a3, author: "J. Doe", siteAddress: "1 Example Street, Sampletown", revision: "B")
         settings.sections = [SectionLine(label: "A", start: Point2D(x: -6_000, y: 0), end: Point2D(x: 8_000, y: 0))]
         project.documentation = settings
         let set = DrawingSetComposer().compose(project: project, date: Date(timeIntervalSince1970: 0))
@@ -221,7 +221,7 @@ final class PlanOpsisV124SheetPreviewDump: XCTestCase {
         var project = GoldenExchangeTests.project()
         project.name = "Golden flat"
         project.documentationSettings.sections = [SectionLine(label: "A", start: Point2D(x: -6_000, y: 0), end: Point2D(x: 8_000, y: 0))]
-        project.documentationSettings.author = "RS"
+        project.documentationSettings.author = "J. Doe"
         project.documentationSettings.finishes[project.rooms[0].id] = RoomFinishes(floor: "Oak parquet", walls: "Emulsion paint", ceiling: "Emulsion paint", skirting: "Painted MDF")
         let set = DrawingSetComposer().compose(project: project)
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)

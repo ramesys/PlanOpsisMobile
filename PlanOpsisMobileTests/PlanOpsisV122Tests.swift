@@ -14,10 +14,10 @@ final class PlanOpsisV122Tests: XCTestCase {
 
     // MARK: 1. RoomPlan wall surfaces are interior faces
 
-    func testRealCaptureWallNormalsPointIntoTheRoom() throws {
+    func testCaptureWallNormalsPointIntoTheRoom() throws {
         // RoomPlan wall surfaces carry the room on their local +Z side; around the room's outer loop
         // that is always the interior. This is what makes face registration well-defined.
-        let capture = try RealCaptureFixtures.apartment1()
+        let capture = SampleCaptureFixtures.irregularRoom()
         let converter = RoomPlanCoordinateConverter()
         for surface in capture.rooms[0].surfaces where surface.category == .wall {
             let direction = converter.planDirection(from: surface.transform)
@@ -26,8 +26,8 @@ final class PlanOpsisV122Tests: XCTestCase {
         }
     }
 
-    func testRealCaptureFacesStayPutAndAxesMoveBehindThem() throws {
-        let capture = try RealCaptureFixtures.apartment1()
+    func testCaptureFacesStayPutAndAxesMoveBehindThem() throws {
+        let capture = SampleCaptureFixtures.irregularRoom()
         let room = try XCTUnwrap(Self.adapt(capture).project.rooms.first)
         let converter = RoomPlanCoordinateConverter()
         var checked = 0
@@ -37,15 +37,15 @@ final class PlanOpsisV122Tests: XCTestCase {
             let roomSide = converter.planNormal(from: surface.transform)
             XCTAssertEqual(abs(wall.direction.dot(converter.planDirection(from: surface.transform))), 1, accuracy: 1e-4)
             // The observed face stays half a thickness from the axis, on the room side. Two-wall corners are
-            // exact mitres; where three walls meet, the shared corner is a least-squares compromise (≤ 3 mm here).
+            // exact mitres; where three walls meet, the shared corner is a least-squares compromise (≤ 3 mm).
             XCTAssertEqual((faceCenter - wall.start).dot(roomSide), wall.thickness / 2, accuracy: 3)
             checked += 1
         }
-        XCTAssertGreaterThanOrEqual(checked, 19)
+        XCTAssertEqual(checked, capture.rooms[0].surfaces.filter { $0.category == .wall }.count)
     }
 
-    func testRealCaptureCornersStayJoinedOnTheAxes() throws {
-        let capture = try RealCaptureFixtures.apartment1()
+    func testCaptureCornersStayJoinedOnTheAxes() throws {
+        let capture = SampleCaptureFixtures.irregularRoom()
         let room = try XCTUnwrap(Self.adapt(capture).project.rooms.first)
         let converter = RoomPlanCoordinateConverter()
         func faceEnds(_ s: CapturedSurfaceSnapshot) -> [Point2D] {
@@ -68,7 +68,7 @@ final class PlanOpsisV122Tests: XCTestCase {
                 }
             }
         }
-        XCTAssertGreaterThan(joined, 15)
+        XCTAssertEqual(joined, surfaces.count, "every corner of the closed room")
     }
 
     func testRegisteredSquareRoomHasTheScannedInteriorSize() throws {
@@ -96,18 +96,18 @@ final class PlanOpsisV122Tests: XCTestCase {
 
     // MARK: 4. Irregular walls are imported, so real scans export
 
-    func testRealCaptureImportsEveryWallAndExports() throws {
-        let capture = try RealCaptureFixtures.apartment1()
+    func testIrregularCaptureImportsEveryWallAndExports() throws {
+        let capture = SampleCaptureFixtures.irregularRoom()
         let result = Self.adapt(capture)
         let room = try XCTUnwrap(result.project.rooms.first)
         XCTAssertEqual(room.walls.count, capture.rooms[0].surfaces.filter { $0.category == .wall }.count, "the non-rectangular wall is imported")
         XCTAssertTrue(result.diagnostics.contains { if case .unsupportedComplexWall = $0 { return true }; return false })
         XCTAssertEqual(room.openings.count, 3)
-        XCTAssertEqual(room.captureFloorElevationMM ?? .nan, -1_617, accuracy: 1)
+        XCTAssertEqual(room.captureFloorElevationMM ?? .nan, SampleCaptureFixtures.floorElevation * 1_000, accuracy: 1)
         let door = try XCTUnwrap(room.openings.first { $0.kind == .door })
         let window = try XCTUnwrap(room.openings.first { $0.kind == .window })
         XCTAssertEqual(door.parameters.sillHeight, 0, accuracy: 1)
-        XCTAssertEqual(window.parameters.sillHeight, 439, accuracy: 1)
+        XCTAssertEqual(window.parameters.sillHeight, SampleCaptureFixtures.windowSill * 1_000, accuracy: 1)
 
         let readiness = ArchitecturalSurveyReadinessEngine().evaluate(project: result.project, captureDiagnostics: result.diagnostics)
         XCTAssertEqual(readiness.errorCount, 0, readiness.issues.map(\.message).joined(separator: "; "))
@@ -228,14 +228,13 @@ final class PlanOpsisV122Tests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.url.path), "the legacy file is kept")
     }
 
-    func testRealCaptureInsideFacesReproduceTheScannedFaces() throws {
-        let capture = try RealCaptureFixtures.apartment1()
+    func testCaptureInsideFacesReproduceTheScannedFaces() throws {
+        let capture = SampleCaptureFixtures.irregularRoom()
         let room = try XCTUnwrap(Self.adapt(capture).project.rooms.first)
         let converter = RoomPlanCoordinateConverter(), engine = SurveyMeasurementEngine()
-        // Walls next to partitions RoomPlan saw from one side only: where the unseen face lies is not
-        // observable from the scan (the v13 solver / a tape measurement resolves it), so their faces may
-        // differ from RoomPlan's zero-thickness surfaces by up to one wall thickness.
-        let singleFacedPartitionNeighbours: Set<String> = ["7C59", "7515", "51A4", "DDB0", "E06F", "59DD", "91A3", "63C3"]
+        // A closed room seen from inside: every inside face is the scanned face. (Walls next to partitions
+        // RoomPlan saw from one side only would differ by up to a wall thickness until a measurement or
+        // the v13 solver places their unseen face.)
         var exact = 0
         for surface in capture.rooms[0].surfaces where surface.category == .wall {
             let wall = try XCTUnwrap(room.walls.first { $0.sourceRoomPlanID == surface.sourceRoomPlanID })
@@ -243,13 +242,9 @@ final class PlanOpsisV122Tests: XCTestCase {
             XCTAssertEqual(engine.roomSide(ofWall: wall.id, in: room), scannedSide, "room side of \(surface.sourceRoomPlanID)")
             let (a, b) = try engine.faceSegment(wallID: wall.id, side: scannedSide, in: room)
             let scanned = converter.millimetres(fromMetres: surface.dimensions.x)
-            if singleFacedPartitionNeighbours.contains(String(surface.sourceRoomPlanID.uuidString.prefix(4))) {
-                XCTAssertEqual((b - a).length, scanned, accuracy: wall.thickness + 3)
-            } else {
-                XCTAssertEqual((b - a).length, scanned, accuracy: 2, "inside face of \(surface.sourceRoomPlanID)")
-                exact += 1
-            }
+            XCTAssertEqual((b - a).length, scanned, accuracy: 2, "inside face of \(surface.sourceRoomPlanID)")
+            exact += 1
         }
-        XCTAssertEqual(exact, 12)
+        XCTAssertEqual(exact, SampleCaptureFixtures.irregularRoomCorners.count)
     }
 }
