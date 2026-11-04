@@ -232,20 +232,15 @@ points.
 
 ## Further development
 
-PlanOpsis is a working, tested product. These are the next steps that would add the most:
+PlanOpsis is a working, tested product. [ROADMAP.md](ROADMAP.md) sets out what comes next, in
+three horizons:
 
-1. **Field validation of photo recognition.** Tune the plan-photo interpreter on a corpus of real
-   plans. Add reading of vertical dimension text, curved walls, and furniture symbols.
-2. **Multi-storey projects.** Levels, stairs linking storeys, and IFC storeys
-   (`IfcBuildingStorey`).
-3. **A global survey solver.** Resolve the unseen faces of partitions and close loops by least
-   squares over all measurements (the "v13 solver" referred to in the tests).
-4. **Collaboration.** Optional sync of projects and delivery packages, and BCF issues for review with
-   architects.
-5. **More exchange.** IFC export of slabs and roofs, DWG through an external converter, and a
-   Revit-friendly IFC profile.
-6. **Other platforms.** `PlanOpsisCore` already builds on Linux and macOS, so a macOS app or a
-   server-side converter can reuse it unchanged.
+- **Now:** Bluetooth laser distance meters, a global survey solver, storeys, slabs and ceilings in
+  the model and IFC, and IFC round-trip validation with Revit, ArchiCAD and BlenderBIM.
+- **Next:** multi-room capture and partial rescans; sloped ceilings, curved walls and columns;
+  building services points; BCF review with architects; IFC 4.3 and AR export.
+- **Later:** production-grade plans from photos and PDFs, drawing automation and localisation, an
+  App Store release, sync, and macOS, server and visionOS versions.
 
 Each release is documented in [CHANGELOG.md](CHANGELOG.md) with what changed and why.
 
